@@ -97,7 +97,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
             <label className="label" htmlFor="asset-category">Subclasse *</label>
             <select
               id="asset-category"
-              className="input"
+              className={`input ${styles.selectInput}`}
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
             >
