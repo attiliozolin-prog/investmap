@@ -1,0 +1,146 @@
+.right { text-align: right !important; }
+.center { text-align: center !important; }
+
+.row { position: relative; }
+
+.row_buy td:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--color-success);
+  border-radius: 2px;
+}
+
+.row_sell td:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--color-danger);
+  border-radius: 2px;
+}
+
+.tickerCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ticker {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  letter-spacing: 0.02em;
+  color: var(--color-text);
+}
+
+.info {
+  font-size: 0.75rem;
+  color: var(--color-text-3);
+}
+
+.subclass {
+  font-size: 0.8125rem;
+  color: var(--color-text-2);
+  white-space: nowrap;
+}
+
+.muted { color: var(--color-text-3) !important; }
+
+.profitLoss {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.profitPercent {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.profit { color: var(--color-success); }
+.loss   { color: var(--color-danger); }
+
+.rebalance { font-weight: 600; }
+
+.actionBadge {
+  white-space: nowrap;
+}
+
+/* Inline value editing */
+.valueBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  font-family: var(--font);
+  font-size: 0.9375rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition);
+  margin-left: auto;
+}
+
+.valueBtn:hover {
+  background: var(--color-surface-2);
+}
+
+.editIcon {
+  color: var(--color-text-3);
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.valueBtn:hover .editIcon { opacity: 1; }
+
+.inlineEdit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.inlineInput {
+  width: 100px;
+  padding: 2px 8px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-family: var(--font);
+  font-size: 0.875rem;
+  outline: none;
+  text-align: right;
+}
+
+.confirmBtn {
+  background: var(--color-success);
+  border: none;
+  color: white;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+}
+
+.actionBtn {
+  padding: 6px !important;
+  width: 28px;
+  height: 28px;
+}

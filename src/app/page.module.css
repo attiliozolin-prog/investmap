@@ -1,0 +1,14 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  padding: var(--space-8) 0;
+}
+
+.content {
+  animation: fadeIn 0.25s ease;
+}

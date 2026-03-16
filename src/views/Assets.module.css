@@ -1,0 +1,13 @@
+.wrapper { display: flex; flex-direction: column; gap: var(--space-6); }
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+@media (max-width: 480px) {
+  .header { flex-direction: column; }
+  .header .btn { width: 100%; justify-content: center; }
+}
