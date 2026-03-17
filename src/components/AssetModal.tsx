@@ -119,6 +119,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
                 placeholder="0,00"
                 value={investedValue}
                 onChange={(e) => setInvestedValue(e.target.value)}
+                autoComplete="off"
               />
             </div>
             <div className="form-group">
@@ -129,6 +130,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
                 placeholder="0,00"
                 value={currentValue}
                 onChange={(e) => setCurrentValue(e.target.value)}
+                autoComplete="off"
               />
             </div>
           </div>
