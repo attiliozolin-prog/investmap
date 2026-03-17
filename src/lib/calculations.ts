@@ -10,20 +10,23 @@ import {
 // Formatting
 // ============================================
 
-export function formatCurrency(value: number): string {
+export function formatCurrency(value: number | undefined | null): string {
+  const safe = Number(value) || 0;
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
     minimumFractionDigits: 2,
-  }).format(value);
+  }).format(safe);
 }
 
-export function formatPercent(value: number, decimals = 2): string {
-  return `${value >= 0 ? '+' : ''}${value.toFixed(decimals)}%`;
+export function formatPercent(value: number | undefined | null, decimals = 2): string {
+  const safe = Number(value) || 0;
+  return `${safe >= 0 ? '+' : ''}${safe.toFixed(decimals)}%`;
 }
 
-export function formatPercentAbs(value: number, decimals = 2): string {
-  return `${value.toFixed(decimals)}%`;
+export function formatPercentAbs(value: number | undefined | null, decimals = 2): string {
+  const safe = Number(value) || 0;
+  return `${safe.toFixed(decimals)}%`;
 }
 
 // ============================================

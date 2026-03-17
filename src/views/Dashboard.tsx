@@ -98,7 +98,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                   <div className={styles.catRight}>
                     <div className={styles.catValue}>{formatCurrency(cs.currentValue)}</div>
                     <div className={styles.catPercents}>
-                      <span>{cs.currentPercent.toFixed(1)}%</span>
+                      <span>{(Number(cs.currentPercent) || 0).toFixed(1)}%</span>
                       <span className={styles.catTarget}>alvo {cs.targetPercent}%</span>
                     </div>
                     <div className={`${styles.catAction} ${
