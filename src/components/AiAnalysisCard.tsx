@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { PortfolioSummary } from '@/types';
 import styles from './AiAnalysisCard.module.css';
 import { Sparkles, Loader2, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
@@ -132,19 +132,12 @@ export default function AiAnalysisCard({ summary, strategyName }: Props) {
       {hasRun && expanded && analysis && (
         <div className={styles.analysisBody}>
           <div className={styles.analysisText}>
-            {analysis.split('\n').map((line, i) => {
-              if (line.startsWith('## ')) return <h4 key={i} className={styles.h4}>{line.replace('## ', '')}</h4>;
-              if (line.startsWith('### ')) return <h5 key={i} className={styles.h5}>{line.replace('### ', '')}</h5>;
-              if (line.startsWith('**') && line.endsWith('**')) return <strong key={i} className={styles.bold}>{line.replace(/\*\*/g, '')}</strong>;
-              if (line.startsWith('- ') || line.startsWith('• ')) return <li key={i} className={styles.listItem}>{line.replace(/^[-•]\s/, '')}</li>;
-              if (line.trim() === '') return <br key={i} />;
-              return <p key={i} className={styles.p}>{applyInlineBold(line)}</p>;
-            })}
+            {parseCustomMarkdown(analysis)}
           </div>
           <div className={styles.disclaimer}>
             <AlertTriangle size={12} />
             <span>
-              Esta análise é de caráter educacional e não constitui recomendação de investimento. Consulte um assessor de investimentos habilitado antes de tomar decisões financeiras.
+              Esta análise é de caráter educacional e não constitui recomendação de investimento. Consulte um assessor habilitado antes de tomar decisões financeiras.
             </span>
           </div>
         </div>
@@ -153,11 +146,64 @@ export default function AiAnalysisCard({ summary, strategyName }: Props) {
   );
 }
 
+// Custom Markdown Parser to avoid dependency issues
+function parseCustomMarkdown(text: string): React.ReactNode {
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+  
+  let inList = false;
+  let listItems: React.ReactNode[] = [];
+
+  const flushList = () => {
+    if (inList && listItems.length > 0) {
+      elements.push(<ul key={`ul-${elements.length}`} className={styles.list}>{listItems}</ul>);
+      listItems = [];
+      inList = false;
+    }
+  };
+
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+    if (trimmed === '') {
+      flushList();
+      // Add a small spacer for empty lines if not immediately after a heading
+      if (index > 0 && lines[index-1].trim() !== '') {
+         elements.push(<div key={`spacer-${index}`} className={styles.spacer} />);
+      }
+      return;
+    }
+
+    if (trimmed.startsWith('### ')) {
+      flushList();
+      elements.push(<h4 key={index} className={styles.h4}>{applyInlineFormatting(trimmed.replace('### ', ''))}</h4>);
+    } 
+    else if (trimmed.startsWith('## ')) {
+      flushList();
+      elements.push(<h3 key={index} className={styles.h3}>{applyInlineFormatting(trimmed.replace('## ', ''))}</h3>);
+    }
+    else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+      inList = true;
+      listItems.push(<li key={index} className={styles.listItem}>{applyInlineFormatting(trimmed.slice(2))}</li>);
+    } 
+    else {
+      flushList();
+      elements.push(<p key={index} className={styles.p}>{applyInlineFormatting(trimmed)}</p>);
+    }
+  });
+
+  flushList();
+  return elements;
+}
+
 // Aplica negrito inline para **texto**
-function applyInlineBold(text: string): React.ReactNode {
+function applyInlineFormatting(text: string): React.ReactNode {
   if (!text.includes('**')) return text;
-  const parts = text.split(/\*\*(.*?)\*\*/g);
-  return parts.map((part, i) =>
-    i % 2 === 1 ? <strong key={i}>{part}</strong> : part
-  );
+  
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} className={styles.bold}>{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
 }
