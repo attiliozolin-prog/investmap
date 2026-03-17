@@ -7,7 +7,7 @@ import React, {
   useState,
   useCallback,
 } from 'react';
-import { Strategy, Asset, StrategyCategory } from '@/types';
+import { Strategy, Asset, StrategyCategory, Transaction, PortfolioSnapshot } from '@/types';
 import { generateId } from '@/lib/calculations';
 
 // ============================================
@@ -44,6 +44,8 @@ interface AppContextType {
   activeStrategy: Strategy | null;
   assets: Asset[];
   activeAssets: Asset[];
+  transactions: Transaction[];
+  snapshots: PortfolioSnapshot[];
 
   createStrategy: (data: Omit<Strategy, 'id' | 'createdAt' | 'updatedAt' | 'categories'>) => Strategy;
   updateStrategy: (id: string, data: Partial<Strategy>) => void;
@@ -57,7 +59,11 @@ interface AppContextType {
   addAsset: (data: Omit<Asset, 'id' | 'updatedAt'>) => void;
   updateAsset: (id: string, data: Partial<Asset>) => void;
   deleteAsset: (id: string) => void;
-  importData: (strategies: Strategy[], assets: Asset[]) => void;
+  
+  addTransaction: (data: Omit<Transaction, 'id' | 'date'>) => void;
+  saveSnapshot: (snapshot: Omit<PortfolioSnapshot, 'id'>) => void;
+
+  importData: (strategies: Strategy[], assets: Asset[], transactions?: Transaction[], snapshots?: PortfolioSnapshot[]) => void;
 }
 
 // ============================================
@@ -93,6 +99,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [strategies, setStrategies] = useState<Strategy[]>([defaultStrategy]);
   const [activeStrategyId, setActiveStrategyId] = useState<string>(DEFAULT_STRATEGY_ID);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
+  
   // mounted garante que só rodamos no cliente, evitando mismatch de hidratação
   const [mounted, setMounted] = useState(false);
 
@@ -101,10 +110,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const stored = loadFromStorage<Strategy[]>('investmap_strategies', [defaultStrategy]);
     const storedActive = loadFromStorage<string>('investmap_active', DEFAULT_STRATEGY_ID);
     const storedAssets = loadFromStorage<Asset[]>('investmap_assets', []);
+    const storedTransactions = loadFromStorage<Transaction[]>('investmap_transactions', []);
+    const storedSnapshots = loadFromStorage<PortfolioSnapshot[]>('investmap_snapshots', []);
 
     setStrategies(stored.length > 0 ? stored : [defaultStrategy]);
     setActiveStrategyId(storedActive);
     setAssets(storedAssets);
+    setTransactions(storedTransactions);
+    setSnapshots(storedSnapshots);
     setMounted(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -124,6 +137,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!mounted) return;
     saveToStorage('investmap_assets', assets);
   }, [assets, mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    saveToStorage('investmap_transactions', transactions);
+  }, [transactions, mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    saveToStorage('investmap_snapshots', snapshots);
+  }, [snapshots, mounted]);
 
   const activeStrategy = strategies.find((s) => s.id === activeStrategyId) ?? null;
   const activeAssets = assets.filter((a) => a.strategyId === activeStrategyId);
@@ -226,7 +249,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updatedAt: new Date().toISOString(),
     };
     setAssets((prev) => [...prev, newAsset]);
-  }, []);
+
+    // O primeiro aporte de um ativo também é uma transação
+    addTransaction({
+      assetId: newAsset.id,
+      type: 'buy',
+      value: newAsset.investedValue
+    });
+  }, [/* dependency on addTransaction injected securely via setTransactions internal logic later, or we just rely on setTransactions being stable */]);
 
   const updateAsset = useCallback((id: string, data: Partial<Asset>) => {
     setAssets((prev) =>
@@ -238,9 +268,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAsset = useCallback((id: string) => {
     setAssets((prev) => prev.filter((a) => a.id !== id));
+    // Limpar transações atreladas ao ativo deletado
+    setTransactions((prev) => prev.filter((t) => t.assetId !== id));
   }, []);
 
-  const importData = useCallback((importedStrategies: Strategy[], importedAssets: Asset[]) => {
+  const addTransaction = useCallback((data: Omit<Transaction, 'id' | 'date'>) => {
+    const newTransaction: Transaction = {
+      ...data,
+      id: generateId(),
+      date: new Date().toISOString(),
+    };
+    setTransactions((prev) => [...prev, newTransaction]);
+  }, []);
+
+  const saveSnapshot = useCallback((data: Omit<PortfolioSnapshot, 'id'>) => {
+    const newSnapshot: PortfolioSnapshot = {
+      ...data,
+      id: generateId(),
+    };
+    
+    setSnapshots((prev) => {
+      // Verifica se já existe snapshot na mesma data estrita (YYYY-MM-DD) e strategyId
+      const existingIndex = prev.findIndex(
+        (s) => s.strategyId === newSnapshot.strategyId && s.date === newSnapshot.date
+      );
+      
+      if (existingIndex >= 0) {
+        // Atualiza a foto de hoje se a carteira mudou de valor hoje
+        const arr = [...prev];
+        arr[existingIndex] = { ...arr[existingIndex], ...newSnapshot };
+        return arr;
+      } else {
+        return [...prev, newSnapshot];
+      }
+    });
+  }, []);
+
+  const importData = useCallback((
+    importedStrategies: Strategy[], 
+    importedAssets: Asset[],
+    importedTransactions?: Transaction[],
+    importedSnapshots?: PortfolioSnapshot[]
+  ) => {
     setStrategies((prev) => {
       const existingIds = new Set(prev.map((s) => s.id));
       const newOnes = importedStrategies.filter((s) => !existingIds.has(s.id));
@@ -251,6 +320,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const newOnes = importedAssets.filter((a) => !existingIds.has(a.id));
       return [...prev, ...newOnes];
     });
+    if (importedTransactions) {
+      setTransactions((prev) => {
+        const existingIds = new Set(prev.map((t) => t.id));
+        const newOnes = importedTransactions.filter((t) => !existingIds.has(t.id));
+        return [...prev, ...newOnes];
+      });
+    }
+    if (importedSnapshots) {
+      setSnapshots((prev) => {
+        const existingIds = new Set(prev.map((s) => s.id));
+        const newOnes = importedSnapshots.filter((s) => !existingIds.has(s.id));
+        return [...prev, ...newOnes];
+      });
+    }
   }, []);
 
   return (
@@ -261,6 +344,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         activeStrategy,
         assets,
         activeAssets,
+        transactions,
+        snapshots,
         createStrategy,
         updateStrategy,
         deleteStrategy,
@@ -271,6 +356,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addAsset,
         updateAsset,
         deleteAsset,
+        addTransaction,
+        saveSnapshot,
         importData,
       }}
     >

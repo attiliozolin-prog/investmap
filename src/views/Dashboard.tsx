@@ -6,6 +6,7 @@ import { useApp } from '@/context/AppContext';
 import { calculatePortfolio } from '@/lib/calculations';
 import SummaryCards from '@/components/SummaryCards';
 import AiAnalysisCard from '@/components/AiAnalysisCard';
+import EvolutionChart from '@/components/EvolutionChart';
 import styles from './Dashboard.module.css';
 import { AlertTriangle, TrendingUp } from 'lucide-react';
 import { formatCurrency } from '@/lib/calculations';
@@ -21,7 +22,7 @@ const AllocationChart = dynamic(() => import('@/components/AllocationChart'), {
 });
 
 export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void }) {
-  const { activeStrategy, activeAssets } = useApp();
+  const { activeStrategy, activeAssets, saveSnapshot, snapshots } = useApp();
 
   const summary = useMemo(() => {
     if (!activeStrategy || activeAssets.length === 0) return null;
@@ -31,6 +32,22 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
       return null;
     }
   }, [activeStrategy, activeAssets]);
+
+  // Salva o snapshot diário automaticamente quando montamos a Dashboard (e temos dados da summary)
+  import('react').then(({ useEffect }) => {
+    useEffect(() => {
+      if (summary && activeStrategy) {
+        const today = new Date().toISOString().split('T')[0];
+        saveSnapshot({
+          date: today,
+          strategyId: activeStrategy.id,
+          totalInvested: summary.totalInvested,
+          totalCurrent: summary.totalCurrent,
+          healthScore: summary.needsRebalancing ? 80 : 100 // Pontuação simples para registro histórico
+        });
+      }
+    }, [summary, activeStrategy, saveSnapshot]);
+  });
 
   if (!activeStrategy) {
     return (
@@ -121,6 +138,9 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
           </div>
         </div>
       </div>
+
+      {/* Evolution Chart */}
+      <EvolutionChart snapshots={snapshots.filter(s => s.strategyId === activeStrategy.id)} />
 
       {/* AI Analysis Card */}
       <AiAnalysisCard summary={summary} strategyName={activeStrategy.name} />

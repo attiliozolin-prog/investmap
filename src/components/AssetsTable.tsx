@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { AssetWithCalcs } from '@/types';
 import { formatCurrency, formatPercent, formatPercentAbs } from '@/lib/calculations';
 import styles from './AssetsTable.module.css';
-import { Pencil, Trash2, ArrowUp, ArrowDown, Minus, RefreshCw, AlertCircle } from 'lucide-react';
+import { Pencil, Trash2, ArrowUp, ArrowDown, Minus, RefreshCw, AlertCircle, PlusCircle } from 'lucide-react';
+import TransactionModal from './TransactionModal';
 
 interface Props {
   assets: AssetWithCalcs[];
@@ -54,6 +55,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
   const [editingValueId, setEditingValueId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [transactionAssetId, setTransactionAssetId] = useState<string | null>(null);
 
   const startEditValue = (asset: AssetWithCalcs) => {
     setEditingValueId(asset.id);
@@ -215,10 +217,17 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                 <td className={styles.center}>
                   <div className={styles.actions}>
                     <button
+                      className={`btn btn-ghost btn-sm ${styles.actionBtn}`}
+                      onClick={() => setTransactionAssetId(asset.id)}
+                      title="Registrar Aporte / Venda"
+                    >
+                      <PlusCircle size={14} />
+                    </button>
+                    <button
                       id={`edit-asset-${asset.id}`}
                       className={`btn btn-ghost btn-sm ${styles.actionBtn}`}
                       onClick={() => onEdit(asset)}
-                      title="Editar"
+                      title="Editar Propriedades"
                     >
                       <Pencil size={13} />
                     </button>
@@ -237,6 +246,14 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
           </tbody>
         </table>
       </div>
+
+      {/* Modal de Transação */}
+      {transactionAssetId && (
+        <TransactionModal
+          assetId={transactionAssetId}
+          onClose={() => setTransactionAssetId(null)}
+        />
+      )}
     </>
   );
 }
