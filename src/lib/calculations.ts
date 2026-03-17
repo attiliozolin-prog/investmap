@@ -45,11 +45,20 @@ export function calculatePortfolio(
 
   const assetsWithCalcs: AssetWithCalcs[] = assets
     .map((asset) => {
-      const category = strategy.categories.find(
+      let category = strategy.categories.find(
         (c) => c.id === asset.categoryId,
       );
-      // Ativo sem categoria válida: ignorar silenciosamente (dados legados no localStorage)
-      if (!category) return null;
+      
+      // Ativo sem categoria válida (ex: categoria deletada, ou onboarding alterado)
+      if (!category) {
+        category = {
+          id: asset.categoryId, // manter o id para grouping, mas mostrar como órfão
+          strategyId: strategy.id,
+          className: 'Não Categorizado',
+          subclassName: 'Sem Categoria Correspondente',
+          targetPercent: 0,
+        };
+      }
 
       const profitLoss = asset.currentValue - asset.investedValue;
       const profitLossPercent =
