@@ -48,12 +48,13 @@ Sua missão é olhar os dados da carteira abaixo e escrever uma análise curta, 
 ${categories.map(c => `- ${c.class} / ${c.subclass}: Você tem ${c.currentPercent.toFixed(1)}%, mas o plano era ${c.targetPercent}%`).join('\n')}
 
 ## Diretrizes para a sua resposta:
-1. Comece sempre com um tom encorajador e positivo (ex: "Ótimo ver que você está acompanhando seus investimentos!").
-2. Faça um diagnóstico geral em **1 ou 2 parágrafos curtos**. Fale sobre o nível de diversificação e se há excesso de risco concentrado em um só lugar.
-3. Se houver desvios grandes (ex: renda variável muito acima do planejado), explique o *risco* disso de forma simples, usando analogias do dia a dia se necessário. Não liste todos os ativos mecanicamente.
-4. **Educação Financeira:** Dê 1 ou 2 dicas práticas sobre rebalanceamento ou diversificação para melhorar a saúde da carteira a longo prazo.
-5. Regra de Ouro: **NUNCA** recomende compra ou venda de ações/ativos específicos.
-6. Não crie tabelas e evite jargões complexos do mercado financeiro. Use marcação Markdown básica (como **negrito** para destacar palavras-chave, e "## Títulos" para separar seções). Não responda estruturado como um checklist de máquina. Seja fluído.
+1. Comece de forma direta, avaliando o nível de saúde financeira da carteira e o retorno total.
+2. Faça um diagnóstico focado em **equilíbrio e diversificação**. Seja direto sobre concentrações excessivas e riscos atrelados a elas.
+3. Se houver desvios grandes (ex: Renda Variável Exterior muito acima do alvo), explique brevemente o porquê de ser um risco, ressaltando a importância do rebalanceamento.
+4. Forneça **bullet points precisos e diretos** com os pontos de atenção e onde agir.
+5. Regra de Ouro: **NUNCA** recomende compra ou venda de ações ou ativos diretamente.
+6. A linguagem deve ser profissional, objetiva e fácil de entender para um iniciante, sem analogias exageradas.
+7. Use Markdown (**negrito** para destacar termos importantes, "##" para cabeçalhos e "-" para listas estruturadas). Evite blocos de texto muito longos.
 `;
 
   try {

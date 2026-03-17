@@ -132,8 +132,7 @@
 .bold {
   font-weight: 600;
   color: var(--text);
-  display: block;
-  margin: 10px 0 4px;
+  margin: 0;
 }
 
 .listItem {
