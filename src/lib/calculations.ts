@@ -40,44 +40,47 @@ export function calculatePortfolio(
   const totalProfitLossPercent =
     totalInvested > 0 ? (totalProfitLoss / totalInvested) * 100 : 0;
 
-  const assetsWithCalcs: AssetWithCalcs[] = assets.map((asset) => {
-    const category = strategy.categories.find(
-      (c) => c.id === asset.categoryId,
-    );
-    if (!category) throw new Error(`Category not found: ${asset.categoryId}`);
+  const assetsWithCalcs: AssetWithCalcs[] = assets
+    .map((asset) => {
+      const category = strategy.categories.find(
+        (c) => c.id === asset.categoryId,
+      );
+      // Ativo sem categoria válida: ignorar silenciosamente (dados legados no localStorage)
+      if (!category) return null;
 
-    const profitLoss = asset.currentValue - asset.investedValue;
-    const profitLossPercent =
-      asset.investedValue > 0
-        ? (profitLoss / asset.investedValue) * 100
-        : 0;
-    const currentPortfolioPercent =
-      totalCurrent > 0 ? (asset.currentValue / totalCurrent) * 100 : 0;
-    const targetPercent = category.targetPercent;
-    const diffPercent = targetPercent - currentPortfolioPercent;
+      const profitLoss = asset.currentValue - asset.investedValue;
+      const profitLossPercent =
+        asset.investedValue > 0
+          ? (profitLoss / asset.investedValue) * 100
+          : 0;
+      const currentPortfolioPercent =
+        totalCurrent > 0 ? (asset.currentValue / totalCurrent) * 100 : 0;
+      const targetPercent = category.targetPercent;
+      const diffPercent = targetPercent - currentPortfolioPercent;
 
-    // Valor alvo = totalCurrent * targetPercent / 100
-    const targetValue = (totalCurrent * targetPercent) / 100;
-    const rebalanceAmount = targetValue - asset.currentValue;
+      const targetValue = (totalCurrent * targetPercent) / 100;
+      const rebalanceAmount = targetValue - asset.currentValue;
 
-    let action: 'buy' | 'sell' | 'ok' = 'ok';
-    const absDiff = Math.abs(diffPercent);
-    if (absDiff > strategy.deviationTolerance) {
-      action = diffPercent > 0 ? 'buy' : 'sell';
-    }
+      let action: 'buy' | 'sell' | 'ok' = 'ok';
+      const absDiff = Math.abs(diffPercent);
+      if (absDiff > strategy.deviationTolerance) {
+        action = diffPercent > 0 ? 'buy' : 'sell';
+      }
 
-    return {
-      ...asset,
-      category,
-      profitLoss,
-      profitLossPercent,
-      currentPortfolioPercent,
-      targetPercent,
-      diffPercent,
-      rebalanceAmount,
-      action,
-    };
-  });
+      return {
+        ...asset,
+        category,
+        profitLoss,
+        profitLossPercent,
+        currentPortfolioPercent,
+        targetPercent,
+        diffPercent,
+        rebalanceAmount,
+        action,
+      };
+    })
+    .filter((a): a is AssetWithCalcs => a !== null);
+
 
   // Group by category
   const categorySummaries: CategorySummary[] = strategy.categories.map((cat) => {

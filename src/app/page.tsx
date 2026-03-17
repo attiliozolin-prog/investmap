@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AppProvider } from '@/context/AppContext';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import Navbar from '@/components/Navbar';
 import Dashboard from '@/views/Dashboard';
 import Assets from '@/views/Assets';
@@ -29,8 +30,11 @@ function AppContent() {
 
 export default function Home() {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </ErrorBoundary>
   );
 }
+
