@@ -7,7 +7,6 @@ import {
   Cell,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts';
 import { CHART_COLORS, formatCurrency, formatPercentAbs } from '@/lib/calculations';
 import styles from './AllocationChart.module.css';
@@ -53,7 +52,7 @@ export default function AllocationChart({ summary }: Props) {
 
   const currentData = categorySummaries.map((cs, i) => ({
     name: cs.category.subclassName,
-    value: cs.currentPercent,
+    value: Math.max(cs.currentPercent, 0.01), // evita fatia zero que quebra animação
     currentPercent: cs.currentPercent,
     targetPercent: cs.targetPercent,
     currentValue: cs.currentValue,
@@ -62,25 +61,33 @@ export default function AllocationChart({ summary }: Props) {
 
   const targetData = categorySummaries.map((cs, i) => ({
     name: cs.category.subclassName,
-    value: cs.targetPercent,
+    value: Math.max(cs.targetPercent, 0.01),
     color: CHART_COLORS[i % CHART_COLORS.length],
   }));
 
   return (
     <div className={`card ${styles.wrapper}`}>
+      {/* Header */}
       <div className={styles.header}>
         <h3>Alocação da Carteira</h3>
-        <div className={styles.legend}>
-          <span className={styles.legendDot} style={{ background: 'var(--color-primary)' }} />
-          Atual
-          <span className={styles.legendDot} style={{ background: 'var(--color-surface-3)', marginLeft: 12 }} />
-          Alvo
+        {/* Legenda dos anéis */}
+        <div className={styles.ringLegend}>
+          <span className={styles.ringItem}>
+            <svg width="28" height="12">
+              <rect x="0" y="0" width="12" height="12" rx="3" fill={CHART_COLORS[0]} opacity="0.9" />
+              <rect x="16" y="0" width="12" height="12" rx="3" fill={CHART_COLORS[0]} opacity="0.28" />
+            </svg>
+          </span>
+          <span className={styles.ringLabel}>Atual</span>
+          <span className={styles.ringDivider}>|</span>
+          <span className={styles.ringLabel} style={{ opacity: 0.5 }}>Alvo</span>
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={280}>
+      {/* Gráfico */}
+      <ResponsiveContainer width="100%" height={260}>
         <PieChart>
-          {/* Outer: current */}
+          {/* Anel externo: % atual */}
           <Pie
             data={currentData}
             cx="50%"
@@ -89,13 +96,15 @@ export default function AllocationChart({ summary }: Props) {
             innerRadius={72}
             dataKey="value"
             strokeWidth={0}
-            isAnimationActive={false}
+            isAnimationActive={true}
+            animationBegin={0}
+            animationDuration={700}
           >
             {currentData.map((entry, index) => (
               <Cell key={index} fill={entry.color} opacity={0.9} />
             ))}
           </Pie>
-          {/* Inner: target (muted) */}
+          {/* Anel interno: % alvo */}
           <Pie
             data={targetData}
             cx="50%"
@@ -104,22 +113,38 @@ export default function AllocationChart({ summary }: Props) {
             innerRadius={44}
             dataKey="value"
             strokeWidth={0}
-            isAnimationActive={false}
+            isAnimationActive={true}
+            animationBegin={150}
+            animationDuration={700}
           >
             {targetData.map((entry, index) => (
-              <Cell key={index} fill={entry.color} opacity={0.3} />
+              <Cell key={index} fill={entry.color} opacity={0.28} />
             ))}
           </Pie>
           <Tooltip content={<CustomTooltip />} />
-          <Legend
-            formatter={(value) => (
-              <span style={{ color: 'var(--color-text-2)', fontSize: '0.8125rem' }}>{value}</span>
-            )}
-          />
         </PieChart>
       </ResponsiveContainer>
 
-      {/* Category rows */}
+      {/* Legenda de categorias — uma entrada por categoria, sem duplicação */}
+      <div className={styles.categoryLegend}>
+        {categorySummaries.map((cs, i) => (
+          <div key={cs.category.id} className={styles.categoryLegendItem}>
+            <span
+              className={styles.categoryDot}
+              style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
+            />
+            <span className={styles.categoryLegendName}>{cs.category.subclassName}</span>
+            <span className={styles.categoryLegendCurrent}>
+              {(Number(cs.currentPercent) || 0).toFixed(1)}%
+            </span>
+            <span className={styles.categoryLegendTarget}>
+              alvo {cs.targetPercent}%
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Barras de progresso por subclasse */}
       <div className={styles.rows}>
         {categorySummaries.map((cs, i) => {
           const diff = cs.targetPercent - cs.currentPercent;
@@ -132,7 +157,7 @@ export default function AllocationChart({ summary }: Props) {
                 <div
                   className={styles.rowBarFill}
                   style={{
-                    width: `${cs.currentPercent}%`,
+                    width: `${Math.min(cs.currentPercent, 100)}%`,
                     background: CHART_COLORS[i % CHART_COLORS.length],
                   }}
                 />
