@@ -151,47 +151,62 @@ function parseCustomMarkdown(text: string): React.ReactNode {
   const lines = text.split('\n');
   const elements: React.ReactNode[] = [];
   
-  let inList = false;
-  let listItems: React.ReactNode[] = [];
+  let currentList: React.ReactNode[] = [];
+  let currentParagraphLines: string[] = [];
 
   const flushList = () => {
-    if (inList && listItems.length > 0) {
-      elements.push(<ul key={`ul-${elements.length}`} className={styles.list}>{listItems}</ul>);
-      listItems = [];
-      inList = false;
+    if (currentList.length > 0) {
+      elements.push(<ul key={`ul-${elements.length}`} className={styles.list}>{currentList}</ul>);
+      currentList = [];
+    }
+  };
+
+  const flushParagraph = () => {
+    if (currentParagraphLines.length > 0) {
+      // Remove espaços extras indesejados antes de vírgulas que possam surgir ao juntar linhas
+      const pText = currentParagraphLines.join(' ').replace(/\s+([.,!?])/g, '$1');
+      elements.push(<p key={`p-${elements.length}`} className={styles.p}>{applyInlineFormatting(pText)}</p>);
+      currentParagraphLines = [];
     }
   };
 
   lines.forEach((line, index) => {
     const trimmed = line.trim();
+
     if (trimmed === '') {
       flushList();
-      // Add a small spacer for empty lines if not immediately after a heading
-      if (index > 0 && lines[index-1].trim() !== '') {
-         elements.push(<div key={`spacer-${index}`} className={styles.spacer} />);
-      }
+      flushParagraph();
       return;
     }
 
     if (trimmed.startsWith('### ')) {
       flushList();
-      elements.push(<h4 key={index} className={styles.h4}>{applyInlineFormatting(trimmed.replace('### ', ''))}</h4>);
+      flushParagraph();
+      elements.push(<h4 key={`h4-${index}`} className={styles.h4}>{applyInlineFormatting(trimmed.replace(/^###\s+/, ''))}</h4>);
     } 
     else if (trimmed.startsWith('## ')) {
       flushList();
-      elements.push(<h3 key={index} className={styles.h3}>{applyInlineFormatting(trimmed.replace('## ', ''))}</h3>);
+      flushParagraph();
+      elements.push(<h3 key={`h3-${index}`} className={styles.h3}>{applyInlineFormatting(trimmed.replace(/^##\s+/, ''))}</h3>);
     }
     else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-      inList = true;
-      listItems.push(<li key={index} className={styles.listItem}>{applyInlineFormatting(trimmed.slice(2))}</li>);
+      flushParagraph();
+      currentList.push(<li key={`li-${index}`} className={styles.listItem}>{applyInlineFormatting(trimmed.slice(2))}</li>);
     } 
+    else if (/^\d+\.\s/.test(trimmed)) {
+      flushParagraph();
+      const content = trimmed.replace(/^\d+\.\s/, '');
+      currentList.push(<li key={`li-${index}`} className={styles.listItem}><strong>{trimmed.match(/^\d+\./)?.[0]}</strong> {applyInlineFormatting(content)}</li>);
+    }
     else {
       flushList();
-      elements.push(<p key={index} className={styles.p}>{applyInlineFormatting(trimmed)}</p>);
+      currentParagraphLines.push(trimmed);
     }
   });
 
   flushList();
+  flushParagraph();
+  
   return elements;
 }
 
