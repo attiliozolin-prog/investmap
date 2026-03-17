@@ -7,29 +7,32 @@ import React, {
   useState,
   useCallback,
 } from 'react';
-import { Strategy, Asset } from '@/types';
+import { Strategy, Asset, StrategyCategory } from '@/types';
 import { generateId } from '@/lib/calculations';
 
 // ============================================
-// Default Strategy (from the reference spreadsheet)
+// Default Strategy
 // ============================================
 
 const DEFAULT_STRATEGY_ID = 'default-strategy';
+const STATIC_DATE = '2026-01-01T00:00:00.000Z'; // data estática para evitar mismatch servidor/cliente
 
-const defaultStrategy: Strategy = {
-  id: DEFAULT_STRATEGY_ID,
-  name: 'Minha Carteira',
-  description: 'Estratégia diversificada com foco em dividendos e crescimento',
-  deviationTolerance: 3,
-  categories: [
-    { id: 'cat-1', strategyId: DEFAULT_STRATEGY_ID, className: 'Renda Fixa', subclassName: 'Renda Fixa', targetPercent: 52 },
-    { id: 'cat-2', strategyId: DEFAULT_STRATEGY_ID, className: 'Renda Variável', subclassName: 'ETF - Exterior', targetPercent: 20 },
-    { id: 'cat-3', strategyId: DEFAULT_STRATEGY_ID, className: 'Renda Variável', subclassName: 'Ações - Dividendos', targetPercent: 16 },
-    { id: 'cat-4', strategyId: DEFAULT_STRATEGY_ID, className: 'Renda Variável', subclassName: 'FIIs', targetPercent: 12 },
-  ],
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
+function makeDefaultStrategy(): Strategy {
+  return {
+    id: DEFAULT_STRATEGY_ID,
+    name: 'Minha Carteira',
+    description: 'Estratégia diversificada com foco em dividendos e crescimento',
+    deviationTolerance: 3,
+    categories: [
+      { id: 'cat-1', strategyId: DEFAULT_STRATEGY_ID, className: 'Renda Fixa', subclassName: 'Renda Fixa', targetPercent: 52 },
+      { id: 'cat-2', strategyId: DEFAULT_STRATEGY_ID, className: 'Renda Variável', subclassName: 'ETF - Exterior', targetPercent: 20 },
+      { id: 'cat-3', strategyId: DEFAULT_STRATEGY_ID, className: 'Renda Variável', subclassName: 'Ações - Dividendos', targetPercent: 16 },
+      { id: 'cat-4', strategyId: DEFAULT_STRATEGY_ID, className: 'Renda Variável', subclassName: 'FIIs', targetPercent: 12 },
+    ],
+    createdAt: STATIC_DATE,
+    updatedAt: STATIC_DATE,
+  };
+}
 
 // ============================================
 // Context Types
@@ -42,18 +45,15 @@ interface AppContextType {
   assets: Asset[];
   activeAssets: Asset[];
 
-  // Strategy actions
   createStrategy: (data: Omit<Strategy, 'id' | 'createdAt' | 'updatedAt' | 'categories'>) => Strategy;
   updateStrategy: (id: string, data: Partial<Strategy>) => void;
   deleteStrategy: (id: string) => void;
   setActiveStrategy: (id: string) => void;
 
-  // Category actions (within active strategy)
-  addCategory: (data: Omit<import('@/types').StrategyCategory, 'id' | 'strategyId'>) => void;
-  updateCategory: (id: string, data: Partial<import('@/types').StrategyCategory>) => void;
+  addCategory: (data: Omit<StrategyCategory, 'id' | 'strategyId'>) => void;
+  updateCategory: (id: string, data: Partial<StrategyCategory>) => void;
   deleteCategory: (id: string) => void;
 
-  // Asset actions
   addAsset: (data: Omit<Asset, 'id' | 'updatedAt'>) => void;
   updateAsset: (id: string, data: Partial<Asset>) => void;
   deleteAsset: (id: string) => void;
@@ -64,7 +64,6 @@ interface AppContextType {
 // ============================================
 
 function loadFromStorage<T>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') return fallback;
   try {
     const raw = localStorage.getItem(key);
     return raw ? (JSON.parse(raw) as T) : fallback;
@@ -74,8 +73,11 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 }
 
 function saveToStorage<T>(key: string, data: T): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(key, JSON.stringify(data));
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch {
+    // Ignore storage errors
+  }
 }
 
 // ============================================
@@ -85,13 +87,16 @@ function saveToStorage<T>(key: string, data: T): void {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [strategies, setStrategies] = useState<Strategy[]>([]);
+  const defaultStrategy = makeDefaultStrategy();
+
+  const [strategies, setStrategies] = useState<Strategy[]>([defaultStrategy]);
   const [activeStrategyId, setActiveStrategyId] = useState<string>(DEFAULT_STRATEGY_ID);
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [initialized, setInitialized] = useState(false);
+  // mounted garante que só rodamos no cliente, evitando mismatch de hidratação
+  const [mounted, setMounted] = useState(false);
 
-  // Load from localStorage on mount
   useEffect(() => {
+    // Carrega dados do localStorage apenas no cliente após montar
     const stored = loadFromStorage<Strategy[]>('investmap_strategies', [defaultStrategy]);
     const storedActive = loadFromStorage<string>('investmap_active', DEFAULT_STRATEGY_ID);
     const storedAssets = loadFromStorage<Asset[]>('investmap_assets', []);
@@ -99,24 +104,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setStrategies(stored.length > 0 ? stored : [defaultStrategy]);
     setActiveStrategyId(storedActive);
     setAssets(storedAssets);
-    setInitialized(true);
+    setMounted(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persist on change
+  // Persiste no localStorage após montar (sem causar loop)
   useEffect(() => {
-    if (!initialized) return;
+    if (!mounted) return;
     saveToStorage('investmap_strategies', strategies);
-  }, [strategies, initialized]);
+  }, [strategies, mounted]);
 
   useEffect(() => {
-    if (!initialized) return;
+    if (!mounted) return;
     saveToStorage('investmap_active', activeStrategyId);
-  }, [activeStrategyId, initialized]);
+  }, [activeStrategyId, mounted]);
 
   useEffect(() => {
-    if (!initialized) return;
+    if (!mounted) return;
     saveToStorage('investmap_assets', assets);
-  }, [assets, initialized]);
+  }, [assets, mounted]);
 
   const activeStrategy = strategies.find((s) => s.id === activeStrategyId) ?? null;
   const activeAssets = assets.filter((a) => a.strategyId === activeStrategyId);
@@ -124,12 +130,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Strategy actions
   const createStrategy = useCallback(
     (data: Omit<Strategy, 'id' | 'createdAt' | 'updatedAt' | 'categories'>): Strategy => {
+      const now = new Date().toISOString();
       const newStrategy: Strategy = {
         ...data,
         id: generateId(),
         categories: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now,
       };
       setStrategies((prev) => [...prev, newStrategy]);
       return newStrategy;
@@ -156,9 +163,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Category actions
   const addCategory = useCallback(
-    (data: Omit<import('@/types').StrategyCategory, 'id' | 'strategyId'>) => {
-      if (!activeStrategyId) return;
-      const newCat: import('@/types').StrategyCategory = {
+    (data: Omit<StrategyCategory, 'id' | 'strategyId'>) => {
+      const newCat: StrategyCategory = {
         ...data,
         id: generateId(),
         strategyId: activeStrategyId,
@@ -175,7 +181,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const updateCategory = useCallback(
-    (id: string, data: Partial<import('@/types').StrategyCategory>) => {
+    (id: string, data: Partial<StrategyCategory>) => {
       setStrategies((prev) =>
         prev.map((s) =>
           s.id === activeStrategyId
@@ -233,8 +239,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAssets((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
-  if (!initialized) return null;
-
   return (
     <AppContext.Provider
       value={{
@@ -255,7 +259,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deleteAsset,
       }}
     >
-      {children}
+      {/* suppressHydrationWarning evita erro quando o conteúdo difere entre SSR e CSR */}
+      <div suppressHydrationWarning>
+        {mounted ? children : (
+          <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0B0B14' }}>
+            <div style={{ width: 32, height: 32, border: '2px solid #252538', borderTopColor: '#8B5CF6', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+          </div>
+        )}
+      </div>
     </AppContext.Provider>
   );
 }
