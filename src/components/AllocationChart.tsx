@@ -89,6 +89,7 @@ export default function AllocationChart({ summary }: Props) {
             innerRadius={72}
             dataKey="value"
             strokeWidth={0}
+            isAnimationActive={false}
           >
             {currentData.map((entry, index) => (
               <Cell key={index} fill={entry.color} opacity={0.9} />
@@ -103,6 +104,7 @@ export default function AllocationChart({ summary }: Props) {
             innerRadius={44}
             dataKey="value"
             strokeWidth={0}
+            isAnimationActive={false}
           >
             {targetData.map((entry, index) => (
               <Cell key={index} fill={entry.color} opacity={0.3} />

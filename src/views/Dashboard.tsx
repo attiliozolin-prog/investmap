@@ -1,13 +1,23 @@
 'use client';
 
 import { useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { useApp } from '@/context/AppContext';
 import { calculatePortfolio } from '@/lib/calculations';
 import SummaryCards from '@/components/SummaryCards';
-import AllocationChart from '@/components/AllocationChart';
 import styles from './Dashboard.module.css';
 import { AlertTriangle, TrendingUp } from 'lucide-react';
 import { formatCurrency } from '@/lib/calculations';
+
+// Recharts usa window/ResizeObserver — deve renderizar SOMENTE no cliente
+const AllocationChart = dynamic(() => import('@/components/AllocationChart'), {
+  ssr: false,
+  loading: () => (
+    <div className="card" style={{ height: 340, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 32, height: 32, border: '2px solid #252538', borderTopColor: '#8B5CF6', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+    </div>
+  ),
+});
 
 export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void }) {
   const { activeStrategy, activeAssets } = useApp();
