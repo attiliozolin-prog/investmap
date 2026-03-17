@@ -102,6 +102,12 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
             >
+              {/* Se o asset tiver um categoryId que sumiu, mostramos uma opção disabled pra ele saber */}
+              {asset && !categories.some(c => c.id === categoryId) && (
+                <option value={categoryId} disabled>
+                  Não Categorizado (Escolha uma opção válida abaixo)
+                </option>
+              )}
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.className} · {cat.subclassName}
