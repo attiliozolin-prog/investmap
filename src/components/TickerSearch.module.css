@@ -1,0 +1,114 @@
+.wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.input {
+  padding-left: 36px !important;
+  padding-right: 32px !important;
+}
+
+.spinner {
+  position: absolute;
+  right: 10px;
+  color: var(--primary);
+  animation: spin 0.7s linear infinite;
+  pointer-events: none;
+}
+
+.clearBtn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.clearBtn:hover {
+  color: var(--text);
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #1a1a2e;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  list-style: none;
+  padding: 4px;
+  margin: 0;
+  overflow: hidden;
+  animation: fadeSlideIn 0.12s ease;
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  cursor: pointer;
+  border-radius: 7px;
+  transition: background 0.12s;
+}
+
+.item:hover,
+.itemHighlighted {
+  background: rgba(139, 92, 246, 0.12);
+}
+
+.itemTicker {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  min-width: 60px;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  letter-spacing: 0.05em;
+}
+
+.itemName {
+  font-size: 13px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.footer {
+  font-size: 10px;
+  color: var(--text-muted);
+  opacity: 0.5;
+  text-align: center;
+  padding: 6px 12px 4px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+  margin-top: 2px;
+  cursor: default;
+}

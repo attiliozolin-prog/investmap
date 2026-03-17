@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Asset, StrategyCategory } from '@/types';
 import styles from './AssetModal.module.css';
 import { X } from 'lucide-react';
+import TickerSearch from './TickerSearch';
 
 interface Props {
   categories: StrategyCategory[];
@@ -71,14 +72,14 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="label" htmlFor="asset-ticker">Ticker / Nome *</label>
-            <input
-              id="asset-ticker"
-              className="input"
-              placeholder="Ex: IVVB11, Tesouro IPCA+"
+            <label className="label">Ticker / Nome *</label>
+            <TickerSearch
               value={ticker}
-              onChange={(e) => setTicker(e.target.value)}
-              autoFocus
+              onChange={(t, name) => {
+                setTicker(t);
+                // Preenche Info automaticamente se estiver vazio
+                if (name && !info.trim()) setInfo(name);
+              }}
             />
           </div>
 

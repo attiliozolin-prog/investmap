@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useApp } from '@/context/AppContext';
 import { calculatePortfolio } from '@/lib/calculations';
 import SummaryCards from '@/components/SummaryCards';
+import AiAnalysisCard from '@/components/AiAnalysisCard';
 import styles from './Dashboard.module.css';
 import { AlertTriangle, TrendingUp } from 'lucide-react';
 import { formatCurrency } from '@/lib/calculations';
@@ -120,6 +121,9 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
           </div>
         </div>
       </div>
+
+      {/* AI Analysis Card */}
+      <AiAnalysisCard summary={summary} strategyName={activeStrategy.name} />
     </div>
   );
 }

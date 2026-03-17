@@ -131,7 +131,6 @@
   cursor: pointer;
 }
 
-/* Actions */
 .actions {
   display: flex;
   align-items: center;
@@ -144,3 +143,72 @@
   width: 28px;
   height: 28px;
 }
+
+/* Current value cell with stale badge */
+.currentValueCell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.staleBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 4px;
+  padding: 1px 5px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+/* Confirm delete modal */
+.confirmModal {
+  max-width: 380px !important;
+  text-align: center;
+  padding: 28px 24px;
+}
+
+.confirmIcon {
+  width: 48px;
+  height: 48px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-danger);
+  margin: 0 auto 16px;
+}
+
+.confirmTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 8px;
+}
+
+.confirmText {
+  font-size: 13px;
+  color: var(--color-text-2);
+  line-height: 1.6;
+  margin: 0 0 24px;
+}
+
+.confirmText strong {
+  color: var(--color-text);
+}
+
+.confirmActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+

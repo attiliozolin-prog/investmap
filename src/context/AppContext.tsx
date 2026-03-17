@@ -57,6 +57,7 @@ interface AppContextType {
   addAsset: (data: Omit<Asset, 'id' | 'updatedAt'>) => void;
   updateAsset: (id: string, data: Partial<Asset>) => void;
   deleteAsset: (id: string) => void;
+  importData: (strategies: Strategy[], assets: Asset[]) => void;
 }
 
 // ============================================
@@ -239,6 +240,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAssets((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
+  const importData = useCallback((importedStrategies: Strategy[], importedAssets: Asset[]) => {
+    setStrategies((prev) => {
+      const existingIds = new Set(prev.map((s) => s.id));
+      const newOnes = importedStrategies.filter((s) => !existingIds.has(s.id));
+      return [...prev, ...newOnes];
+    });
+    setAssets((prev) => {
+      const existingIds = new Set(prev.map((a) => a.id));
+      const newOnes = importedAssets.filter((a) => !existingIds.has(a.id));
+      return [...prev, ...newOnes];
+    });
+  }, []);
+
   return (
     <AppContext.Provider
       value={{
@@ -257,6 +271,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         addAsset,
         updateAsset,
         deleteAsset,
+        importData,
       }}
     >
       {/* suppressHydrationWarning evita erro quando o conteúdo difere entre SSR e CSR */}
