@@ -39,6 +39,8 @@ function makeDefaultStrategy(): Strategy {
 // ============================================
 
 interface AppContextType {
+  hasCompletedOnboarding: boolean;
+  completeOnboarding: (categories: Omit<StrategyCategory, 'id' | 'strategyId'>[]) => void;
   strategies: Strategy[];
   activeStrategyId: string;
   activeStrategy: Strategy | null;
@@ -96,6 +98,7 @@ const AppContext = createContext<AppContextType | null>(null);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const defaultStrategy = makeDefaultStrategy();
 
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(false);
   const [strategies, setStrategies] = useState<Strategy[]>([defaultStrategy]);
   const [activeStrategyId, setActiveStrategyId] = useState<string>(DEFAULT_STRATEGY_ID);
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -107,12 +110,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Carrega dados do localStorage apenas no cliente após montar
+    const storedOnboarding = loadFromStorage<boolean>('investmap_onboarding', false);
     const stored = loadFromStorage<Strategy[]>('investmap_strategies', [defaultStrategy]);
     const storedActive = loadFromStorage<string>('investmap_active', DEFAULT_STRATEGY_ID);
     const storedAssets = loadFromStorage<Asset[]>('investmap_assets', []);
     const storedTransactions = loadFromStorage<Transaction[]>('investmap_transactions', []);
     const storedSnapshots = loadFromStorage<PortfolioSnapshot[]>('investmap_snapshots', []);
 
+    setHasCompletedOnboarding(storedOnboarding);
     setStrategies(stored.length > 0 ? stored : [defaultStrategy]);
     setActiveStrategyId(storedActive);
     setAssets(storedAssets);
@@ -123,6 +128,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Persiste no localStorage após montar (sem causar loop)
+  useEffect(() => {
+    if (!mounted) return;
+    saveToStorage('investmap_onboarding', hasCompletedOnboarding);
+  }, [hasCompletedOnboarding, mounted]);
+
   useEffect(() => {
     if (!mounted) return;
     saveToStorage('investmap_strategies', strategies);
@@ -150,6 +160,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const activeStrategy = strategies.find((s) => s.id === activeStrategyId) ?? null;
   const activeAssets = assets.filter((a) => a.strategyId === activeStrategyId);
+
+  // Onboarding actions
+  const completeOnboarding = useCallback((categories: Omit<StrategyCategory, 'id' | 'strategyId'>[]) => {
+    setStrategies((prev) => 
+      prev.map((s) => {
+        if (s.id === activeStrategyId) {
+          const newCats: StrategyCategory[] = categories.map(c => ({
+            ...c,
+            id: generateId(),
+            strategyId: activeStrategyId,
+          }));
+          return { ...s, categories: newCats, updatedAt: new Date().toISOString() };
+        }
+        return s;
+      })
+    );
+    setHasCompletedOnboarding(true);
+  }, [activeStrategyId]);
 
   // Strategy actions
   const createStrategy = useCallback(
@@ -339,6 +367,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider
       value={{
+        hasCompletedOnboarding,
+        completeOnboarding,
         strategies,
         activeStrategyId,
         activeStrategy,
