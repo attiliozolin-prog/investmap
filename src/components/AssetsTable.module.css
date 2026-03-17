@@ -1,7 +1,54 @@
 .right { text-align: right !important; }
 .center { text-align: center !important; }
+.nowrap { white-space: nowrap !important; }
+
+.table-wrapper table th {
+  white-space: nowrap;
+}
 
 .row { position: relative; }
+
+/* Group Row Styling */
+.groupHeader {
+  background: var(--color-surface-2);
+  border-top: 2px solid rgba(255, 255, 255, 0.05);
+  cursor: grab;
+  transition: background 0.2s;
+}
+
+.groupHeader:active {
+  cursor: grabbing;
+}
+
+.groupHeader:hover {
+  background: rgba(139, 92, 246, 0.08);
+}
+
+.groupHeaderContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 4px;
+}
+
+.dragIcon {
+  color: var(--color-text-3);
+  cursor: grab;
+}
+
+.groupHeaderTitle {
+  font-weight: 700;
+  font-size: 14px;
+  color: #c4b5fd; /* Soft purple variant for subclass groups */
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.groupTarget {
+  font-weight: 700;
+  color: var(--color-text) !important;
+  background: rgba(255, 255, 255, 0.03);
+}
 
 .row_buy td:first-child::before {
   content: '';
