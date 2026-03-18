@@ -19,6 +19,7 @@ export default function Strategy() {
     createStrategy,
     strategies,
     setActiveStrategy,
+    deleteStrategy,
   } = useApp();
 
   const [strategyToDelete, setStrategyToDelete] = useState<{ id: string; name: string } | null>(null);
