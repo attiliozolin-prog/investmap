@@ -100,20 +100,23 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <button type="button" className={styles.closeBtn} onClick={onClose}>
-          <X size={16} />
-        </button>
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        {/* Header no Padrão Ouro */}
+        <div className={styles.header}>
+          <h2>Nova Transação em {asset.ticker}</h2>
+          <button type="button" className={`btn btn-ghost btn-sm`} onClick={onClose}>
+            <X size={16} />
+          </button>
+        </div>
 
-        <h2 className={styles.title}>Nova Transação em {asset.ticker}</h2>
-        <p style={{ color: 'var(--color-text-2)', fontSize: '0.85rem', marginBottom: 'var(--space-4)' }}>
-          Atual atual: R$ {asset.currentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+        <p style={{ color: 'var(--color-text-2)', fontSize: '0.85rem', marginBottom: 'var(--space-4)', marginTop: '-8px' }}>
+          Saldo atual: R$ {asset.currentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
         </p>
 
-        <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.formGroup}>
-            <label>Tipo de Movimentação</label>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label className="label">Tipo de Movimentação</label>
             <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
               <button
                 type="button"
@@ -134,8 +137,8 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
             </div>
           </div>
 
-          <div className={styles.formGroup}>
-            <label htmlFor="transactionValue">Valor Financeiro (R$) *</label>
+          <div className="form-group">
+            <label className="label" htmlFor="transactionValue">Valor Financeiro (R$) *</label>
             <input
               type="text"
               id="transactionValue"
