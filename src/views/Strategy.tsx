@@ -6,6 +6,7 @@ import { StrategyCategory } from '@/types';
 import { generateId } from '@/lib/calculations';
 import styles from './Strategy.module.css';
 import { Plus, Trash2, Save, AlertCircle, CheckCircle } from 'lucide-react';
+import DeleteStrategyModal from '@/components/DeleteStrategyModal';
 
 export default function Strategy() {
   const {
@@ -20,6 +21,7 @@ export default function Strategy() {
     setActiveStrategy,
   } = useApp();
 
+  const [strategyToDelete, setStrategyToDelete] = useState<{ id: string; name: string } | null>(null);
   const [stratName, setStratName] = useState(activeStrategy?.name ?? '');
   const [stratDesc, setStratDesc] = useState(activeStrategy?.description ?? '');
   const [tolerance, setTolerance] = useState(activeStrategy?.deviationTolerance ?? 3);
@@ -55,6 +57,19 @@ export default function Strategy() {
     setNewClassName('');
     setNewSubclass('');
     setNewTarget('');
+  };
+
+  const handleConfirmDeleteStrategy = (id: string) => {
+    deleteStrategy(id);
+    setStrategyToDelete(null);
+
+    // Se a carteira que estava ativa foi a deletada, atrela à primeira restante (se houver)
+    if (id === activeStrategyId) {
+      const remainingStrategies = strategies.filter((s) => s.id !== id);
+      if (remainingStrategies.length > 0) {
+        setActiveStrategy(remainingStrategies[0].id);
+      }
+    }
   };
 
   const handleUpdateCategoryPercent = (id: string, val: string) => {
@@ -258,6 +273,14 @@ export default function Strategy() {
                 {s.id === activeStrategyId && (
                   <span className="badge badge-success">Ativa</span>
                 )}
+                <button
+                  className="btn btn-ghost btn-sm"
+                  style={{ color: 'var(--color-danger)' }}
+                  title="Excluir Carteira"
+                  onClick={() => setStrategyToDelete({ id: s.id, name: s.name })}
+                >
+                  <Trash2 size={15} />
+                </button>
               </div>
             </div>
           ))}
@@ -276,6 +299,14 @@ export default function Strategy() {
           </button>
         </div>
       </div>
+
+      {strategyToDelete && (
+        <DeleteStrategyModal
+          strategy={strategyToDelete}
+          onClose={() => setStrategyToDelete(null)}
+          onConfirm={handleConfirmDeleteStrategy}
+        />
+      )}
     </div>
   );
 }
