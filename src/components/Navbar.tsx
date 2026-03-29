@@ -163,32 +163,51 @@ export default function Navbar({ activeTab, onTabChange }: {
             </button>
           </div>
 
-          {/* Strategy Switcher */}
+          {/* Strategy Info / Switcher */}
           <div className={styles.strategySwitcher}>
-            <button
-              id="strategy-switcher-btn"
-              className={styles.strategyBtn}
-              onClick={() => setShowStrategies(!showStrategies)}
-            >
-              <BarChart3 size={14} />
-              <span>{activeStrategy?.name ?? 'Selecionar carteira'}</span>
-              <ChevronDown size={14} className={showStrategies ? styles.chevronUp : ''} />
-            </button>
+            {strategies.length > 1 ? (
+              <>
+                <button
+                  id="strategy-switcher-btn"
+                  className={styles.strategyBtn}
+                  onClick={() => setShowStrategies(!showStrategies)}
+                >
+                  <BarChart3 size={16} style={{ color: 'var(--color-primary)' }} />
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2 }}>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--color-text-dimmed)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Carteira Ativa</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{activeStrategy?.name ?? 'Selecionar carteira'}</span>
+                  </div>
+                  <ChevronDown size={14} className={showStrategies ? styles.chevronUp : ''} style={{ marginLeft: 4 }} />
+                </button>
 
-            {showStrategies && (
-              <div className={styles.strategyDropdown}>
-                {strategies.map((s) => (
-                  <button
-                    key={s.id}
-                    className={`${styles.strategyItem} ${s.id === activeStrategyId ? styles.strategyItemActive : ''}`}
-                    onClick={() => {
-                      setActiveStrategy(s.id);
-                      setShowStrategies(false);
-                    }}
-                  >
-                    {s.name}
-                  </button>
-                ))}
+                {showStrategies && (
+                  <div className={styles.strategyDropdown}>
+                    {strategies.map((s) => (
+                      <button
+                        key={s.id}
+                        className={`${styles.strategyItem} ${s.id === activeStrategyId ? styles.strategyItemActive : ''}`}
+                        onClick={() => {
+                          setActiveStrategy(s.id);
+                          setShowStrategies(false);
+                        }}
+                      >
+                        {s.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div 
+                className={styles.strategyBtn} 
+                style={{ cursor: 'default', background: 'var(--color-surface)' }}
+                title="Sua carteira de investimentos ativa"
+              >
+                <BarChart3 size={16} style={{ color: 'var(--color-primary)' }} />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2 }}>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--color-text-dimmed)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Carteira Ativa</span>
+                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{activeStrategy?.name ?? 'Minha Carteira'}</span>
+                </div>
               </div>
             )}
           </div>
