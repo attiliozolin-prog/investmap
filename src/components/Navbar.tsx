@@ -3,8 +3,8 @@
 import { useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import styles from './Navbar.module.css';
-import { TrendingUp, ChevronDown, BarChart3, Download, Upload } from 'lucide-react';
-import { useState } from 'react';
+import { TrendingUp, ChevronDown, BarChart3, Download, Upload, Sun, Moon } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 export default function Navbar({ activeTab, onTabChange }: {
   activeTab: string;
@@ -12,8 +12,28 @@ export default function Navbar({ activeTab, onTabChange }: {
 }) {
   const { strategies, assets, activeStrategyId, setActiveStrategy, importData } = useApp();
   const [showStrategies, setShowStrategies] = useState(false);
+  const [theme, setTheme] = useState('dark');
   const activeStrategy = strategies.find((s) => s.id === activeStrategyId);
   const importRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('investmap_theme') || 'dark';
+    setTheme(savedTheme);
+    if (savedTheme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('investmap_theme', newTheme);
+    if (newTheme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  };
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard' },
@@ -82,8 +102,17 @@ export default function Navbar({ activeTab, onTabChange }: {
         </div>
 
         <div className={styles.right}>
-          {/* Export / Import */}
+          {/* Theme / Export / Import */}
           <div className={styles.dataActions}>
+            <button
+              className={styles.iconBtn}
+              onClick={toggleTheme}
+              title={theme === 'dark' ? "Mudar para tema claro" : "Mudar para tema escuro"}
+            >
+              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+              <span className={styles.iconBtnLabel}>Tema</span>
+            </button>
+            <div className={styles.divider} style={{ width: 1, height: 16, background: 'var(--color-border)', margin: '0 4px' }} />
             <button
               id="export-data-btn"
               className={styles.iconBtn}

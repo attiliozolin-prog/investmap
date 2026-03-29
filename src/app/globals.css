@@ -72,6 +72,40 @@
   --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+:root[data-theme='light'] {
+  /* Colors for light theme */
+  --color-bg: #F3F4F6;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #F9FAFB;
+  --color-surface-3: #E5E7EB;
+  --color-border: rgba(0, 0, 0, 0.1);
+  --color-border-hover: rgba(0, 0, 0, 0.2);
+
+  --color-primary: #7C3AED;
+  --color-primary-light: #8B5CF6;
+  --color-primary-dark: #6D28D9;
+  --color-primary-glow: rgba(124, 58, 237, 0.2);
+
+  --color-success: #059669;
+  --color-success-bg: rgba(5, 150, 105, 0.12);
+  --color-danger: #DC2626;
+  --color-danger-bg: rgba(220, 38, 38, 0.12);
+  --color-warning: #D97706;
+  --color-warning-bg: rgba(217, 119, 6, 0.12);
+  --color-neutral: #4B5563;
+  --color-neutral-bg: rgba(75, 85, 99, 0.12);
+
+  --color-text: #111827;
+  --color-text-2: #4B5563;
+  --color-text-3: #6B7280;
+
+  /* Shadows tweaks for light mode */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.05);
+  --shadow-primary: 0 4px 14px var(--color-primary-glow);
+}
+
 html, body {
   background-color: var(--color-bg);
   color: var(--color-text);
@@ -340,6 +374,6 @@ select {
 }
 
 select option {
-  background: #13131F;
-  color: #F0F0FF;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
