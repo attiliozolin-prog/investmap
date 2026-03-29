@@ -2,8 +2,9 @@
 
 import { useRef } from 'react';
 import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
 import styles from './Navbar.module.css';
-import { TrendingUp, ChevronDown, BarChart3, Download, Upload, Sun, Moon } from 'lucide-react';
+import { TrendingUp, ChevronDown, BarChart3, Download, Upload, Sun, Moon, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function Navbar({ activeTab, onTabChange }: {
@@ -11,6 +12,7 @@ export default function Navbar({ activeTab, onTabChange }: {
   onTabChange: (tab: string) => void;
 }) {
   const { strategies, assets, activeStrategyId, setActiveStrategy, importData } = useApp();
+  const { signOut } = useAuth();
   const [showStrategies, setShowStrategies] = useState(false);
   const [theme, setTheme] = useState('dark');
   const activeStrategy = strategies.find((s) => s.id === activeStrategyId);
@@ -138,6 +140,19 @@ export default function Navbar({ activeTab, onTabChange }: {
               style={{ display: 'none' }}
               onChange={handleImportFile}
             />
+            <div className={styles.divider} style={{ width: 1, height: 16, background: 'var(--color-border)', margin: '0 4px' }} />
+            <button
+              className={styles.iconBtn}
+              onClick={async () => {
+                if(confirm('Tem certeza que deseja sair?')) {
+                  await signOut();
+                }
+              }}
+              title="Sair da conta"
+            >
+              <LogOut size={15} />
+              <span className={styles.iconBtnLabel}>Sair</span>
+            </button>
           </div>
 
           {/* Strategy Switcher */}

@@ -40,16 +40,19 @@ export interface Transaction {
   assetId: string;
   type: TransactionType;
   date: string;                // ISO Date
-  value: number;               // Foco inicial: valor financeiro da transação
+  value: number;               // Valor financeiro da transação
+  quantity?: number;           // Quantidade de cotas/ações (opcional)
+  price?: number;              // Preço unitário (opcional)
+  notes?: string;              // Observações (opcional)
 }
 
 export interface PortfolioSnapshot {
   id: string;
   strategyId: string;
   date: string;                // ISO Date focado no dia "YYYY-MM-DD"
-  totalInvested: number;
-  totalCurrent: number;
-  healthScore: number;
+  totalValue: number;          // Valor total atual
+  totalInvested: number;       // Total investido
+  profitLoss: number;          // Lucro/prejuízo absoluto
 }
 
 // Computed / derived types

@@ -9,13 +9,15 @@ import React, {
 } from 'react';
 import { Strategy, Asset, StrategyCategory, Transaction, PortfolioSnapshot } from '@/types';
 import { generateId } from '@/lib/calculations';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
 
 // ============================================
-// Default Strategy
+// Default Strategy (onboarding)
 // ============================================
 
 const DEFAULT_STRATEGY_ID = 'default-strategy';
-const STATIC_DATE = '2026-01-01T00:00:00.000Z'; // data estática para evitar mismatch servidor/cliente
+const STATIC_DATE = '2026-01-01T00:00:00.000Z';
 
 function makeDefaultStrategy(): Strategy {
   return {
@@ -48,6 +50,7 @@ interface AppContextType {
   activeAssets: Asset[];
   transactions: Transaction[];
   snapshots: PortfolioSnapshot[];
+  dbSynced: boolean;
 
   createStrategy: (data: Omit<Strategy, 'id' | 'createdAt' | 'updatedAt' | 'categories'>) => Strategy;
   updateStrategy: (id: string, data: Partial<Strategy>) => void;
@@ -61,7 +64,7 @@ interface AppContextType {
   addAsset: (data: Omit<Asset, 'id' | 'updatedAt'>) => void;
   updateAsset: (id: string, data: Partial<Asset>) => void;
   deleteAsset: (id: string) => void;
-  
+
   addTransaction: (data: Omit<Transaction, 'id' | 'date'>) => void;
   saveSnapshot: (snapshot: Omit<PortfolioSnapshot, 'id'>) => void;
 
@@ -69,24 +72,86 @@ interface AppContextType {
 }
 
 // ============================================
-// Storage helpers
+// LocalStorage helpers (fallback offline)
 // ============================================
 
 function loadFromStorage<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key);
     return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
+  } catch { return fallback; }
 }
 
 function saveToStorage<T>(key: string, data: T): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch {
-    // Ignore storage errors
-  }
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch { /* ignore */ }
+}
+
+// ============================================
+// Supabase Helpers — converte snake_case ↔ camelCase
+// ============================================
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function dbStrategyToApp(row: any, categories: StrategyCategory[]): Strategy {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? '',
+    deviationTolerance: Number(row.deviation_tolerance),
+    categories: categories.filter(c => c.strategyId === row.id),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function dbCategoryToApp(row: any): StrategyCategory {
+  return {
+    id: row.id,
+    strategyId: row.strategy_id,
+    className: row.class_name,
+    subclassName: row.subclass_name,
+    targetPercent: Number(row.target_percent),
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function dbAssetToApp(row: any): Asset {
+  return {
+    id: row.id,
+    strategyId: row.strategy_id,
+    categoryId: row.category_id,
+    ticker: row.ticker,
+    info: row.info ?? '',
+    investedValue: Number(row.invested_value),
+    currentValue: Number(row.current_value),
+    updatedAt: row.updated_at,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function dbTransactionToApp(row: any): Transaction {
+  return {
+    id: row.id,
+    assetId: row.asset_id,
+    type: row.type,
+    value: Number(row.value),
+    quantity: row.quantity ? Number(row.quantity) : undefined,
+    price: row.price ? Number(row.price) : undefined,
+    notes: row.notes ?? '',
+    date: row.date,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function dbSnapshotToApp(row: any): PortfolioSnapshot {
+  return {
+    id: row.id,
+    strategyId: row.strategy_id,
+    date: row.date,
+    totalValue: Number(row.total_value),
+    totalInvested: Number(row.total_invested),
+    profitLoss: Number(row.profit_loss),
+  };
 }
 
 // ============================================
@@ -96,20 +161,22 @@ function saveToStorage<T>(key: string, data: T): void {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const defaultStrategy = makeDefaultStrategy();
 
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(false);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [strategies, setStrategies] = useState<Strategy[]>([defaultStrategy]);
   const [activeStrategyId, setActiveStrategyId] = useState<string>(DEFAULT_STRATEGY_ID);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
-  
-  // mounted garante que só rodamos no cliente, evitando mismatch de hidratação
   const [mounted, setMounted] = useState(false);
+  const [dbSynced, setDbSynced] = useState(false);
 
+  // ============================================
+  // Carrega do localStorage primeiro (evita flash)
+  // ============================================
   useEffect(() => {
-    // Carrega dados do localStorage apenas no cliente após montar
     const storedOnboarding = loadFromStorage<boolean>('investmap_onboarding', false);
     const stored = loadFromStorage<Strategy[]>('investmap_strategies', [defaultStrategy]);
     const storedActive = loadFromStorage<string>('investmap_active', DEFAULT_STRATEGY_ID);
@@ -127,271 +194,469 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persiste no localStorage após montar (sem causar loop)
+  // ============================================
+  // Quando usuário autentica → sincroniza com Supabase
+  // ============================================
   useEffect(() => {
-    if (!mounted) return;
-    saveToStorage('investmap_onboarding', hasCompletedOnboarding);
-  }, [hasCompletedOnboarding, mounted]);
+    if (!user || !mounted) return;
 
-  useEffect(() => {
-    if (!mounted) return;
-    saveToStorage('investmap_strategies', strategies);
-  }, [strategies, mounted]);
+    async function syncFromDB() {
+      const userId = user!.id;
 
-  useEffect(() => {
-    if (!mounted) return;
-    saveToStorage('investmap_active', activeStrategyId);
-  }, [activeStrategyId, mounted]);
+      // Busca estratégias
+      const { data: strRows, error: strErr } = await supabase
+        .from('strategies')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at');
 
-  useEffect(() => {
-    if (!mounted) return;
-    saveToStorage('investmap_assets', assets);
-  }, [assets, mounted]);
+      if (strErr) { console.error('Erro ao carregar estratégias:', strErr); return; }
 
-  useEffect(() => {
-    if (!mounted) return;
-    saveToStorage('investmap_transactions', transactions);
-  }, [transactions, mounted]);
+      // Busca categorias
+      const { data: catRows } = await supabase
+        .from('strategy_categories')
+        .select('*')
+        .eq('user_id', userId)
+        .order('sort_order');
 
-  useEffect(() => {
-    if (!mounted) return;
-    saveToStorage('investmap_snapshots', snapshots);
-  }, [snapshots, mounted]);
+      // Busca ativos
+      const { data: assetRows } = await supabase
+        .from('assets')
+        .select('*')
+        .eq('user_id', userId);
+
+      // Busca transações
+      const { data: txRows } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('date', { ascending: false });
+
+      // Busca snapshots
+      const { data: snapRows } = await supabase
+        .from('portfolio_snapshots')
+        .select('*')
+        .eq('user_id', userId);
+
+      const appCategories = (catRows ?? []).map(dbCategoryToApp);
+      const appAssets = (assetRows ?? []).map(dbAssetToApp);
+      const appTransactions = (txRows ?? []).map(dbTransactionToApp);
+      const appSnapshots = (snapRows ?? []).map(dbSnapshotToApp);
+
+      if ((strRows ?? []).length > 0) {
+        // Usuário tem dados no banco — usa eles como fonte de verdade
+        const appStrategies = (strRows ?? []).map(r => dbStrategyToApp(r, appCategories));
+        const firstId = appStrategies[0].id;
+
+        setStrategies(appStrategies);
+        setActiveStrategyId(loadFromStorage<string>('investmap_active', firstId));
+        setAssets(appAssets);
+        setTransactions(appTransactions);
+        setSnapshots(appSnapshots);
+        setHasCompletedOnboarding(true);
+        saveToStorage('investmap_onboarding', true);
+      } else {
+        // Usuário novo — verifica se tem dados locais para migrar
+        const localStrategies = loadFromStorage<Strategy[]>('investmap_strategies', []);
+        const localAssets = loadFromStorage<Asset[]>('investmap_assets', []);
+        const hasRealData = localStrategies.some(s => s.id !== DEFAULT_STRATEGY_ID) || localAssets.length > 0;
+
+        if (hasRealData) {
+          // Migra dados locais para o banco
+          await migrateLocalDataToDB(userId, localStrategies, localAssets);
+        }
+      }
+
+      setDbSynced(true);
+    }
+
+    syncFromDB();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, mounted]);
+
+  // ============================================
+  // Migração: localStorage → Supabase (primeira vez)
+  // ============================================
+  async function migrateLocalDataToDB(userId: string, localStrategies: Strategy[], localAssets: Asset[]) {
+    for (const s of localStrategies) {
+      await supabase.from('strategies').upsert({
+        id: s.id,
+        user_id: userId,
+        name: s.name,
+        description: s.description ?? '',
+        deviation_tolerance: s.deviationTolerance,
+        created_at: s.createdAt,
+        updated_at: s.updatedAt,
+      });
+
+      for (let i = 0; i < s.categories.length; i++) {
+        const c = s.categories[i];
+        await supabase.from('strategy_categories').upsert({
+          id: c.id,
+          strategy_id: s.id,
+          user_id: userId,
+          class_name: c.className,
+          subclass_name: c.subclassName,
+          target_percent: c.targetPercent,
+          sort_order: i,
+        });
+      }
+    }
+
+    for (const a of localAssets) {
+      await supabase.from('assets').upsert({
+        id: a.id,
+        strategy_id: a.strategyId,
+        category_id: a.categoryId,
+        user_id: userId,
+        ticker: a.ticker,
+        info: a.info ?? '',
+        invested_value: a.investedValue,
+        current_value: a.currentValue,
+        updated_at: a.updatedAt,
+      });
+    }
+  }
+
+  // ============================================
+  // Persiste localStorage (offline fallback)
+  // ============================================
+  useEffect(() => { if (mounted) saveToStorage('investmap_onboarding', hasCompletedOnboarding); }, [hasCompletedOnboarding, mounted]);
+  useEffect(() => { if (mounted) saveToStorage('investmap_strategies', strategies); }, [strategies, mounted]);
+  useEffect(() => { if (mounted) saveToStorage('investmap_active', activeStrategyId); }, [activeStrategyId, mounted]);
+  useEffect(() => { if (mounted) saveToStorage('investmap_assets', assets); }, [assets, mounted]);
+  useEffect(() => { if (mounted) saveToStorage('investmap_transactions', transactions); }, [transactions, mounted]);
+  useEffect(() => { if (mounted) saveToStorage('investmap_snapshots', snapshots); }, [snapshots, mounted]);
 
   const activeStrategy = strategies.find((s) => s.id === activeStrategyId) ?? null;
   const activeAssets = assets.filter((a) => a.strategyId === activeStrategyId);
 
-  // Onboarding actions
-  const completeOnboarding = useCallback((categories: Omit<StrategyCategory, 'id' | 'strategyId'>[]) => {
-    setStrategies((prev) => 
-      prev.map((s) => {
-        if (s.id === activeStrategyId) {
-          const newCats: StrategyCategory[] = categories.map(c => ({
-            ...c,
-            id: generateId(),
-            strategyId: activeStrategyId,
-          }));
-          return { ...s, categories: newCats, updatedAt: new Date().toISOString() };
-        }
-        return s;
-      })
-    );
-    setHasCompletedOnboarding(true);
-  }, [activeStrategyId]);
+  // ============================================
+  // Onboarding
+  // ============================================
+  const completeOnboarding = useCallback(async (categories: Omit<StrategyCategory, 'id' | 'strategyId'>[]) => {
+    const newCats: StrategyCategory[] = categories.map((c, i) => ({
+      ...c,
+      id: generateId(),
+      strategyId: activeStrategyId,
+    }));
 
-  // Strategy actions
-  const createStrategy = useCallback(
-    (data: Omit<Strategy, 'id' | 'createdAt' | 'updatedAt' | 'categories'>): Strategy => {
-      const now = new Date().toISOString();
-      const newStrategy: Strategy = {
-        ...data,
-        id: generateId(),
-        categories: [],
-        createdAt: now,
-        updatedAt: now,
-      };
-      setStrategies((prev) => [...prev, newStrategy]);
-      return newStrategy;
-    },
-    [],
-  );
-
-  const updateStrategy = useCallback((id: string, data: Partial<Strategy>) => {
     setStrategies((prev) =>
       prev.map((s) =>
-        s.id === id ? { ...s, ...data, updatedAt: new Date().toISOString() } : s,
-      ),
+        s.id === activeStrategyId
+          ? { ...s, categories: newCats, updatedAt: new Date().toISOString() }
+          : s
+      )
     );
-  }, []);
+    setHasCompletedOnboarding(true);
+
+    // Persiste no banco se autenticado
+    if (user) {
+      const strat = strategies.find(s => s.id === activeStrategyId);
+      if (strat) {
+        await supabase.from('strategies').upsert({
+          id: strat.id,
+          user_id: user.id,
+          name: strat.name,
+          description: strat.description ?? '',
+          deviation_tolerance: strat.deviationTolerance,
+          created_at: strat.createdAt,
+          updated_at: new Date().toISOString(),
+        });
+      }
+      for (let i = 0; i < newCats.length; i++) {
+        const c = newCats[i];
+        await supabase.from('strategy_categories').upsert({
+          id: c.id,
+          strategy_id: activeStrategyId,
+          user_id: user.id,
+          class_name: c.className,
+          subclass_name: c.subclassName,
+          target_percent: c.targetPercent,
+          sort_order: i,
+        });
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStrategyId, user, strategies]);
+
+  // ============================================
+  // Strategy CRUD
+  // ============================================
+  const createStrategy = useCallback((data: Omit<Strategy, 'id' | 'createdAt' | 'updatedAt' | 'categories'>): Strategy => {
+    const now = new Date().toISOString();
+    const newStrategy: Strategy = { ...data, id: generateId(), categories: [], createdAt: now, updatedAt: now };
+    setStrategies((prev) => [...prev, newStrategy]);
+
+    if (user) {
+      supabase.from('strategies').insert({
+        id: newStrategy.id,
+        user_id: user.id,
+        name: newStrategy.name,
+        description: newStrategy.description ?? '',
+        deviation_tolerance: newStrategy.deviationTolerance,
+        created_at: now,
+        updated_at: now,
+      }).then(({ error }) => { if (error) console.error(error); });
+    }
+    return newStrategy;
+  }, [user]);
+
+  const updateStrategy = useCallback((id: string, data: Partial<Strategy>) => {
+    const now = new Date().toISOString();
+    setStrategies((prev) => prev.map((s) => s.id === id ? { ...s, ...data, updatedAt: now } : s));
+
+    if (user) {
+      supabase.from('strategies').update({
+        name: data.name,
+        description: data.description,
+        deviation_tolerance: data.deviationTolerance,
+        updated_at: now,
+      }).eq('id', id).eq('user_id', user.id)
+        .then(({ error }) => { if (error) console.error(error); });
+    }
+  }, [user]);
 
   const deleteStrategy = useCallback((id: string) => {
     setStrategies((prev) => prev.filter((s) => s.id !== id));
     setAssets((prev) => prev.filter((a) => a.strategyId !== id));
-  }, []);
 
-  const setActiveStrategy = useCallback((id: string) => {
-    setActiveStrategyId(id);
-  }, []);
+    if (user) {
+      supabase.from('strategies').delete().eq('id', id).eq('user_id', user.id)
+        .then(({ error }) => { if (error) console.error(error); });
+    }
+  }, [user]);
 
-  // Category actions
-  const addCategory = useCallback(
-    (data: Omit<StrategyCategory, 'id' | 'strategyId'>) => {
-      const newCat: StrategyCategory = {
-        ...data,
-        id: generateId(),
-        strategyId: activeStrategyId,
-      };
-      setStrategies((prev) =>
-        prev.map((s) =>
-          s.id === activeStrategyId
-            ? { ...s, categories: [...s.categories, newCat], updatedAt: new Date().toISOString() }
-            : s,
-        ),
-      );
-    },
-    [activeStrategyId],
-  );
+  const setActiveStrategy = useCallback((id: string) => { setActiveStrategyId(id); }, []);
 
-  const updateCategory = useCallback(
-    (id: string, data: Partial<StrategyCategory>) => {
-      setStrategies((prev) =>
-        prev.map((s) =>
-          s.id === activeStrategyId
-            ? {
-                ...s,
-                categories: s.categories.map((c) =>
-                  c.id === id ? { ...c, ...data } : c,
-                ),
-                updatedAt: new Date().toISOString(),
-              }
-            : s,
-        ),
-      );
-    },
-    [activeStrategyId],
-  );
+  // ============================================
+  // Category CRUD
+  // ============================================
+  const addCategory = useCallback((data: Omit<StrategyCategory, 'id' | 'strategyId'>) => {
+    const newCat: StrategyCategory = { ...data, id: generateId(), strategyId: activeStrategyId };
+    setStrategies((prev) => prev.map((s) =>
+      s.id === activeStrategyId
+        ? { ...s, categories: [...s.categories, newCat], updatedAt: new Date().toISOString() }
+        : s
+    ));
 
-  const deleteCategory = useCallback(
-    (id: string) => {
-      setStrategies((prev) =>
-        prev.map((s) =>
-          s.id === activeStrategyId
-            ? {
-                ...s,
-                categories: s.categories.filter((c) => c.id !== id),
-                updatedAt: new Date().toISOString(),
-              }
-            : s,
-        ),
-      );
-      setAssets((prev) => prev.filter((a) => a.categoryId !== id));
-    },
-    [activeStrategyId],
-  );
+    if (user) {
+      supabase.from('strategy_categories').insert({
+        id: newCat.id,
+        strategy_id: activeStrategyId,
+        user_id: user.id,
+        class_name: newCat.className,
+        subclass_name: newCat.subclassName,
+        target_percent: newCat.targetPercent,
+        sort_order: 99,
+      }).then(({ error }) => { if (error) console.error(error); });
+    }
+  }, [activeStrategyId, user]);
 
-  // Asset actions
+  const updateCategory = useCallback((id: string, data: Partial<StrategyCategory>) => {
+    setStrategies((prev) => prev.map((s) =>
+      s.id === activeStrategyId
+        ? { ...s, categories: s.categories.map((c) => c.id === id ? { ...c, ...data } : c), updatedAt: new Date().toISOString() }
+        : s
+    ));
+
+    if (user) {
+      supabase.from('strategy_categories').update({
+        class_name: data.className,
+        subclass_name: data.subclassName,
+        target_percent: data.targetPercent,
+      }).eq('id', id).eq('user_id', user.id)
+        .then(({ error }) => { if (error) console.error(error); });
+    }
+  }, [activeStrategyId, user]);
+
+  const deleteCategory = useCallback((id: string) => {
+    setStrategies((prev) => prev.map((s) =>
+      s.id === activeStrategyId
+        ? { ...s, categories: s.categories.filter((c) => c.id !== id), updatedAt: new Date().toISOString() }
+        : s
+    ));
+    setAssets((prev) => prev.filter((a) => a.categoryId !== id));
+
+    if (user) {
+      supabase.from('strategy_categories').delete().eq('id', id).eq('user_id', user.id)
+        .then(({ error }) => { if (error) console.error(error); });
+    }
+  }, [activeStrategyId, user]);
+
+  // ============================================
+  // Asset CRUD
+  // ============================================
   const addAsset = useCallback((data: Omit<Asset, 'id' | 'updatedAt'>) => {
-    const newAsset: Asset = {
-      ...data,
-      id: generateId(),
-      updatedAt: new Date().toISOString(),
-    };
+    const now = new Date().toISOString();
+    const newAsset: Asset = { ...data, id: generateId(), updatedAt: now };
     setAssets((prev) => [...prev, newAsset]);
 
-    // O primeiro aporte de um ativo também é uma transação
-    addTransaction({
-      assetId: newAsset.id,
-      type: 'buy',
-      value: newAsset.investedValue
-    });
-  }, [/* dependency on addTransaction injected securely via setTransactions internal logic later, or we just rely on setTransactions being stable */]);
+    // Primeira transação automática
+    const firstTx: Transaction = { id: generateId(), assetId: newAsset.id, type: 'buy', value: newAsset.investedValue, date: now };
+    setTransactions((prev) => [...prev, firstTx]);
+
+    if (user) {
+      supabase.from('assets').insert({
+        id: newAsset.id,
+        strategy_id: newAsset.strategyId,
+        category_id: newAsset.categoryId,
+        user_id: user.id,
+        ticker: newAsset.ticker,
+        info: newAsset.info ?? '',
+        invested_value: newAsset.investedValue,
+        current_value: newAsset.currentValue,
+        updated_at: now,
+      }).then(({ error }) => { if (error) console.error(error); });
+
+      supabase.from('transactions').insert({
+        id: firstTx.id,
+        asset_id: firstTx.assetId,
+        user_id: user.id,
+        type: 'buy',
+        value: firstTx.value,
+        date: now,
+      }).then(({ error }) => { if (error) console.error(error); });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const updateAsset = useCallback((id: string, data: Partial<Asset>) => {
-    setAssets((prev) =>
-      prev.map((a) =>
-        a.id === id ? { ...a, ...data, updatedAt: new Date().toISOString() } : a,
-      ),
-    );
-  }, []);
+    const now = new Date().toISOString();
+    setAssets((prev) => prev.map((a) => a.id === id ? { ...a, ...data, updatedAt: now } : a));
+
+    if (user) {
+      supabase.from('assets').update({
+        ticker: data.ticker,
+        info: data.info,
+        category_id: data.categoryId,
+        invested_value: data.investedValue,
+        current_value: data.currentValue,
+        updated_at: now,
+      }).eq('id', id).eq('user_id', user.id)
+        .then(({ error }) => { if (error) console.error(error); });
+    }
+  }, [user]);
 
   const deleteAsset = useCallback((id: string) => {
     setAssets((prev) => prev.filter((a) => a.id !== id));
-    // Limpar transações atreladas ao ativo deletado
     setTransactions((prev) => prev.filter((t) => t.assetId !== id));
-  }, []);
 
+    if (user) {
+      supabase.from('assets').delete().eq('id', id).eq('user_id', user.id)
+        .then(({ error }) => { if (error) console.error(error); });
+    }
+  }, [user]);
+
+  // ============================================
+  // Transaction
+  // ============================================
   const addTransaction = useCallback((data: Omit<Transaction, 'id' | 'date'>) => {
-    const newTransaction: Transaction = {
-      ...data,
-      id: generateId(),
-      date: new Date().toISOString(),
-    };
-    setTransactions((prev) => [...prev, newTransaction]);
-  }, []);
+    const now = new Date().toISOString();
+    const newTx: Transaction = { ...data, id: generateId(), date: now };
+    setTransactions((prev) => [...prev, newTx]);
 
+    if (user) {
+      supabase.from('transactions').insert({
+        id: newTx.id,
+        asset_id: newTx.assetId,
+        user_id: user.id,
+        type: newTx.type,
+        value: newTx.value,
+        quantity: newTx.quantity ?? null,
+        price: newTx.price ?? null,
+        notes: newTx.notes ?? '',
+        date: now,
+      }).then(({ error }) => { if (error) console.error(error); });
+    }
+  }, [user]);
+
+  // ============================================
+  // Snapshot
+  // ============================================
   const saveSnapshot = useCallback((data: Omit<PortfolioSnapshot, 'id'>) => {
-    const newSnapshot: PortfolioSnapshot = {
-      ...data,
-      id: generateId(),
-    };
-    
+    const newSnap: PortfolioSnapshot = { ...data, id: generateId() };
     setSnapshots((prev) => {
-      // Verifica se já existe snapshot na mesma data estrita (YYYY-MM-DD) e strategyId
-      const existingIndex = prev.findIndex(
-        (s) => s.strategyId === newSnapshot.strategyId && s.date === newSnapshot.date
-      );
-      
+      const existingIndex = prev.findIndex(s => s.strategyId === data.strategyId && s.date === data.date);
       if (existingIndex >= 0) {
-        // Atualiza a foto de hoje se a carteira mudou de valor hoje
         const arr = [...prev];
-        arr[existingIndex] = { ...arr[existingIndex], ...newSnapshot };
+        arr[existingIndex] = { ...arr[existingIndex], ...newSnap };
         return arr;
-      } else {
-        return [...prev, newSnapshot];
       }
+      return [...prev, newSnap];
     });
-  }, []);
 
+    if (user) {
+      supabase.from('portfolio_snapshots').upsert({
+        id: newSnap.id,
+        strategy_id: newSnap.strategyId,
+        user_id: user.id,
+        date: newSnap.date,
+        total_value: newSnap.totalValue,
+        total_invested: newSnap.totalInvested,
+        profit_loss: newSnap.profitLoss,
+      }, { onConflict: 'strategy_id,date' })
+        .then(({ error }) => { if (error) console.error(error); });
+    }
+  }, [user]);
+
+  // ============================================
+  // Import
+  // ============================================
   const importData = useCallback((
-    importedStrategies: Strategy[], 
+    importedStrategies: Strategy[],
     importedAssets: Asset[],
     importedTransactions?: Transaction[],
     importedSnapshots?: PortfolioSnapshot[]
   ) => {
     setStrategies((prev) => {
-      const existingIds = new Set(prev.map((s) => s.id));
-      const newOnes = importedStrategies.filter((s) => !existingIds.has(s.id));
-      return [...prev, ...newOnes];
+      const ids = new Set(prev.map(s => s.id));
+      return [...prev, ...importedStrategies.filter(s => !ids.has(s.id))];
     });
     setAssets((prev) => {
-      const existingIds = new Set(prev.map((a) => a.id));
-      const newOnes = importedAssets.filter((a) => !existingIds.has(a.id));
-      return [...prev, ...newOnes];
+      const ids = new Set(prev.map(a => a.id));
+      return [...prev, ...importedAssets.filter(a => !ids.has(a.id))];
     });
     if (importedTransactions) {
       setTransactions((prev) => {
-        const existingIds = new Set(prev.map((t) => t.id));
-        const newOnes = importedTransactions.filter((t) => !existingIds.has(t.id));
-        return [...prev, ...newOnes];
+        const ids = new Set(prev.map(t => t.id));
+        return [...prev, ...importedTransactions.filter(t => !ids.has(t.id))];
       });
     }
     if (importedSnapshots) {
       setSnapshots((prev) => {
-        const existingIds = new Set(prev.map((s) => s.id));
-        const newOnes = importedSnapshots.filter((s) => !existingIds.has(s.id));
-        return [...prev, ...newOnes];
+        const ids = new Set(prev.map(s => s.id));
+        return [...prev, ...importedSnapshots.filter(s => !ids.has(s.id))];
       });
     }
   }, []);
 
   return (
-    <AppContext.Provider
-      value={{
-        hasCompletedOnboarding,
-        completeOnboarding,
-        strategies,
-        activeStrategyId,
-        activeStrategy,
-        assets,
-        activeAssets,
-        transactions,
-        snapshots,
-        createStrategy,
-        updateStrategy,
-        deleteStrategy,
-        setActiveStrategy,
-        addCategory,
-        updateCategory,
-        deleteCategory,
-        addAsset,
-        updateAsset,
-        deleteAsset,
-        addTransaction,
-        saveSnapshot,
-        importData,
-      }}
-    >
-      {/* suppressHydrationWarning evita erro quando o conteúdo difere entre SSR e CSR */}
+    <AppContext.Provider value={{
+      hasCompletedOnboarding,
+      completeOnboarding,
+      strategies,
+      activeStrategyId,
+      activeStrategy,
+      assets,
+      activeAssets,
+      transactions,
+      snapshots,
+      dbSynced,
+      createStrategy,
+      updateStrategy,
+      deleteStrategy,
+      setActiveStrategy,
+      addCategory,
+      updateCategory,
+      deleteCategory,
+      addAsset,
+      updateAsset,
+      deleteAsset,
+      addTransaction,
+      saveSnapshot,
+      importData,
+    }}>
       <div suppressHydrationWarning>
         {mounted ? children : (
           <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0B0B14' }}>
