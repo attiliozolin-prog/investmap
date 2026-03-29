@@ -73,7 +73,16 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
   }, []);
 
   const groupedAssets = useMemo(() => {
-    const map = new Map<string, StrategyGroup>();
+    const map = new Map<string, {
+      subclassName: string;
+      targetPercent: number;
+      assets: AssetWithCalcs[];
+      totalInvestedValue: number;
+      totalValue: number;
+      totalPercent: number;
+      totalRebalance: number;
+      groupAction: 'buy' | 'sell' | 'ok';
+    }>();
 
     assets.forEach((a) => {
       const subclass = a.category.subclassName;
