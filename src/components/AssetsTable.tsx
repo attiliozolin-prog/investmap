@@ -253,11 +253,9 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                   {/* Nome do grupo — colspan 2 (Ativo + Investido) */}
                   <td colSpan={2}>
                     <div className={styles.groupHeaderContent}>
-                      <GripVertical
-                        size={16}
-                        className={styles.dragIcon}
-                        title="Arraste para reordenar os grupos"
-                      />
+                      <span title="Arraste para reordenar os grupos" aria-label="Arraste para reordenar os grupos">
+                        <GripVertical size={16} className={styles.dragIcon} />
+                      </span>
                       <span className={styles.groupHeaderTitle}>{group.subclassName}</span>
                     </div>
                   </td>
