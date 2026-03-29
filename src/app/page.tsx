@@ -11,18 +11,19 @@ import Strategy from '@/views/Strategy';
 import LandingPage from '@/components/LandingPage/LandingPage';
 import OnboardingFlow from '@/components/Onboarding/OnboardingFlow';
 import AuthPage from '@/components/Auth/AuthPage';
+import Profile from '@/views/Profile';
 import styles from './page.module.css';
 
-type Tab = 'dashboard' | 'assets' | 'strategy';
+type Tab = 'dashboard' | 'assets' | 'strategy' | 'profile';
 
 function AppContent() {
   const { user, loading: authLoading } = useAuth();
-  const { hasCompletedOnboarding } = useApp();
+  const { hasCompletedOnboarding, dbSynced } = useApp();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [showLanding, setShowLanding] = useState<boolean>(!hasCompletedOnboarding);
 
-  // Aguarda verificação de sessão
-  if (authLoading) {
+  // Aguarda verificação de sessão e DB
+  if (authLoading || (user && !dbSynced)) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0B0B14' }}>
         <div style={{ width: 32, height: 32, border: '2px solid #252538', borderTopColor: '#8B5CF6', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
@@ -51,6 +52,7 @@ function AppContent() {
           {activeTab === 'dashboard' && <Dashboard onNavigate={(tab) => setActiveTab(tab as Tab)} />}
           {activeTab === 'assets'    && <Assets />}
           {activeTab === 'strategy'  && <Strategy />}
+          {activeTab === 'profile'   && <Profile />}
         </div>
       </main>
     </div>

@@ -4,7 +4,7 @@ import { useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import styles from './Navbar.module.css';
-import { TrendingUp, ChevronDown, BarChart3, Download, Upload, Sun, Moon, LogOut } from 'lucide-react';
+import { TrendingUp, Download, Upload, LogOut, Sun, Moon, BarChart3, ChevronDown, User } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function Navbar({ activeTab, onTabChange }: {
@@ -141,6 +141,14 @@ export default function Navbar({ activeTab, onTabChange }: {
               onChange={handleImportFile}
             />
             <div className={styles.divider} style={{ width: 1, height: 16, background: 'var(--color-border)', margin: '0 4px' }} />
+            <button
+              className={`${styles.iconBtn} ${activeTab === 'profile' ? styles.iconBtnActive : ''}`}
+              onClick={() => onTabChange?.('profile')}
+              title="Meu Perfil"
+            >
+              <User size={15} />
+              <span className={styles.iconBtnLabel}>Perfil</span>
+            </button>
             <button
               className={styles.iconBtn}
               onClick={async () => {

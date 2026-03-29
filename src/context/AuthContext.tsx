@@ -15,6 +15,7 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  updateUser: (attributes: { password?: string; data?: { full_name?: string } }) => Promise<{ error: string | null }>;
 }
 
 // ============================================
@@ -58,10 +59,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
+    window.location.href = '/'; // Força um reload para limpar a cache do navegador e re-renderizar AuthPage
+  }, []);
+
+  const updateUser = useCallback(async (attributes: { password?: string; data?: { full_name?: string } }) => {
+    const { error } = await supabase.auth.updateUser(attributes);
+    return { error: error?.message ?? null };
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
