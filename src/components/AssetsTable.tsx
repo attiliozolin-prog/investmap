@@ -73,14 +73,43 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
   }, []);
 
   const groupedAssets = useMemo(() => {
-    const map = new Map<string, { subclassName: string; targetPercent: number; assets: AssetWithCalcs[] }>();
+    const map = new Map<string, {
+      subclassName: string;
+      targetPercent: number;
+      assets: AssetWithCalcs[];
+      totalCurrentValue: number;
+      totalCurrentPercent: number;
+      totalRebalance: number;
+      groupAction: 'buy' | 'sell' | 'ok';
+    }>();
+
     assets.forEach((a) => {
       const subclass = a.category.subclassName;
       if (!map.has(subclass)) {
-        map.set(subclass, { subclassName: subclass, targetPercent: a.targetPercent, assets: [] });
+        map.set(subclass, {
+          subclassName: subclass,
+          targetPercent: a.targetPercent,
+          assets: [],
+          totalCurrentValue: 0,
+          totalCurrentPercent: 0,
+          totalRebalance: 0,
+          groupAction: 'ok',
+        });
       }
-      map.get(subclass)!.assets.push(a);
+      const g = map.get(subclass)!;
+      g.assets.push(a);
+      g.totalCurrentValue += a.currentValue;
+      g.totalCurrentPercent += a.currentPortfolioPercent;
+      g.totalRebalance += a.rebalanceAmount;
     });
+
+    // Determina ação do grupo pelo saldo de rebalanceamento
+    map.forEach((g) => {
+      if (g.totalRebalance > 10) g.groupAction = 'buy';
+      else if (g.totalRebalance < -10) g.groupAction = 'sell';
+      else g.groupAction = 'ok';
+    });
+
     return Array.from(map.values());
   }, [assets]);
 
@@ -100,8 +129,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
   const handleDragStart = (e: React.DragEvent, subclassName: string) => {
     setDraggedSubclass(subclassName);
     e.dataTransfer.effectAllowed = 'move';
-    // Define um valor inútil, o estado React lidará com a lógica
-    e.dataTransfer.setData('text/plain', subclassName); 
+    e.dataTransfer.setData('text/plain', subclassName);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -118,16 +146,16 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
 
     const currentOrder = subclassOrder.length > 0 ? subclassOrder : groupedAssets.map(g => g.subclassName);
     const newOrder = [...currentOrder];
-    
-    if(!newOrder.includes(draggedSubclass)) newOrder.push(draggedSubclass);
-    if(!newOrder.includes(targetSubclassName)) newOrder.push(targetSubclassName);
+
+    if (!newOrder.includes(draggedSubclass)) newOrder.push(draggedSubclass);
+    if (!newOrder.includes(targetSubclassName)) newOrder.push(targetSubclassName);
 
     const oldIndex = newOrder.indexOf(draggedSubclass);
     newOrder.splice(oldIndex, 1);
-    
+
     const newIndex = newOrder.indexOf(targetSubclassName);
     newOrder.splice(newIndex, 0, draggedSubclass);
-    
+
     setSubclassOrder(newOrder);
     localStorage.setItem('investmap_subclass_order', JSON.stringify(newOrder));
     setDraggedSubclass(null);
@@ -200,7 +228,6 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
           <thead>
             <tr>
               <th>Ativo</th>
-              <th>Subclasse</th>
               <th className={styles.right}>Investido</th>
               <th className={styles.right}>Atual</th>
               <th className={styles.right}>Lucro/Prejuízo</th>
@@ -214,8 +241,8 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
           <tbody>
             {orderedGroups.map((group) => (
               <React.Fragment key={group.subclassName}>
-                {/* Cabeçalho do Grupo (Subclasse) */}
-                <tr 
+                {/* Cabeçalho do Grupo (Subclasse) — com métricas agregadas */}
+                <tr
                   className={styles.groupHeader}
                   draggable
                   onDragStart={(e) => handleDragStart(e, group.subclassName)}
@@ -223,16 +250,48 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                   onDrop={(e) => handleDrop(e, group.subclassName)}
                   onDragEnd={() => setDraggedSubclass(null)}
                 >
-                  <td colSpan={5}>
+                  {/* Nome do grupo — colspan 2 (Ativo + Investido) */}
+                  <td colSpan={2}>
                     <div className={styles.groupHeaderContent}>
-                      <GripVertical size={16} className={styles.dragIcon} />
+                      <GripVertical
+                        size={16}
+                        className={styles.dragIcon}
+                        title="Arraste para reordenar os grupos"
+                      />
                       <span className={styles.groupHeaderTitle}>{group.subclassName}</span>
                     </div>
                   </td>
+
+                  {/* Valor atual total do grupo */}
+                  <td className={`${styles.right} ${styles.groupMeta}`}>
+                    {formatCurrency(group.totalCurrentValue)}
+                  </td>
+
+                  {/* Lucro/Prejuízo — vazio no grupo */}
+                  <td />
+
+                  {/* % Alvo do grupo */}
                   <td className={`${styles.right} ${styles.groupTarget}`}>
                     {formatPercentAbs(group.targetPercent)}
                   </td>
-                  <td colSpan={4}></td>
+
+                  {/* % Carteira atual do grupo */}
+                  <td className={`${styles.right} ${styles.groupMeta}`}>
+                    {formatPercentAbs(group.totalCurrentPercent)}
+                  </td>
+
+                  {/* Rebalancear total do grupo */}
+                  <td className={`${styles.right} ${styles.groupMeta} ${group.totalRebalance > 0 ? styles.profit : group.totalRebalance < 0 ? styles.loss : styles.muted}`}>
+                    {group.totalRebalance >= 0 ? '+' : ''}{formatCurrency(group.totalRebalance)}
+                  </td>
+
+                  {/* Status do grupo */}
+                  <td>
+                    <ActionBadge action={group.groupAction} />
+                  </td>
+
+                  {/* Ações — vazio no cabeçalho */}
+                  <td />
                 </tr>
 
                 {/* Ativos dentro do Grupo */}
@@ -246,15 +305,10 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                       </div>
                     </td>
 
-                    {/* Subclasse - Agora vazia ou com um traço estético já que está agrupada */}
-                    <td className={styles.muted} style={{ paddingLeft: '24px' }}>
-                      <span style={{ opacity: 0.3 }}>&mdash;</span>
-                    </td>
-
                     {/* Investido */}
                     <td className={styles.right}>{formatCurrency(asset.investedValue)}</td>
 
-                    {/* Atual (editável) */}
+                    {/* Atual (editável inline) */}
                     <td className={styles.right}>
                       {editingValueId === asset.id ? (
                         <div className={styles.inlineEdit}>
@@ -276,11 +330,11 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                           <button
                             className={styles.valueBtn}
                             onClick={() => startEditValue(asset)}
-                            title="Clique para atualizar"
+                            title="Clique para atualizar o valor atual"
                             id={`current-value-${asset.id}`}
                           >
                             {formatCurrency(asset.currentValue)}
-                            <RefreshCw size={10} className={styles.editIcon} />
+                            <RefreshCw size={12} className={styles.editIcon} />
                           </button>
                           <StaleValueBadge updatedAt={asset.updatedAt} />
                         </div>
@@ -295,7 +349,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                       </div>
                     </td>
 
-                    {/* % Alvo - Vazio no ativo pois pertence ao grupo */}
+                    {/* % Alvo — vazio no ativo (pertence ao grupo) */}
                     <td className={`${styles.right} ${styles.muted}`}>
                       <span style={{ opacity: 0.3 }}>&mdash;</span>
                     </td>
@@ -315,29 +369,29 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                       <ActionBadge action={asset.action} />
                     </td>
 
-                    {/* Ações */}
-                    <td className={styles.center}>
+                    {/* Ações — hierarquia: Editar → Aporte → Excluir */}
+                    <td className={`${styles.center} ${styles.actionsCell}`}>
                       <div className={styles.actions}>
-                        <button
-                          className={`btn btn-ghost btn-sm ${styles.actionBtn}`}
-                          onClick={() => setTransactionAssetId(asset.id)}
-                          title="Registrar Aporte / Venda"
-                        >
-                          <PlusCircle size={14} />
-                        </button>
                         <button
                           id={`edit-asset-${asset.id}`}
                           className={`btn btn-ghost btn-sm ${styles.actionBtn}`}
                           onClick={() => onEdit(asset)}
-                          title="Editar Propriedades"
+                          title="Editar propriedades do ativo"
                         >
                           <Pencil size={13} />
+                        </button>
+                        <button
+                          className={`btn btn-ghost btn-sm ${styles.actionBtn} ${styles.actionBtnTransaction}`}
+                          onClick={() => setTransactionAssetId(asset.id)}
+                          title="Registrar aporte ou venda"
+                        >
+                          <PlusCircle size={14} />
                         </button>
                         <button
                           id={`delete-asset-${asset.id}`}
                           className={`btn btn-danger btn-sm ${styles.actionBtn}`}
                           onClick={() => handleDeleteClick(asset.id)}
-                          title="Excluir"
+                          title="Excluir ativo"
                         >
                           <Trash2 size={13} />
                         </button>

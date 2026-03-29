@@ -1,4 +1,4 @@
-.right { text-align: right !important; }
+.right  { text-align: right !important; }
 .center { text-align: center !important; }
 .nowrap { white-space: nowrap !important; }
 
@@ -8,7 +8,35 @@
 
 .row { position: relative; }
 
-/* Group Row Styling */
+/* ──────────────────────────────────────────
+   Linhas de ativo com status: tint sutil
+   ────────────────────────────────────────── */
+.row_buy {
+  background: rgba(16, 185, 129, 0.025);
+}
+
+.row_sell {
+  background: rgba(239, 68, 68, 0.025);
+}
+
+/* Barra lateral colorida indicando ação */
+.row_buy td:first-child::before,
+.row_sell td:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 2px;
+}
+
+.row_buy td:first-child::before  { background: var(--color-success); }
+.row_sell td:first-child::before { background: var(--color-danger); }
+
+/* ──────────────────────────────────────────
+   Cabeçalho de Grupo (Subclasse)
+   ────────────────────────────────────────── */
 .groupHeader {
   background: var(--color-surface-2);
   border-top: 2px solid rgba(255, 255, 255, 0.05);
@@ -34,44 +62,35 @@
 .dragIcon {
   color: var(--color-text-3);
   cursor: grab;
+  flex-shrink: 0;
 }
 
 .groupHeaderTitle {
   font-weight: 700;
-  font-size: 14px;
-  color: #c4b5fd; /* Soft purple variant for subclass groups */
+  font-size: 13px;
+  color: #c4b5fd;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
 }
 
+/* % Alvo no cabeçalho do grupo */
 .groupTarget {
   font-weight: 700;
   color: var(--color-text) !important;
   background: rgba(255, 255, 255, 0.03);
 }
 
-.row_buy td:first-child::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--color-success);
-  border-radius: 2px;
+/* Métricas agregadas no cabeçalho do grupo */
+.groupMeta {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-2) !important;
+  opacity: 0.85;
 }
 
-.row_sell td:first-child::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--color-danger);
-  border-radius: 2px;
-}
-
+/* ──────────────────────────────────────────
+   Células de dados
+   ────────────────────────────────────────── */
 .tickerCell {
   display: flex;
   flex-direction: column;
@@ -127,31 +146,40 @@
   white-space: nowrap;
 }
 
-/* Inline value editing */
+/* ──────────────────────────────────────────
+   Valor atual editável inline
+   ────────────────────────────────────────── */
 .valueBtn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   background: none;
   border: none;
   color: var(--color-text);
   font-family: var(--font);
   font-size: 0.9375rem;
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 3px 6px;
   border-radius: var(--radius-sm);
-  transition: background var(--transition);
+  transition: background var(--transition), color var(--transition);
   margin-left: auto;
+  /* Sublinhado tracejado para indicar editabilidade */
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  text-decoration-color: var(--color-text-3);
+  text-underline-offset: 3px;
 }
 
 .valueBtn:hover {
   background: var(--color-surface-2);
+  text-decoration-color: var(--color-primary);
 }
 
 .editIcon {
-  color: var(--color-text-3);
+  color: var(--color-primary-light);
   opacity: 0;
   transition: opacity var(--transition);
+  flex-shrink: 0;
 }
 
 .valueBtn:hover .editIcon { opacity: 1; }
@@ -186,6 +214,25 @@
   cursor: pointer;
 }
 
+/* ──────────────────────────────────────────
+   Botões de ação — hover-reveal
+   ────────────────────────────────────────── */
+.actionsCell {
+  /* Em dispositivos com hover, fica invisível até o hover da linha */
+  transition: opacity 0.15s ease;
+}
+
+/* Só oculta em dispositivos que suportam hover (não touch) */
+@media (hover: hover) {
+  .actionsCell {
+    opacity: 0;
+  }
+
+  .row:hover .actionsCell {
+    opacity: 1;
+  }
+}
+
 .actions {
   display: flex;
   align-items: center;
@@ -199,7 +246,20 @@
   height: 28px;
 }
 
-/* Current value cell with stale badge */
+/* Botão de aporte — destaque sutil em verde/ghost */
+.actionBtnTransaction {
+  color: var(--color-success) !important;
+  border-color: rgba(16, 185, 129, 0.2) !important;
+}
+
+.actionBtnTransaction:hover {
+  background: rgba(16, 185, 129, 0.1) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+/* ──────────────────────────────────────────
+   Valor atual com badge de desatualizado
+   ────────────────────────────────────────── */
 .currentValueCell {
   display: flex;
   align-items: center;
@@ -222,7 +282,9 @@
   cursor: default;
 }
 
-/* Confirm delete modal */
+/* ──────────────────────────────────────────
+   Modal de confirmação de delete
+   ────────────────────────────────────────── */
 .confirmModal {
   max-width: 380px !important;
   text-align: center;
@@ -266,4 +328,3 @@
   justify-content: center;
   gap: 10px;
 }
-
