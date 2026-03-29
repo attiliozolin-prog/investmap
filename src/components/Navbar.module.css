@@ -8,6 +8,10 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+:global([data-theme='light']) .nav {
+  background: rgba(253, 253, 253, 0.85);
+}
+
 .inner {
   display: flex;
   align-items: center;
