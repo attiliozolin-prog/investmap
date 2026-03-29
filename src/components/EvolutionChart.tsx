@@ -42,7 +42,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     const data = payload[0].payload as PortfolioSnapshot;
     
     // Calcula lucro/prejuízo exato do dia (snapshot)
-    const profitLoss = data.totalCurrent - data.totalInvested;
+    const profitLoss = data.totalValue - data.totalInvested;
     const isProfit = profitLoss >= 0;
 
     return (
@@ -62,7 +62,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: 'var(--color-text)', fontSize: '0.9rem' }}>Patrimônio:</span>
             <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
-              R$ {data.totalCurrent.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              R$ {data.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -98,7 +98,7 @@ export default function EvolutionChart({ snapshots }: EvolutionChartProps) {
   );
 
   // Se não tem dado suficiente (ou está tudo zerado), mostra empty state
-  if (sortedData.length === 0 || sortedData.every(s => s.totalCurrent === 0)) {
+  if (sortedData.length === 0 || sortedData.every(s => s.totalValue === 0)) {
     return (
       <div className={styles.card} style={{ minHeight: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
         <h3 className={styles.title} style={{ marginBottom: '8px' }}>Evolução do Patrimônio</h3>
@@ -115,7 +115,7 @@ export default function EvolutionChart({ snapshots }: EvolutionChartProps) {
   
   // Decisão visual: Cor do Patrimonio Atual.
   // Pode ser 'Positivo' desde a origem, ou apenas considerar o verde primário da marca
-  const isHealthy = lastData.totalCurrent >= lastData.totalInvested;
+  const isHealthy = lastData.totalValue >= lastData.totalInvested;
   
   const strokeColor = isHealthy ? 'var(--color-primary-light)' : 'var(--color-danger)';
   const fillColor = isHealthy ? 'var(--color-primary)' : 'var(--color-danger)';
@@ -180,7 +180,7 @@ export default function EvolutionChart({ snapshots }: EvolutionChartProps) {
             {/* Linha do Patrimônio Atual */}
             <Area 
               type="monotone" 
-              dataKey="totalCurrent" 
+              dataKey="totalValue" 
               stroke={strokeColor} 
               strokeWidth={3}
               fillOpacity={1} 

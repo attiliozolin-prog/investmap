@@ -73,15 +73,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
   }, []);
 
   const groupedAssets = useMemo(() => {
-    const map = new Map<string, {
-      subclassName: string;
-      targetPercent: number;
-      assets: AssetWithCalcs[];
-      totalCurrentValue: number;
-      totalCurrentPercent: number;
-      totalRebalance: number;
-      groupAction: 'buy' | 'sell' | 'ok';
-    }>();
+    const map = new Map<string, StrategyGroup>();
 
     assets.forEach((a) => {
       const subclass = a.category.subclassName;
@@ -90,16 +82,18 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
           subclassName: subclass,
           targetPercent: a.targetPercent,
           assets: [],
-          totalCurrentValue: 0,
-          totalCurrentPercent: 0,
+          totalInvestedValue: 0,
+          totalValue: 0,
+          totalPercent: 0,
           totalRebalance: 0,
           groupAction: 'ok',
         });
       }
       const g = map.get(subclass)!;
       g.assets.push(a);
-      g.totalCurrentValue += a.currentValue;
-      g.totalCurrentPercent += a.currentPortfolioPercent;
+      g.totalInvestedValue += a.investedValue;
+      g.totalValue += a.currentValue;
+      g.totalPercent += a.currentPortfolioPercent;
       g.totalRebalance += a.rebalanceAmount;
     });
 
@@ -262,7 +256,10 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
 
                   {/* Valor atual total do grupo */}
                   <td className={`${styles.right} ${styles.groupMeta}`}>
-                    {formatCurrency(group.totalCurrentValue)}
+                    <div className={styles.groupTotal}>
+                      <span className={styles.groupLabel}>Patrimônio</span>
+                      {formatCurrency(group.totalValue)}
+                    </div>
                   </td>
 
                   {/* Lucro/Prejuízo — vazio no grupo */}
@@ -275,7 +272,10 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
 
                   {/* % Carteira atual do grupo */}
                   <td className={`${styles.right} ${styles.groupMeta}`}>
-                    {formatPercentAbs(group.totalCurrentPercent)}
+                    <div className={styles.groupTotal}>
+                      <span className={styles.groupLabel}>Atual</span>
+                      {formatPercentAbs(group.totalPercent)}
+                    </div>
                   </td>
 
                   {/* Rebalancear total do grupo */}

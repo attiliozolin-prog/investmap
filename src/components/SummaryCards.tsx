@@ -12,21 +12,21 @@ interface Props {
 export default function SummaryCards({ summary }: Props) {
   const {
     totalInvested,
-    totalCurrent,
-    totalProfitLoss,
+    totalValue,
+    profitLoss,
     totalProfitLossPercent,
     healthScore,
     needsRebalancing,
   } = summary;
 
-  const isProfit = totalProfitLoss >= 0;
+  const isProfit = profitLoss >= 0;
 
   return (
     <div className={styles.grid}>
       {/* Total Atual */}
       <div className={`card ${styles.card} ${styles.cardHighlight}`}>
         <div className={styles.cardLabel}>Patrimônio Atual</div>
-        <div className={styles.cardValue}>{formatCurrency(totalCurrent)}</div>
+        <div className={styles.cardValue}>{formatCurrency(totalValue)}</div>
         <div className={styles.cardSub}>
           Investido: {formatCurrency(totalInvested)}
         </div>
@@ -41,7 +41,7 @@ export default function SummaryCards({ summary }: Props) {
           </div>
         </div>
         <div className={`${styles.cardValue} ${isProfit ? styles.valueProfit : styles.valueLoss}`}>
-          {formatCurrency(totalProfitLoss)}
+          {formatCurrency(profitLoss)}
         </div>
         <div className={`${styles.cardBadge} ${isProfit ? styles.badgeProfit : styles.badgeLoss}`}>
           {formatPercent(totalProfitLossPercent)} sobre investido

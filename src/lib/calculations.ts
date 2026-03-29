@@ -37,11 +37,12 @@ export function calculatePortfolio(
   strategy: Strategy,
   assets: Asset[],
 ): PortfolioSummary {
-  const totalCurrent = assets.reduce((sum, a) => sum + a.currentValue, 0);
   const totalInvested = assets.reduce((sum, a) => sum + a.investedValue, 0);
-  const totalProfitLoss = totalCurrent - totalInvested;
+  const totalValue = assets.reduce((sum, a) => sum + a.currentValue, 0);
+
+  const profitLoss = totalValue - totalInvested;
   const totalProfitLossPercent =
-    totalInvested > 0 ? (totalProfitLoss / totalInvested) * 100 : 0;
+    totalInvested > 0 ? (profitLoss / totalInvested) * 100 : 0;
 
   const assetsWithCalcs: AssetWithCalcs[] = assets
     .map((asset) => {
@@ -66,17 +67,17 @@ export function calculatePortfolio(
           ? (profitLoss / asset.investedValue) * 100
           : 0;
       const currentPortfolioPercent =
-        totalCurrent > 0 ? (asset.currentValue / totalCurrent) * 100 : 0;
+        totalValue > 0 ? (asset.currentValue / totalValue) * 100 : 0;
       const targetPercent = category.targetPercent;
-      const diffPercent = targetPercent - currentPortfolioPercent;
+      const diffPercent = currentPortfolioPercent - targetPercent;
 
-      const targetValue = (totalCurrent * targetPercent) / 100;
+      const targetValue = (totalValue * targetPercent) / 100;
       const rebalanceAmount = targetValue - asset.currentValue;
 
       let action: 'buy' | 'sell' | 'ok' = 'ok';
       const absDiff = Math.abs(diffPercent);
       if (absDiff > strategy.deviationTolerance) {
-        action = diffPercent > 0 ? 'buy' : 'sell';
+        action = diffPercent > 0 ? 'sell' : 'buy';
       }
 
       return {
@@ -101,14 +102,14 @@ export function calculatePortfolio(
     );
     const currentValue = catAssets.reduce((s, a) => s + a.currentValue, 0);
     const currentPercent =
-      totalCurrent > 0 ? (currentValue / totalCurrent) * 100 : 0;
-    const targetValue = (totalCurrent * cat.targetPercent) / 100;
+      totalValue > 0 ? (currentValue / totalValue) * 100 : 0;
+    const targetValue = (totalValue * cat.targetPercent) / 100;
     const rebalanceAmount = targetValue - currentValue;
-    const diffPercent = cat.targetPercent - currentPercent;
+    const diffPercent = currentPercent - cat.targetPercent;
     const absDiff = Math.abs(diffPercent);
     let action: 'buy' | 'sell' | 'ok' = 'ok';
     if (absDiff > strategy.deviationTolerance) {
-      action = diffPercent > 0 ? 'buy' : 'sell';
+      action = diffPercent > 0 ? 'sell' : 'buy';
     }
 
     return {
@@ -139,8 +140,8 @@ export function calculatePortfolio(
 
   return {
     totalInvested,
-    totalCurrent,
-    totalProfitLoss,
+    totalValue,
+    profitLoss,
     totalProfitLossPercent,
     healthScore,
     assetsWithCalcs,

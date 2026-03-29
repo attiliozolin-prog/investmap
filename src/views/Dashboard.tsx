@@ -10,6 +10,7 @@ import EvolutionChart from '@/components/EvolutionChart';
 import styles from './Dashboard.module.css';
 import { AlertTriangle, TrendingUp } from 'lucide-react';
 import { formatCurrency } from '@/lib/calculations';
+import { useEffect } from 'react';
 
 // Recharts usa window/ResizeObserver — deve renderizar SOMENTE no cliente
 const AllocationChart = dynamic(() => import('@/components/AllocationChart'), {
@@ -34,20 +35,18 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
   }, [activeStrategy, activeAssets]);
 
   // Salva o snapshot diário automaticamente quando montamos a Dashboard (e temos dados da summary)
-  import('react').then(({ useEffect }) => {
-    useEffect(() => {
-      if (summary && activeStrategy) {
-        const today = new Date().toISOString().split('T')[0];
-        saveSnapshot({
-          date: today,
-          strategyId: activeStrategy.id,
-          totalInvested: summary.totalInvested,
-          totalCurrent: summary.totalCurrent,
-          healthScore: summary.needsRebalancing ? 80 : 100 // Pontuação simples para registro histórico
-        });
-      }
-    }, [summary, activeStrategy, saveSnapshot]);
-  });
+  useEffect(() => {
+    if (summary && activeStrategy) {
+      const today = new Date().toISOString().split('T')[0];
+      saveSnapshot({
+        date: today,
+        strategyId: activeStrategy.id,
+        totalInvested: summary.totalInvested,
+        totalValue: summary.totalValue,
+        profitLoss: summary.profitLoss
+      });
+    }
+  }, [summary, activeStrategy, saveSnapshot]);
 
   if (!activeStrategy) {
     return (
@@ -134,7 +133,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
           {/* Totals */}
           <div className={styles.catFooter}>
             <span>Total da carteira</span>
-            <span>{formatCurrency(summary.totalCurrent)}</span>
+            <span>{formatCurrency(summary.totalValue)}</span>
           </div>
         </div>
       </div>

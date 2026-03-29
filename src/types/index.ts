@@ -79,8 +79,8 @@ export interface CategorySummary {
 
 export interface PortfolioSummary {
   totalInvested: number;
-  totalCurrent: number;
-  totalProfitLoss: number;
+  totalValue: number;
+  profitLoss: number;
   totalProfitLossPercent: number;
   healthScore: number;         // 0-100, quão próximo da estratégia
   assetsWithCalcs: AssetWithCalcs[];

@@ -27,7 +27,7 @@ export default function AiAnalysisCard({ summary, strategyName }: Props) {
       strategyName,
       healthScore: summary.healthScore,
       totalInvested: summary.totalInvested,
-      totalCurrent: summary.totalCurrent,
+      totalValue: summary.totalValue,
       totalProfitLossPercent: summary.totalProfitLossPercent,
       needsRebalancing: summary.needsRebalancing,
       categories: summary.categorySummaries.map((cs) => ({

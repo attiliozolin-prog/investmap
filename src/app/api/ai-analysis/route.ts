@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     strategyName: string;
     healthScore: number;
     totalInvested: number;
-    totalCurrent: number;
+    totalValue: number;
     totalProfitLossPercent: number;
     needsRebalancing: boolean;
     categories: { class: string; subclass: string; targetPercent: number; currentPercent: number; action: string; rebalanceAmount: number }[];
