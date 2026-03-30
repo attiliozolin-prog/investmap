@@ -1,6 +1,6 @@
 'use client';
 
-import { PortfolioSummary } from '@/types';
+import { PortfolioSummary, AssetWithCalcs, CategorySummary } from '@/types';
 import {
   PieChart,
   Pie,
@@ -10,22 +10,13 @@ import {
 } from 'recharts';
 import { CHART_COLORS, formatCurrency, formatPercentAbs } from '@/lib/calculations';
 import styles from './AllocationChart.module.css';
+import { useMemo } from 'react';
 
 interface Props {
   summary: PortfolioSummary;
 }
 
-interface TooltipPayload {
-  payload: {
-    name: string;
-    value: number;
-    currentPercent: number;
-    targetPercent: number;
-    currentValue: number;
-  };
-}
-
-const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: TooltipPayload[] }) => {
+const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
@@ -33,142 +24,215 @@ const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Toolti
       <div className={styles.tooltipTitle}>{d.name}</div>
       <div className={styles.tooltipRow}>
         <span>Atual</span>
-        <span>{formatPercentAbs(d.currentPercent)}</span>
+        <span>{formatPercentAbs(d.currentPercent || (d.value / d.total * 100))}</span>
       </div>
-      <div className={styles.tooltipRow}>
-        <span>Alvo</span>
-        <span>{formatPercentAbs(d.targetPercent)}</span>
-      </div>
+      {d.targetPercent !== undefined && (
+        <div className={styles.tooltipRow}>
+          <span>Alvo</span>
+          <span>{formatPercentAbs(d.targetPercent)}</span>
+        </div>
+      )}
       <div className={styles.tooltipRow}>
         <span>Valor</span>
-        <span>{formatCurrency(d.currentValue)}</span>
+        <span>{formatCurrency(d.currentValue || d.value)}</span>
       </div>
     </div>
   );
 };
 
 export default function AllocationChart({ summary }: Props) {
-  const { categorySummaries } = summary;
+  const { categorySummaries, assetsWithCalcs, totalValue } = summary;
 
-  const currentData = categorySummaries.map((cs, i) => ({
-    name: cs.category.subclassName,
-    value: Math.max(cs.currentPercent, 0.01), // evita fatia zero que quebra animação
-    currentPercent: cs.currentPercent,
-    targetPercent: cs.targetPercent,
-    currentValue: cs.currentValue,
-    color: CHART_COLORS[i % CHART_COLORS.length],
+  // Agrupamento por Classe (Renda Fixa, Variável, Cripto)
+  const classGroups = useMemo(() => {
+    const groups: Record<string, { 
+      name: string, 
+      currentValue: number, 
+      targetPercent: number, 
+      categories: CategorySummary[],
+      assets: AssetWithCalcs[] 
+    }> = {};
+
+    categorySummaries.forEach(cs => {
+      const className = cs.category.className;
+      if (!groups[className]) {
+        groups[className] = { 
+          name: className, 
+          currentValue: 0, 
+          targetPercent: 0, 
+          categories: [],
+          assets: [] 
+        };
+      }
+      groups[className].currentValue += cs.currentValue;
+      groups[className].targetPercent += cs.targetPercent;
+      groups[className].categories.push(cs);
+    });
+
+    assetsWithCalcs.forEach(asset => {
+      const className = asset.category.className;
+      if (groups[className]) {
+        groups[className].assets.push(asset);
+      }
+    });
+
+    return Object.values(groups).sort((a, b) => b.currentValue - a.currentValue);
+  }, [categorySummaries, assetsWithCalcs]);
+
+  // Dados para o Gráfico Macro
+  const macroData = classGroups.map((g, i) => ({
+    name: g.name,
+    value: Math.max(g.currentValue, 0.1),
+    currentPercent: (g.currentValue / totalValue) * 100,
+    targetPercent: g.targetPercent,
+    currentValue: g.currentValue,
+    color: CHART_COLORS[i % CHART_COLORS.length]
   }));
 
-  const targetData = categorySummaries.map((cs, i) => ({
-    name: cs.category.subclassName,
-    value: Math.max(cs.targetPercent, 0.01),
-    color: CHART_COLORS[i % CHART_COLORS.length],
+  const macroTargetData = classGroups.map((g, i) => ({
+    name: g.name,
+    value: Math.max(g.targetPercent, 0.1),
+    color: CHART_COLORS[i % CHART_COLORS.length]
   }));
 
   return (
-    <div className={`card ${styles.wrapper}`}>
-      {/* Header */}
-      <div className={styles.header}>
-        <h3>Alocação da Carteira</h3>
-        {/* Legenda dos anéis */}
-        <div className={styles.ringLegend}>
-          <span className={styles.ringItem}>
-            <svg width="28" height="12">
-              <rect x="0" y="0" width="12" height="12" rx="3" fill={CHART_COLORS[0]} opacity="0.9" />
-              <rect x="16" y="0" width="12" height="12" rx="3" fill={CHART_COLORS[0]} opacity="0.28" />
-            </svg>
-          </span>
-          <span className={styles.ringLabel}>Atual</span>
-          <span className={styles.ringDivider}>|</span>
-          <span className={styles.ringLabel} style={{ opacity: 0.5 }}>Alvo</span>
+    <div className={styles.container}>
+      {/* SEÇÃO MACRO */}
+      <div className={`card ${styles.macroCard}`}>
+        <div className={styles.header}>
+          <h3>Alocação Estratégica</h3>
+          <div className={styles.ringLegend}>
+            <span className={styles.ringLabel}>Atual</span>
+            <div className={styles.ringIndicator} style={{ background: 'var(--color-primary)' }} />
+            <span className={styles.ringLabel} style={{ opacity: 0.5 }}>Alvo</span>
+            <div className={styles.ringIndicator} style={{ background: 'var(--color-primary)', opacity: 0.3 }} />
+          </div>
+        </div>
+
+        <div className={styles.macroContent}>
+          <div className={styles.macroChartSide}>
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={macroData}
+                  cx="50%" cy="50%"
+                  outerRadius={90} innerRadius={65}
+                  dataKey="value" strokeWidth={0}
+                >
+                  {macroData.map((entry, index) => (
+                    <Cell key={index} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Pie
+                  data={macroTargetData}
+                  cx="50%" cy="50%"
+                  outerRadius={60} innerRadius={45}
+                  dataKey="value" strokeWidth={0}
+                  opacity={0.3}
+                >
+                  {macroTargetData.map((entry, index) => (
+                    <Cell key={index} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className={styles.macroLegendSide}>
+            {macroData.map((d, i) => (
+              <div key={d.name} className={styles.macroLegendItem}>
+                <div className={styles.macroLegendHeader}>
+                  <div className={styles.dot} style={{ background: d.color }} />
+                  <span className={styles.macroName}>{d.name}</span>
+                </div>
+                <div className={styles.macroLegendValues}>
+                  <span className={styles.val}>{d.currentPercent.toFixed(1)}%</span>
+                  <span className={styles.target}>alvo {d.targetPercent}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Gráfico */}
-      <ResponsiveContainer width="100%" height={260}>
-        <PieChart>
-          {/* Anel externo: % atual */}
-          <Pie
-            data={currentData}
-            cx="50%"
-            cy="50%"
-            outerRadius={110}
-            innerRadius={72}
-            dataKey="value"
-            strokeWidth={0}
-            isAnimationActive={true}
-            animationBegin={0}
-            animationDuration={700}
-          >
-            {currentData.map((entry, index) => (
-              <Cell key={index} fill={entry.color} opacity={0.9} />
-            ))}
-          </Pie>
-          {/* Anel interno: % alvo */}
-          <Pie
-            data={targetData}
-            cx="50%"
-            cy="50%"
-            outerRadius={66}
-            innerRadius={44}
-            dataKey="value"
-            strokeWidth={0}
-            isAnimationActive={true}
-            animationBegin={150}
-            animationDuration={700}
-          >
-            {targetData.map((entry, index) => (
-              <Cell key={index} fill={entry.color} opacity={0.28} />
-            ))}
-          </Pie>
-          <Tooltip content={<CustomTooltip />} />
-        </PieChart>
-      </ResponsiveContainer>
+      {/* SEÇÕES MICRO POR CLASSE */}
+      <div className={styles.microGrid}>
+        {classGroups.map((group, groupIdx) => {
+          const assetData = group.assets.map((a, i) => ({
+            name: a.ticker,
+            value: a.currentValue,
+            currentPercent: a.currentPortfolioPercent,
+            currentValue: a.currentValue,
+            color: CHART_COLORS[(groupIdx + i + 1) % CHART_COLORS.length]
+          })).sort((a, b) => b.value - a.value);
 
-      {/* Legenda de categorias — uma entrada por categoria, sem duplicação */}
-      <div className={styles.categoryLegend}>
-        {categorySummaries.map((cs, i) => (
-          <div key={cs.category.id} className={styles.categoryLegendItem}>
-            <span
-              className={styles.categoryDot}
-              style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
-            />
-            <span className={styles.categoryLegendName}>{cs.category.subclassName}</span>
-            <span className={styles.categoryLegendCurrent}>
-              {(Number(cs.currentPercent) || 0).toFixed(1)}%
-            </span>
-            <span className={styles.categoryLegendTarget}>
-              alvo {cs.targetPercent}%
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Barras de progresso por subclasse */}
-      <div className={styles.rows}>
-        {categorySummaries.map((cs, i) => {
-          const diff = cs.targetPercent - cs.currentPercent;
-          const absDiff = Math.abs(diff);
           return (
-            <div key={cs.category.id} className={styles.row}>
-              <div className={styles.rowColorDot} style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
-              <div className={styles.rowName}>{cs.category.subclassName}</div>
-              <div className={styles.rowBar}>
-                <div
-                  className={styles.rowBarFill}
-                  style={{
-                    width: `${Math.min(cs.currentPercent, 100)}%`,
-                    background: CHART_COLORS[i % CHART_COLORS.length],
-                  }}
-                />
-                <div
-                  className={styles.rowBarTarget}
-                  style={{ left: `${cs.targetPercent}%` }}
-                />
+            <div key={group.name} className={`card ${styles.microCard}`}>
+              <div className={styles.microHeader}>
+                <h4>{group.name}</h4>
+                <span className={styles.microTotal}>{formatCurrency(group.currentValue)}</span>
               </div>
-              <div className={styles.rowPercent}>{formatPercentAbs(cs.currentPercent)}</div>
-              <div className={`${styles.rowDiff} ${diff > 0.5 ? styles.rowDiffBuy : diff < -0.5 ? styles.rowDiffSell : styles.rowDiffOk}`}>
-                {absDiff < 0.1 ? '✓' : diff > 0 ? `+${absDiff.toFixed(1)}%` : `-${absDiff.toFixed(1)}%`}
+
+              <div className={styles.microChartSection}>
+                <ResponsiveContainer width="100%" height={140}>
+                  <PieChart>
+                    <Pie
+                      data={assetData}
+                      cx="50%" cy="50%"
+                      outerRadius={60} innerRadius={40}
+                      dataKey="value" strokeWidth={0}
+                    >
+                      {assetData.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                
+                <div className={styles.microBriefLegend}>
+                  {assetData.slice(0, 4).map(a => (
+                    <div key={a.name} className={styles.briefItem}>
+                      <span className={styles.briefDot} style={{ background: a.color }} />
+                      <span className={styles.briefName}>{a.name}</span>
+                      <span className={styles.briefVal}>{a.currentPercent.toFixed(1)}%</span>
+                    </div>
+                  ))}
+                  {assetData.length > 4 && <span className={styles.moreLabel}>+{assetData.length - 4} ativos</span>}
+                </div>
+              </div>
+
+              {/* BARRAS DE REBALANCEAMENTO (SUBCLASSES) */}
+              <div className={styles.microProgressList}>
+                <div className={styles.progressHeader}>Subclasses & Alvos</div>
+                {group.categories.map((cs, i) => {
+                  const diff = cs.targetPercent - cs.currentPercent;
+                  const absDiff = Math.abs(diff);
+                  const color = CHART_COLORS[(groupIdx + i) % CHART_COLORS.length];
+
+                  return (
+                    <div key={cs.category.id} className={styles.progressBarRow}>
+                      <div className={styles.barInfo}>
+                        <span className={styles.barName}>{cs.category.subclassName}</span>
+                        <span className={styles.barPercent}>{cs.currentPercent.toFixed(1)}%</span>
+                      </div>
+                      <div className={styles.barContainer}>
+                        <div 
+                          className={styles.barFill} 
+                          style={{ width: `${Math.min(cs.currentPercent, 100)}%`, background: color }}
+                        />
+                        <div 
+                          className={styles.barTargetMarker} 
+                          style={{ left: `${cs.targetPercent}%` }}
+                        />
+                      </div>
+                      <div className={`${styles.barDiff} ${diff > 0.5 ? styles.diffBuy : diff < -0.5 ? styles.diffSell : ''}`}>
+                        {absDiff < 0.2 ? '✓' : diff > 0 ? `+${absDiff.toFixed(1)}%` : `-${absDiff.toFixed(1)}%`}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );

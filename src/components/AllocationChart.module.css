@@ -1,189 +1,304 @@
-.wrapper {
+.container {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 24px;
+  width: 100%;
 }
 
-/* Header */
-.header {
+/* Macro Section */
+.macroCard {
+  padding: 24px;
+}
+
+.macroContent {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4px;
+  gap: 32px;
+  margin-top: 16px;
 }
 
-.header h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--color-text-1);
-  margin: 0;
+.macroChartSide {
+  flex: 1;
+  max-width: 320px;
 }
 
-/* Legenda dos anéis (Atual | Alvo) */
-.ringLegend {
+.macroLegendSide {
+  flex: 1;
   display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.8rem;
-  color: var(--color-text-2);
-}
-
-.ringItem {
-  display: flex;
-  align-items: center;
-}
-
-.ringLabel {
-  font-size: 0.8rem;
-  color: var(--color-text-2);
-}
-
-.ringDivider {
-  color: var(--color-border);
-  margin: 0 2px;
-}
-
-/* Legenda de categorias (uma linha por categoria) */
-.categoryLegend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 16px;
-  padding: 0 4px 12px;
-  border-bottom: 1px solid var(--color-border);
-  margin-bottom: 12px;
-}
-
-.categoryLegendItem {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.8rem;
-}
-
-.categoryDot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.categoryLegendName {
-  color: var(--color-text-1);
-  font-weight: 500;
-}
-
-.categoryLegendCurrent {
-  color: var(--color-text-1);
-  font-weight: 600;
-}
-
-.categoryLegendTarget {
-  color: var(--color-text-3);
-  font-size: 0.75rem;
-}
-
-/* Tooltip */
-.tooltip {
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 0.875rem;
-}
-
-.tooltipTitle {
-  font-weight: 600;
-  color: var(--color-text-1);
-  margin-bottom: 6px;
-}
-
-.tooltipRow {
-  display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 16px;
-  color: var(--color-text-2);
-  font-size: 0.8125rem;
-  padding: 2px 0;
 }
 
-.tooltipRow span:last-child {
-  color: var(--color-text-1);
-  font-weight: 500;
+.macroLegendItem {
+  padding: 12px 16px;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+  border-left: 4px solid transparent;
 }
 
-/* Barras de progresso */
-.rows {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.row {
+.macroLegendHeader {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.8125rem;
+  margin-bottom: 4px;
 }
 
-.rowColorDot {
-  width: 8px;
-  height: 8px;
+.dot {
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  flex-shrink: 0;
 }
 
-.rowName {
-  width: 140px;
-  flex-shrink: 0;
-  color: var(--color-text-2);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.macroName {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-text-1);
 }
 
-.rowBar {
+.macroLegendValues {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.macroLegendValues .val {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--color-primary-light);
+}
+
+.macroLegendValues .target {
+  font-size: 0.75rem;
+  color: var(--color-text-dimmed);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Micro Grid */
+.microGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 20px;
+}
+
+.microCard {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.microHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.microHeader h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.microTotal {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-dimmed);
+}
+
+.microChartSection {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.microBriefLegend {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.briefItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--color-text);
+}
+
+.briefDot {
+  width: 6px;
   height: 6px;
-  background: var(--color-surface-3);
+  border-radius: 50%;
+}
+
+.briefVal {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--color-primary-light);
+}
+
+.moreLabel {
+  font-size: 0.65rem;
+  color: var(--color-text-dimmed);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* Progress Bars Section */
+.microProgressList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: auto;
+}
+
+.progressHeader {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--color-text-dimmed);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.progressBarRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.barInfo {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.barContainer {
+  height: 6px;
+  background: var(--color-surface-4);
   border-radius: 3px;
   position: relative;
   overflow: visible;
 }
 
-.rowBarFill {
+.barFill {
   height: 100%;
   border-radius: 3px;
-  transition: width 0.5s ease;
-  max-width: 100%;
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Marcador de alvo */
-.rowBarTarget {
+.barTargetMarker {
   position: absolute;
   top: -4px;
   width: 2px;
   height: 14px;
-  background: var(--color-text-3);
-  border-radius: 1px;
-  transform: translateX(-50%);
+  background: var(--color-text-1);
+  box-shadow: 0 0 4px rgba(255,255,255,0.3);
+  z-index: 2;
 }
 
-.rowPercent {
-  width: 44px;
-  text-align: right;
+.barDiff {
+  align-self: flex-end;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-top: 2px;
+  color: var(--color-text-dimmed);
+}
+
+.diffBuy { color: var(--color-success); }
+.diffSell { color: var(--color-error); }
+
+/* Common UI */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header h3 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.ringLegend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ringLabel {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-dimmed);
+}
+
+.ringIndicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+/* Tooltip overlay styling */
+.tooltip {
+  background: var(--color-surface-1) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 12px !important;
+  padding: 12px !important;
+  box-shadow: var(--shadow-xl) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.tooltipTitle {
+  font-weight: 800;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+  color: var(--color-primary-light);
+}
+
+.tooltipRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  font-size: 0.8rem;
+  margin: 4px 0;
+  color: var(--color-text-dimmed);
+}
+
+.tooltipRow span:last-child {
   color: var(--color-text-1);
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.rowDiff {
-  width: 48px;
-  text-align: right;
-  font-size: 0.75rem;
   font-weight: 600;
-  flex-shrink: 0;
 }
 
-.rowDiffBuy  { color: var(--color-success); }
-.rowDiffSell { color: var(--color-error); }
-.rowDiffOk   { color: var(--color-text-3); }
+/* Mobile Adjustments */
+@media (max-width: 640px) {
+  .macroContent {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .macroChartSide {
+    max-width: 100%;
+  }
+  
+  .macroLegendSide {
+    width: 100%;
+  }
+
+  .microGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .microChartSection {
+    flex-direction: column;
+  }
+}
