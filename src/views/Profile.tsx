@@ -3,11 +3,11 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useApp } from '@/context/AppContext';
-import { Download, Upload } from 'lucide-react';
+import { Download, Upload, AlertTriangle } from 'lucide-react';
 import styles from './Profile.module.css';
 
 export default function Profile() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, deleteAccountData } = useAuth();
   const { strategies, assets, importData } = useApp();
   const importRef = useRef<HTMLInputElement>(null);
   
@@ -16,9 +16,24 @@ export default function Profile() {
   
   const [nameLoading, setNameLoading] = useState(false);
   const [pwdLoading, setPwdLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   
   const [nameMessage, setNameMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [pwdMessage, setPwdMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== 'DELETAR') return;
+    setDeleteLoading(true);
+    const { error } = await deleteAccountData();
+    if (error) {
+      alert(error);
+      setDeleteLoading(false);
+    }
+    // Se sucesso, o context faz o signOut e o app limpa automaticamente
+  };
 
   const handleExport = () => {
     const data = { strategies, assets, exportedAt: new Date().toISOString(), version: 1 };
