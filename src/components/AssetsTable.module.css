@@ -4,6 +4,17 @@
 
 .table-wrapper table th {
   white-space: nowrap;
+  position: sticky;
+  top: 64px;
+  background: var(--color-surface);
+  z-index: 10;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+:global([data-theme='light']) .table-wrapper table th {
+  background: var(--color-surface-1);
 }
 
 .row { position: relative; }

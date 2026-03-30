@@ -234,6 +234,16 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
       )}
 
       <div className="table-wrapper">
+        <style jsx>{`
+          .table-wrapper table th {
+            white-space: nowrap;
+            position: sticky;
+            top: 64px;
+            background: var(--color-surface);
+            z-index: 10;
+            box-shadow: 0 1px 0 var(--color-border);
+          }
+        `}</style>
         <table>
           <thead>
             <tr>
@@ -273,7 +283,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                   {/* Valor atual total do grupo */}
                   <td className={`${styles.right} ${styles.groupMeta}`}>
                     <div className={styles.groupTotal}>
-                      <span className={styles.groupLabel}>Patrimônio</span>
+                      <span className={styles.groupLabel}>Patrimônio: </span>
                       {formatCurrency(group.totalValue)}
                     </div>
                   </td>
@@ -289,7 +299,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                   {/* % Carteira atual do grupo */}
                   <td className={`${styles.right} ${styles.groupMeta}`}>
                     <div className={styles.groupTotal}>
-                      <span className={styles.groupLabel}>Atual</span>
+                      <span className={styles.groupLabel}>Atual: </span>
                       {formatPercentAbs(group.totalPercent)}
                     </div>
                   </td>
