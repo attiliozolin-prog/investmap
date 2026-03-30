@@ -118,6 +118,7 @@ export default function AllocationChart({ summary }: Props) {
                   cx="50%" cy="50%"
                   outerRadius={90} innerRadius={65}
                   dataKey="value" strokeWidth={0}
+                  isAnimationActive={false} // Desativa animação que às vezes trava no mobile
                 >
                   {macroData.map((entry, index) => (
                     <Cell key={index} fill={entry.color} />
@@ -129,6 +130,7 @@ export default function AllocationChart({ summary }: Props) {
                   outerRadius={60} innerRadius={45}
                   dataKey="value" strokeWidth={0}
                   opacity={0.3}
+                  isAnimationActive={false}
                 >
                   {macroTargetData.map((entry, index) => (
                     <Cell key={index} fill={entry.color} />
