@@ -76,15 +76,30 @@ interface AppContextType {
 // LocalStorage helpers (fallback offline)
 // ============================================
 
-function loadFromStorage<T>(key: string, fallback: T): T {
+function getStorageKey(key: string, userId?: string): string {
+  const prefix = userId ? `investmap_u_${userId}` : 'investmap_guest';
+  return `${prefix}_${key}`;
+}
+
+function loadFromStorage<T>(key: string, fallback: T, userId?: string): T {
   try {
-    const raw = localStorage.getItem(key);
+    const fullKey = getStorageKey(key, userId);
+    const raw = localStorage.getItem(fullKey);
     return raw ? (JSON.parse(raw) as T) : fallback;
   } catch { return fallback; }
 }
 
-function saveToStorage<T>(key: string, data: T): void {
-  try { localStorage.setItem(key, JSON.stringify(data)); } catch { /* ignore */ }
+function saveToStorage<T>(key: string, data: T, userId?: string): void {
+  try { 
+    const fullKey = getStorageKey(key, userId);
+    localStorage.setItem(fullKey, JSON.stringify(data)); 
+  } catch { /* ignore */ }
+}
+
+function clearStorage(userId?: string): void {
+  const prefix = userId ? `investmap_u_${userId}` : 'investmap_guest';
+  const keys = ['onboarding', 'strategies', 'active', 'assets', 'transactions', 'snapshots'];
+  keys.forEach(k => localStorage.removeItem(`${prefix}_${k}`));
 }
 
 // ============================================
@@ -175,22 +190,73 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [dbSynced, setDbSynced] = useState(false);
 
   // ============================================
-  // Carrega do localStorage primeiro (evita flash)
+  // Monitora mudança de usuário (LogOut ou Switch)
   // ============================================
   useEffect(() => {
-    const storedOnboarding = loadFromStorage<boolean>('investmap_onboarding', false);
-    const stored = loadFromStorage<Strategy[]>('investmap_strategies', [defaultStrategy]);
-    const storedActive = loadFromStorage<string>('investmap_active', DEFAULT_STRATEGY_ID);
-    const storedAssets = loadFromStorage<Asset[]>('investmap_assets', []);
-    const storedTransactions = loadFromStorage<Transaction[]>('investmap_transactions', []);
-    const storedSnapshots = loadFromStorage<PortfolioSnapshot[]>('investmap_snapshots', []);
+    if (!mounted) return;
 
-    setHasCompletedOnboarding(storedOnboarding);
-    setStrategies(stored.length > 0 ? stored : [defaultStrategy]);
-    setActiveStrategyId(storedActive);
-    setAssets(storedAssets);
-    setTransactions(storedTransactions);
-    setSnapshots(storedSnapshots);
+    if (!user) {
+      // Se deslogou → volta para os dados de GUEST (visitante)
+      setDbSynced(false);
+      const storedOnboarding = loadFromStorage<boolean>('onboarding', false);
+      const stored = loadFromStorage<Strategy[]>('strategies', [defaultStrategy]);
+      const storedActive = loadFromStorage<string>('active', DEFAULT_STRATEGY_ID);
+      const storedAssets = loadFromStorage<Asset[]>('assets', []);
+      const storedTransactions = loadFromStorage<Transaction[]>('transactions', []);
+      const storedSnapshots = loadFromStorage<PortfolioSnapshot[]>('snapshots', []);
+
+      setHasCompletedOnboarding(storedOnboarding);
+      setStrategies(stored.length > 0 ? stored : [defaultStrategy]);
+      setActiveStrategyId(storedActive);
+      setAssets(storedAssets);
+      setTransactions(storedTransactions);
+      setSnapshots(storedSnapshots);
+    } else {
+      // Se logou → carrega o cache específico DESTE usuário primeiro
+      const userId = user.id;
+      const storedOnboarding = loadFromStorage<boolean>('onboarding', true, userId);
+      const stored = loadFromStorage<Strategy[]>('strategies', [defaultStrategy], userId);
+      const storedActive = loadFromStorage<string>('active', DEFAULT_STRATEGY_ID, userId);
+      const storedAssets = loadFromStorage<Asset[]>('assets', [], userId);
+      const storedTransactions = loadFromStorage<Transaction[]>('transactions', [], userId);
+      const storedSnapshots = loadFromStorage<PortfolioSnapshot[]>('snapshots', [], userId);
+
+      setHasCompletedOnboarding(storedOnboarding);
+      if (stored.length > 0) setStrategies(stored);
+      setActiveStrategyId(storedActive);
+      setAssets(storedAssets);
+      setTransactions(storedTransactions);
+      setSnapshots(storedSnapshots);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, mounted]);
+
+  // Carrega inicial (apenas visitante ou cache antigo se houver)
+  useEffect(() => {
+    if (user) return; // Se já logar direto (session), o outro useEffect resolve
+    
+    // Suporte a migração: verifica chaves antigas (sem prefixo) e move para 'guest'
+    const legacyKeys = ['investmap_onboarding', 'investmap_strategies', 'investmap_active', 'investmap_assets', 'investmap_transactions', 'investmap_snapshots'];
+    let migrationHappened = false;
+    
+    legacyKeys.forEach(lk => {
+      const val = localStorage.getItem(lk);
+      if (val) {
+        const key = lk.replace('investmap_', '');
+        localStorage.setItem(getStorageKey(key), val);
+        localStorage.removeItem(lk);
+        migrationHappened = true;
+      }
+    });
+
+    if (migrationHappened) {
+      // Re-trigger load
+      const storedOnboarding = loadFromStorage<boolean>('onboarding', false);
+      const stored = loadFromStorage<Strategy[]>('strategies', [defaultStrategy]);
+      setHasCompletedOnboarding(storedOnboarding);
+      setStrategies(stored.length > 0 ? stored : [defaultStrategy]);
+    }
+
     setMounted(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -264,14 +330,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setHasCompletedOnboarding(true);
         saveToStorage('investmap_onboarding', true);
       } else {
-        // Usuário novo — verifica se tem dados locais para migrar
-        const localStrategies = loadFromStorage<Strategy[]>('investmap_strategies', []);
-        const localAssets = loadFromStorage<Asset[]>('investmap_assets', []);
-        const hasRealData = localStrategies.some(s => s.id !== DEFAULT_STRATEGY_ID) || localAssets.length > 0;
+        // Usuário novo — verifica se tem dados de GUEST (visitante) para migrar
+        const guestStrategies = loadFromStorage<Strategy[]>('strategies', []);
+        const guestAssets = loadFromStorage<Asset[]>('assets', []);
+        const hasRealData = guestStrategies.some(s => s.id !== DEFAULT_STRATEGY_ID) || guestAssets.length > 0;
 
         if (hasRealData) {
-          // Migra dados locais para o banco
-          await migrateLocalDataToDB(userId, localStrategies, localAssets);
+          // Migra dados de visitante para o banco
+          await migrateLocalDataToDB(userId, guestStrategies, guestAssets);
+          // Limpa os dados de visitante após migrar para evitar duplicidade em outras contas
+          clearStorage();
         }
       }
 
@@ -327,14 +395,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }
 
   // ============================================
-  // Persiste localStorage (offline fallback)
+  // Persiste localStorage (Offline Fallback & Cache Rápido)
   // ============================================
-  useEffect(() => { if (mounted) saveToStorage('investmap_onboarding', hasCompletedOnboarding); }, [hasCompletedOnboarding, mounted]);
-  useEffect(() => { if (mounted) saveToStorage('investmap_strategies', strategies); }, [strategies, mounted]);
-  useEffect(() => { if (mounted) saveToStorage('investmap_active', activeStrategyId); }, [activeStrategyId, mounted]);
-  useEffect(() => { if (mounted) saveToStorage('investmap_assets', assets); }, [assets, mounted]);
-  useEffect(() => { if (mounted) saveToStorage('investmap_transactions', transactions); }, [transactions, mounted]);
-  useEffect(() => { if (mounted) saveToStorage('investmap_snapshots', snapshots); }, [snapshots, mounted]);
+  useEffect(() => { if (mounted) saveToStorage('onboarding', hasCompletedOnboarding, user?.id); }, [hasCompletedOnboarding, mounted, user?.id]);
+  useEffect(() => { if (mounted) saveToStorage('strategies', strategies, user?.id); }, [strategies, mounted, user?.id]);
+  useEffect(() => { if (mounted) saveToStorage('active', activeStrategyId, user?.id); }, [activeStrategyId, mounted, user?.id]);
+  useEffect(() => { if (mounted) saveToStorage('assets', assets, user?.id); }, [assets, mounted, user?.id]);
+  useEffect(() => { if (mounted) saveToStorage('transactions', transactions, user?.id); }, [transactions, mounted, user?.id]);
+  useEffect(() => { if (mounted) saveToStorage('snapshots', snapshots, user?.id); }, [snapshots, mounted, user?.id]);
 
   const activeStrategy = useMemo(() => 
     strategies.find((s) => s.id === activeStrategyId) ?? null,
