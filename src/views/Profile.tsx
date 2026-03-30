@@ -1,11 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useApp } from '@/context/AppContext';
+import { Download, Upload } from 'lucide-react';
 import styles from './Profile.module.css';
 
 export default function Profile() {
   const { user, updateUser } = useAuth();
+  const { strategies, assets, importData } = useApp();
+  const importRef = useRef<HTMLInputElement>(null);
   
   const [name, setName] = useState(user?.user_metadata?.full_name ?? '');
   const [newPassword, setNewPassword] = useState('');
@@ -15,6 +19,40 @@ export default function Profile() {
   
   const [nameMessage, setNameMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [pwdMessage, setPwdMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleExport = () => {
+    const data = { strategies, assets, exportedAt: new Date().toISOString(), version: 1 };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `investmap-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target?.result as string);
+        if (!data.strategies || !data.assets) {
+          alert('Arquivo inválido. Certifique-se de usar um backup exportado pelo InvestMap.');
+          return;
+        }
+        if (confirm(`Importar ${data.strategies.length} carteira(s) e ${data.assets.length} ativo(s)? Os dados existentes serão mantidos.`)) {
+          importData(data.strategies, data.assets);
+          alert('Dados importados com sucesso!');
+        }
+      } catch {
+        alert('Erro ao ler o arquivo. Verifique se é um JSON válido.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   const handleUpdateName = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,6 +133,26 @@ export default function Profile() {
               {nameLoading ? 'Salvando...' : 'Salvar Nome'}
             </button>
           </form>
+        </div>
+      </div>
+
+      <div className={styles.card}>
+        <div className={styles.formSection}>
+          <h3>Portabilidade de Dados</h3>
+          <p className={styles.helpText} style={{ marginBottom: '1.5rem', display: 'block' }}>
+            Baixe seus dados para backup ou importe de um arquivo anterior.
+          </p>
+          <div className={styles.buttonGroup}>
+            <button className={styles.secondaryBtn} onClick={handleExport}>
+              <Download size={18} />
+              <span>Exportar Backup (JSON)</span>
+            </button>
+            <button className={styles.secondaryBtn} onClick={() => importRef.current?.click()}>
+              <Upload size={18} />
+              <span>Importar JSON</span>
+            </button>
+            <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportFile} />
+          </div>
         </div>
       </div>
 

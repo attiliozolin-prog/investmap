@@ -105,3 +105,36 @@
   color: #EF4444;
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
+
+.buttonGroup {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.secondaryBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.secondaryBtn:hover {
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+}
+
+@media (max-width: 480px) {
+  .buttonGroup {
+    grid-template-columns: 1fr;
+  }
+}
