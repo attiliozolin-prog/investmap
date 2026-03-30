@@ -4,7 +4,7 @@ import { useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import styles from './Navbar.module.css';
-import { TrendingUp, Download, Upload, LogOut, Sun, Moon, BarChart3, ChevronDown, User, LayoutDashboard, Briefcase, Target, Settings, X, Globe } from 'lucide-react';
+import { TrendingUp, Download, Upload, LogOut, Sun, Moon, BarChart3, ChevronDown, User, LayoutDashboard, Briefcase, Target, Settings, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function Navbar({ activeTab, onTabChange }: {
@@ -75,7 +75,6 @@ export default function Navbar({ activeTab, onTabChange }: {
       }
     };
     reader.readAsText(file);
-    // Reset so the same file can be imported again if needed
     e.target.value = '';
   };
 
@@ -83,98 +82,31 @@ export default function Navbar({ activeTab, onTabChange }: {
     <>
       <nav className={styles.nav}>
         <div className={`container ${styles.inner}`}>
-          {/* Logo */}
-          <div className={styles.logo}>
-            <div className={styles.logoIcon}>
-              <TrendingUp size={18} />
+          {/* Logo Section */}
+          <div className={styles.logoGroup}>
+            <div className={styles.logo}>
+              <div className={styles.logoIcon}>
+                <TrendingUp size={18} />
+              </div>
+              <span className={styles.logoText}>InvestMap</span>
             </div>
-            <span className={styles.logoText}>InvestMap</span>
           </div>
 
-          {/* Desktop Tabs */}
-          <div className={styles.tabs}>
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                id={`nav-${tab.id}`}
-                className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
-                onClick={() => onTabChange(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          <div className={styles.right}>
-            {/* Desktop Actions */}
-            <div className={styles.dataActions}>
-              <button
-                className={styles.iconBtn}
-                onClick={toggleTheme}
-                title={theme === 'dark' ? "Mudar para tema claro" : "Mudar para tema escuro"}
-              >
-                {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-                <span className={styles.iconBtnLabel}>Tema</span>
-              </button>
-              <div className={styles.divider} style={{ width: 1, height: 16, background: 'var(--color-border)', margin: '0 4px' }} />
-              <button
-                id="export-data-btn"
-                className={styles.iconBtn}
-                onClick={handleExport}
-                title="Exportar dados (backup JSON)"
-              >
-                <Download size={15} />
-                <span className={styles.iconBtnLabel}>Exportar</span>
-              </button>
-              <button
-                id="import-data-btn"
-                className={styles.iconBtn}
-                onClick={() => importRef.current?.click()}
-                title="Importar dados (backup JSON)"
-              >
-                <Upload size={15} />
-                <span className={styles.iconBtnLabel}>Importar</span>
-              </button>
-              <input
-                ref={importRef}
-                type="file"
-                accept=".json"
-                style={{ display: 'none' }}
-                onChange={handleImportFile}
-              />
-              <div className={styles.divider} style={{ width: 1, height: 16, background: 'var(--color-border)', margin: '0 4px' }} />
-              <button
-                className={`${styles.iconBtn} ${activeTab === 'profile' ? styles.iconBtnActive : ''}`}
-                onClick={() => onTabChange?.('profile')}
-                title="Meu Perfil"
-              >
-                <User size={15} />
-                <span className={styles.iconBtnLabel}>Perfil</span>
-              </button>
-              <button
-                className={styles.iconBtn}
-                onClick={async () => {
-                  if(confirm('Tem certeza que deseja sair?')) {
-                    await signOut();
-                  }
-                }}
-                title="Sair da conta"
-              >
-                <LogOut size={15} />
-                <span className={styles.iconBtnLabel}>Sair</span>
-              </button>
+          {/* Center Section: Tabs (Desktop) + Strategy Switcher */}
+          <div className={styles.centerGroup}>
+            <div className={styles.tabs}>
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  id={`nav-${tab.id}`}
+                  className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
+                  onClick={() => onTabChange(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
 
-            {/* Mobile Actions: Profile Menu Trigger */}
-            <button 
-              className={styles.mobileActionBtn}
-              onClick={() => setShowMobileMenu(!showMobileMenu)}
-              style={{ display: 'none' }}
-            >
-              {showMobileMenu ? <X size={20} /> : <Settings size={20} />}
-            </button>
-
-            {/* Strategy Info / Switcher */}
             <div className={styles.strategySwitcher}>
               {strategies.length > 1 ? (
                 <>
@@ -184,9 +116,9 @@ export default function Navbar({ activeTab, onTabChange }: {
                     onClick={() => setShowStrategies(!showStrategies)}
                   >
                     <BarChart3 size={16} style={{ color: 'var(--color-primary)' }} />
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2 }}>
-                      <span style={{ fontSize: '0.65rem', color: 'var(--color-text-dimmed)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Carteira Ativa</span>
-                      <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{activeStrategy?.name ?? 'Selecionar carteira'}</span>
+                    <div className={styles.strategyBtnContent}>
+                      <span className={styles.strategyLabel}>Carteira</span>
+                      <span className={styles.strategyName}>{activeStrategy?.name ?? 'Selecionar'}</span>
                     </div>
                     <ChevronDown size={14} className={showStrategies ? styles.chevronUp : ''} style={{ marginLeft: 4 }} />
                   </button>
@@ -209,61 +141,83 @@ export default function Navbar({ activeTab, onTabChange }: {
                   )}
                 </>
               ) : (
-                <div 
-                  className={styles.strategyBtn} 
-                  style={{ cursor: 'default', background: 'var(--color-surface)' }}
-                  title="Sua carteira de investimentos ativa"
-                >
+                <div className={styles.strategyBtn} style={{ cursor: 'default' }}>
                   <BarChart3 size={16} style={{ color: 'var(--color-primary)' }} />
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2 }}>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--color-text-dimmed)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Carteira Ativa</span>
-                    <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{activeStrategy?.name ?? 'Minha Carteira'}</span>
+                  <div className={styles.strategyBtnContent}>
+                    <span className={styles.strategyLabel}>Carteira</span>
+                    <span className={styles.strategyName}>{activeStrategy?.name ?? 'Minha Carteira'}</span>
                   </div>
                 </div>
               )}
             </div>
           </div>
+
+          {/* Right Section: Actions + Mobile Menu Toggle */}
+          <div className={styles.rightGroup}>
+            <div className={styles.dataActions}>
+              <button className={styles.iconBtn} onClick={toggleTheme}>
+                {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+                <span className={styles.iconBtnLabel}>Tema</span>
+              </button>
+              <button className={styles.iconBtn} onClick={handleExport}>
+                <Download size={15} />
+                <span className={styles.iconBtnLabel}>Backup</span>
+              </button>
+              <button className={styles.iconBtn} onClick={() => importRef.current?.click()}>
+                <Upload size={15} />
+                <span className={styles.iconBtnLabel}>Importar</span>
+              </button>
+              <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportFile} />
+              <button className={`${styles.iconBtn} ${activeTab === 'profile' ? styles.iconBtnActive : ''}`} onClick={() => onTabChange?.('profile')}>
+                <User size={15} />
+                <span className={styles.iconBtnLabel}>Perfil</span>
+              </button>
+              <button className={styles.iconBtn} onClick={async () => { if(confirm('Sair da conta?')) await signOut(); }}>
+                <LogOut size={15} />
+                <span className={styles.iconBtnLabel}>Sair</span>
+              </button>
+            </div>
+
+            <button className={styles.mobileActionBtn} onClick={() => setShowMobileMenu(!showMobileMenu)}>
+              {showMobileMenu ? <X size={20} /> : <Settings size={20} />}
+            </button>
+          </div>
         </div>
 
-        {/* Mobile Profile Menu Overlay/Dropdown */}
+        {/* Mobile Menu Dropdown */}
         {showMobileMenu && (
           <div className={styles.mobileMenuOverlay} onClick={() => setShowMobileMenu(false)}>
             <div className={styles.mobileMenu} onClick={(e) => e.stopPropagation()}>
-              <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)', marginBottom: 8 }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-dimmed)', textTransform: 'uppercase' }}>Preferências</span>
-              </div>
+              <div className={styles.mobileMenuHeader}>Preferências</div>
               <button className={styles.strategyItem} onClick={() => { toggleTheme(); setShowMobileMenu(false); }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div className={styles.menuItemInner}>
                   {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                   <span>Tema {theme === 'dark' ? 'Claro' : 'Escuro'}</span>
                 </div>
               </button>
               <button className={styles.strategyItem} onClick={() => { handleExport(); setShowMobileMenu(false); }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div className={styles.menuItemInner}>
                   <Download size={18} />
                   <span>Exportar Backup (JSON)</span>
                 </div>
               </button>
               <button className={styles.strategyItem} onClick={() => { importRef.current?.click(); setShowMobileMenu(false); }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div className={styles.menuItemInner}>
                   <Upload size={18} />
                   <span>Importar Backup (JSON)</span>
                 </div>
               </button>
               <button className={styles.strategyItem} onClick={() => { onTabChange?.('profile'); setShowMobileMenu(false); }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div className={styles.menuItemInner}>
                   <User size={18} />
                   <span>Meu Perfil</span>
                 </div>
               </button>
-              <div style={{ margin: '8px 0', borderTop: '1px solid var(--color-border)' }} />
+              <div className={styles.menuDivider} />
               <button className={styles.strategyItem} style={{ color: '#ff4444' }} onClick={async () => {
-                if(confirm('Tem certeza que deseja sair?')) {
-                  await signOut();
-                  setShowMobileMenu(false);
-                }
+                if(confirm('Tem certeza que deseja sair?')) { await signOut(); setShowMobileMenu(false); }
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div className={styles.menuItemInner}>
                   <LogOut size={18} />
                   <span>Sair da Conta</span>
                 </div>
@@ -273,26 +227,16 @@ export default function Navbar({ activeTab, onTabChange }: {
         )}
       </nav>
 
-      {/* Bottom Tab Bar (Mobile) */}
       <div className={styles.mobileTabNav}>
-        <button 
-          className={`${styles.mobileTabItem} ${activeTab === 'dashboard' ? styles.mobileTabItemActive : ''}`}
-          onClick={() => onTabChange('dashboard')}
-        >
+        <button className={`${styles.mobileTabItem} ${activeTab === 'dashboard' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('dashboard')}>
           <LayoutDashboard className={styles.tabIcon} />
           <span>Dashboard</span>
         </button>
-        <button 
-          className={`${styles.mobileTabItem} ${activeTab === 'assets' ? styles.mobileTabItemActive : ''}`}
-          onClick={() => onTabChange('assets')}
-        >
+        <button className={`${styles.mobileTabItem} ${activeTab === 'assets' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('assets')}>
           <Briefcase className={styles.tabIcon} />
           <span>Ativos</span>
         </button>
-        <button 
-          className={`${styles.mobileTabItem} ${activeTab === 'strategy' ? styles.mobileTabItemActive : ''}`}
-          onClick={() => onTabChange('strategy')}
-        >
+        <button className={`${styles.mobileTabItem} ${activeTab === 'strategy' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('strategy')}>
           <Target className={styles.tabIcon} />
           <span>Estratégia</span>
         </button>
