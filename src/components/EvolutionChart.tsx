@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   AreaChart,
   Area,
@@ -9,11 +9,13 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { PortfolioSnapshot } from '@/types';
-import styles from './AiAnalysisCard.module.css'; // Usamos o mesmo design base de cards
+import styles from './EvolutionChart.module.css';
 
 interface EvolutionChartProps {
   snapshots: PortfolioSnapshot[];
 }
+
+type Period = '7D' | '1M' | '3M' | '6M' | '1Y' | 'ALL';
 
 // Formatação do Y Axis para R$ minificado
 const formatYAxis = (tickItem: number) => {
@@ -37,37 +39,35 @@ const formatDateStr = (dateStr: string) => {
   }
 };
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload as PortfolioSnapshot;
-    
-    // Calcula lucro/prejuízo exato do dia (snapshot)
     const profitLoss = data.totalValue - data.totalInvested;
     const isProfit = profitLoss >= 0;
 
     return (
       <div style={{
-        background: 'rgba(11, 11, 20, 0.95)',
-        border: '1px solid var(--color-border)',
-        borderRadius: 'var(--radius-md)',
-        padding: 'var(--space-3)',
-        boxShadow: 'var(--shadow-lg)',
+        background: 'rgba(255, 255, 255, 0.98)',
+        border: '1px solid #eef2f6',
+        borderRadius: '16px',
+        padding: '16px',
+        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
         backdropFilter: 'blur(10px)',
-        minWidth: '200px'
+        minWidth: '220px'
       }}>
-        <p style={{ color: 'var(--color-text-2)', fontSize: '0.8rem', marginBottom: 'var(--space-2)' }}>
+        <p style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {new Date(data.date).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: 'var(--color-text)', fontSize: '0.9rem' }}>Patrimônio:</span>
-            <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+            <span style={{ color: '#1e293b', fontSize: '0.9rem' }}>Patrimônio:</span>
+            <span style={{ fontWeight: 700, color: '#6366f1', fontSize: '1rem' }}>
               R$ {data.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: 'var(--color-text-2)', fontSize: '0.9rem' }}>Valor Aplicado:</span>
-            <span style={{ color: 'var(--color-text-2)' }}>
+            <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Valor Aplicado:</span>
+            <span style={{ color: '#64748b', fontWeight: 500 }}>
               R$ {data.totalInvested.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </span>
           </div>
@@ -77,10 +77,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
             alignItems: 'center',
             marginTop: '8px',
             paddingTop: '8px',
-            borderTop: '1px solid var(--color-border)'
+            borderTop: '1px solid #f1f5f9'
            }}>
-            <span style={{ color: 'var(--color-text)', fontSize: '0.9rem' }}>Rendimento:</span>
-            <span style={{ fontWeight: 600, color: isProfit ? 'var(--color-success)' : 'var(--color-danger)' }}>
+            <span style={{ color: '#1e293b', fontSize: '0.9rem', fontWeight: 600 }}>Rendimento:</span>
+            <span style={{ fontWeight: 700, color: isProfit ? '#22c55e' : '#ef4444' }}>
               {isProfit ? '+' : ''}R$ {profitLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </span>
           </div>
@@ -92,101 +92,132 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function EvolutionChart({ snapshots }: EvolutionChartProps) {
-  // Ordena cronologicamente os snapshots da estratégia
-  const sortedData = [...snapshots].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
+  const [period, setPeriod] = useState<Period>('ALL');
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Se não tem dado suficiente (ou está tudo zerado), mostra empty state
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const sortedData = useMemo(() => {
+    return [...snapshots].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [snapshots]);
+
+  const filteredData = useMemo(() => {
+    if (!isMounted) return [];
+    if (period === 'ALL') return sortedData;
+    
+    const cutoffDate = new Date();
+    if (period === '7D') cutoffDate.setDate(cutoffDate.getDate() - 7);
+    else if (period === '1M') cutoffDate.setMonth(cutoffDate.getMonth() - 1);
+    else if (period === '3M') cutoffDate.setMonth(cutoffDate.getMonth() - 3);
+    else if (period === '6M') cutoffDate.setMonth(cutoffDate.getMonth() - 6);
+    else if (period === '1Y') cutoffDate.setFullYear(cutoffDate.getFullYear() - 1);
+    
+    return sortedData.filter(d => new Date(d.date) >= cutoffDate);
+  }, [sortedData, period, isMounted]);
+
+  const performance = useMemo(() => {
+    if (filteredData.length < 2) return 0;
+    const startValue = filteredData[0].totalValue;
+    const endValue = filteredData[filteredData.length - 1].totalValue;
+    if (startValue === 0) return 0;
+    return ((endValue - startValue) / startValue) * 100;
+  }, [filteredData]);
+
+  if (!isMounted) return null;
+
   if (sortedData.length === 0 || sortedData.every(s => s.totalValue === 0)) {
     return (
-      <div className={styles.card} style={{ minHeight: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-        <h3 className={styles.title} style={{ marginBottom: '8px' }}>Evolução do Patrimônio</h3>
-        <p style={{ color: 'var(--color-text-2)', fontSize: '0.9rem', textAlign: 'center' }}>
-          O gráfico começará a exibir a evolução da sua carteira a partir dos próximos registros automáticos (snapshots).
+      <div className={styles.container} style={{ minHeight: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+        <h3 className={styles.title}>Evolução da Carteira</h3>
+        <p className={styles.subtitle} style={{ textAlign: 'center', marginTop: '12px' }}>
+          Seu crescimento será exibido aqui conforme você atualiza seu patrimônio.
         </p>
       </div>
     );
   }
 
-  // Verifica se o patrimônio está crescendo (última cota para renderizar SVG verde/vermelho)
-  const firstData = sortedData[0];
-  const lastData = sortedData[sortedData.length - 1];
-  
-  // Decisão visual: Cor do Patrimonio Atual.
-  // Pode ser 'Positivo' desde a origem, ou apenas considerar o verde primário da marca
-  const isHealthy = lastData.totalValue >= lastData.totalInvested;
-  
-  const strokeColor = isHealthy ? 'var(--color-primary-light)' : 'var(--color-danger)';
-  const fillColor = isHealthy ? 'var(--color-primary)' : 'var(--color-danger)';
+  const isPositive = performance >= 0;
 
   return (
-    <div className={styles.card}>
+    <div className={styles.container}>
       <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <div className={styles.iconWrapper} style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-            </svg>
-          </div>
-          <div>
+        <div className={styles.titleGroup}>
+          <div className={styles.titleRow}>
             <h3 className={styles.title}>Evolução da Carteira</h3>
-            <p className={styles.subtitle}>Crescimento do patrimônio ao longo do tempo</p>
+            {filteredData.length > 1 && (
+              <div className={`${styles.performanceBadge} ${isPositive ? styles.performancePositive : styles.performanceNegative}`}>
+                {isPositive ? '↑' : '↓'} {Math.abs(performance).toFixed(2)}%
+              </div>
+            )}
           </div>
+          <p className={styles.subtitle}>Crescimento do patrimônio ao longo do tempo</p>
+        </div>
+
+        <div className={styles.periodSelector}>
+          {(['7D', '1M', '6M', '1Y', 'ALL'] as Period[]).map((p) => (
+            <button
+              key={p}
+              className={`${styles.periodButton} ${period === p ? styles.periodButtonActive : ''}`}
+              onClick={() => setPeriod(p)}
+            >
+              {p === 'ALL' ? 'Tudo' : p}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div style={{ width: '100%', height: 320, marginTop: 'var(--space-6)' }}>
-        <ResponsiveContainer>
-          <AreaChart
-            data={sortedData}
-            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-          >
+      <div className={styles.chartContainer}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={filteredData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
-              <linearGradient id="colorCurrent" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={fillColor} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={fillColor} stopOpacity={0} />
+              <linearGradient id="colorEvolution" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.03)" vertical={false} />
             <XAxis 
               dataKey="date" 
               axisLine={false} 
               tickLine={false} 
-              tick={{ fill: 'var(--color-text-2)', fontSize: 12 }}
+              tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }}
               tickFormatter={formatDateStr}
               dy={10}
             />
             <YAxis 
               axisLine={false} 
               tickLine={false} 
-              tick={{ fill: 'var(--color-text-2)', fontSize: 12 }}
+              tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }}
               tickFormatter={formatYAxis}
-              width={65}
+              width={75}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--color-border)', strokeWidth: 1, strokeDasharray: '4 4' }} />
+            <Tooltip 
+              content={<CustomTooltip />} 
+              cursor={{ stroke: '#6366f1', strokeWidth: 2, strokeDasharray: '5 5' }}
+            />
             
-            {/* Linha do Valor Aplicado (Base) */}
             <Area 
               type="monotone" 
               dataKey="totalInvested" 
-              stroke="var(--color-text-2)" 
-              strokeWidth={2}
-              strokeDasharray="4 4"
+              stroke="#cbd5e1" 
+              strokeWidth={1.5}
+              strokeDasharray="6 6"
               fill="transparent" 
-              name="Valor Aplicado"
+              name="Investimento"
+              activeDot={false}
             />
 
-            {/* Linha do Patrimônio Atual */}
             <Area 
               type="monotone" 
               dataKey="totalValue" 
-              stroke={strokeColor} 
-              strokeWidth={3}
+              stroke="#6366f1" 
+              strokeWidth={4}
               fillOpacity={1} 
-              fill="url(#colorCurrent)" 
+              fill="url(#colorEvolution)" 
               name="Patrimônio"
-              activeDot={{ r: 6, strokeWidth: 0, fill: strokeColor }}
+              activeDot={{ r: 8, strokeWidth: 0, fill: '#6366f1', filter: 'drop-shadow(0 0 8px rgba(99, 102, 241, 0.5))' }}
             />
           </AreaChart>
         </ResponsiveContainer>
