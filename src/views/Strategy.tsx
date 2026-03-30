@@ -31,9 +31,9 @@ export default function Strategy() {
   // Sincroniza campos locais quando a estratégia ativa muda (evita mostrar dados da carteira anterior)
   useEffect(() => {
     if (activeStrategy) {
-      setStratName(activeStrategy.name);
-      setStratDesc(activeStrategy.description);
-      setTolerance(activeStrategy.deviationTolerance);
+      setStratName(activeStrategy.name ?? '');
+      setStratDesc(activeStrategy.description ?? '');
+      setTolerance(activeStrategy.deviationTolerance ?? 3);
     }
   }, [activeStrategy?.id]);
 
