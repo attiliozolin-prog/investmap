@@ -22,17 +22,45 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
   const [currentValue, setCurrentValue] = useState('');
   const [error, setError] = useState('');
 
+  const uniqueClasses = Array.from(new Set(categories.map((c) => c.className)));
+  const [selectedClass, setSelectedClass] = useState<string>('');
+
   useEffect(() => {
     if (asset) {
       setTicker(asset.ticker);
       setInfo(asset.info);
       setCategoryId(asset.categoryId);
+      
+      const matchedCat = categories.find(c => c.id === asset.categoryId);
+      if (matchedCat) {
+        setSelectedClass(matchedCat.className);
+      }
+      
       setInvestedValue(asset.investedValue.toFixed(2).replace('.', ','));
       setCurrentValue(asset.currentValue.toFixed(2).replace('.', ','));
     } else if (categories.length > 0) {
-      setCategoryId(categories[0].id);
+      const initialClass = uniqueClasses.length > 0 ? uniqueClasses[0] : '';
+      setSelectedClass(initialClass);
+      
+      const initialSubclasses = categories.filter(c => c.className === initialClass);
+      if (initialSubclasses.length > 0) {
+        setCategoryId(initialSubclasses[0].id);
+      }
     }
   }, [asset, categories]);
+
+  const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newClass = e.target.value;
+    setSelectedClass(newClass);
+    const availableSubclasses = categories.filter(c => c.className === newClass);
+    if (availableSubclasses.length > 0) {
+      setCategoryId(availableSubclasses[0].id);
+    } else {
+      setCategoryId('');
+    }
+  };
+
+  const filteredSubclasses = categories.filter((c) => c.className === selectedClass);
 
   const parseNum = (v: string) => parseFloat(v.replace(',', '.'));
 
@@ -94,26 +122,41 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
             />
           </div>
 
-          <div className="form-group">
-            <label className="label" htmlFor="asset-category">Subclasse *</label>
-            <select
-              id="asset-category"
-              className={`input ${styles.selectInput}`}
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-            >
-              {/* Se o asset tiver um categoryId que sumiu, mostramos uma opção disabled pra ele saber */}
-              {asset && !categories.some(c => c.id === categoryId) && (
-                <option value={categoryId} disabled>
-                  Não Categorizado (Escolha uma opção válida abaixo)
-                </option>
-              )}
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.className} · {cat.subclassName}
-                </option>
-              ))}
-            </select>
+          <div className={styles.twoCol}>
+            <div className="form-group">
+              <label className="label" htmlFor="asset-class">Classe *</label>
+              <select
+                id="asset-class"
+                className={`input ${styles.selectInput}`}
+                value={selectedClass}
+                onChange={handleClassChange}
+              >
+                {uniqueClasses.map((cls) => (
+                  <option key={cls} value={cls}>{cls}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="label" htmlFor="asset-category">Subclasse *</label>
+              <select
+                id="asset-category"
+                className={`input ${styles.selectInput}`}
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+              >
+                {asset && !categories.some(c => c.id === categoryId) && (
+                  <option value={categoryId} disabled>
+                    (Categoria Órfã)
+                  </option>
+                )}
+                {filteredSubclasses.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.subclassName} (Meta: {cat.targetPercent.toFixed(2)}%)
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className={styles.twoCol}>

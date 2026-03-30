@@ -69,9 +69,12 @@ export function calculatePortfolio(
       const currentPortfolioPercent =
         totalValue > 0 ? (asset.currentValue / totalValue) * 100 : 0;
       const targetPercent = category.targetPercent;
-      const diffPercent = currentPortfolioPercent - targetPercent;
+      const siblingCount = assets.filter(a => a.categoryId === asset.categoryId).length;
+      const assetTargetPercent = siblingCount > 0 ? targetPercent / siblingCount : targetPercent;
+      
+      const diffPercent = currentPortfolioPercent - assetTargetPercent;
 
-      const targetValue = (totalValue * targetPercent) / 100;
+      const targetValue = (totalValue * assetTargetPercent) / 100;
       const rebalanceAmount = targetValue - asset.currentValue;
 
       let action: 'buy' | 'sell' | 'ok' = 'ok';
@@ -87,6 +90,7 @@ export function calculatePortfolio(
         profitLossPercent,
         currentPortfolioPercent,
         targetPercent,
+        assetTargetPercent,
         diffPercent,
         rebalanceAmount,
         action,

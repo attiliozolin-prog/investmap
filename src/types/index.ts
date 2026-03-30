@@ -62,7 +62,8 @@ export interface AssetWithCalcs extends Asset {
   profitLoss: number;
   profitLossPercent: number;
   currentPortfolioPercent: number;
-  targetPercent: number;
+  targetPercent: number;      // Meta da subclasse
+  assetTargetPercent: number; // Meta individual (Subclasse / Qtd Ativos)
   diffPercent: number;
   rebalanceAmount: number;    // positivo = comprar, negativo = vender
   action: 'buy' | 'sell' | 'ok';

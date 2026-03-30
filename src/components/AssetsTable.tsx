@@ -58,24 +58,24 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
   const [transactionAssetId, setTransactionAssetId] = useState<string | null>(null);
 
   // Group and reorder logic
-  const [subclassOrder, setSubclassOrder] = useState<string[]>([]);
-  const [draggedSubclass, setDraggedSubclass] = useState<string | null>(null);
+  const [classOrder, setClassOrder] = useState<string[]>([]);
+  const [draggedClass, setDraggedClass] = useState<string | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('investmap_subclass_order');
+    const saved = localStorage.getItem('investmap_class_order');
     if (saved) {
       try {
-        setSubclassOrder(JSON.parse(saved));
+        setClassOrder(JSON.parse(saved));
       } catch (e) {
-        console.error('Failed to parse saved subclass order', e);
+        console.error('Failed to parse saved class order', e);
       }
     }
   }, []);
 
   const groupedAssets = useMemo(() => {
     const map = new Map<string, {
-      subclassName: string;
-      targetPercent: number;
+      className: string;
+      subclassTargets: Map<string, number>;
       assets: AssetWithCalcs[];
       totalInvestedValue: number;
       totalValue: number;
@@ -85,11 +85,11 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
     }>();
 
     assets.forEach((a) => {
-      const subclass = a.category.subclassName;
-      if (!map.has(subclass)) {
-        map.set(subclass, {
-          subclassName: subclass,
-          targetPercent: a.targetPercent,
+      const cls = a.category.className;
+      if (!map.has(cls)) {
+        map.set(cls, {
+          className: cls,
+          subclassTargets: new Map(),
           assets: [],
           totalInvestedValue: 0,
           totalValue: 0,
@@ -98,41 +98,48 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
           groupAction: 'ok',
         });
       }
-      const g = map.get(subclass)!;
+      const g = map.get(cls)!;
       g.assets.push(a);
+      g.subclassTargets.set(a.category.id, a.category.targetPercent);
       g.totalInvestedValue += a.investedValue;
       g.totalValue += a.currentValue;
       g.totalPercent += a.currentPortfolioPercent;
       g.totalRebalance += a.rebalanceAmount;
     });
 
-    // Determina ação do grupo pelo saldo de rebalanceamento
     map.forEach((g) => {
       if (g.totalRebalance > 10) g.groupAction = 'buy';
       else if (g.totalRebalance < -10) g.groupAction = 'sell';
       else g.groupAction = 'ok';
     });
 
-    return Array.from(map.values());
+    return Array.from(map.values()).map(g => {
+      let totalTargetPercent = 0;
+      g.subclassTargets.forEach(val => totalTargetPercent += val);
+      return {
+        ...g,
+        targetPercent: totalTargetPercent,
+      }
+    });
   }, [assets]);
 
   const orderedGroups = useMemo(() => {
-    if (subclassOrder.length === 0) return groupedAssets;
+    if (classOrder.length === 0) return groupedAssets;
     return [...groupedAssets].sort((a, b) => {
-      const idxA = subclassOrder.indexOf(a.subclassName);
-      const idxB = subclassOrder.indexOf(b.subclassName);
+      const idxA = classOrder.indexOf(a.className);
+      const idxB = classOrder.indexOf(b.className);
       if (idxA === -1 && idxB === -1) return 0;
       if (idxA === -1) return 1;
       if (idxB === -1) return -1;
       return idxA - idxB;
     });
-  }, [groupedAssets, subclassOrder]);
+  }, [groupedAssets, classOrder]);
 
   // Drag and Drop Handlers
-  const handleDragStart = (e: React.DragEvent, subclassName: string) => {
-    setDraggedSubclass(subclassName);
+  const handleDragStart = (e: React.DragEvent, className: string) => {
+    setDraggedClass(className);
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', subclassName);
+    e.dataTransfer.setData('text/plain', className);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -140,28 +147,28 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDrop = (e: React.DragEvent, targetSubclassName: string) => {
+  const handleDrop = (e: React.DragEvent, targetClassName: string) => {
     e.preventDefault();
-    if (!draggedSubclass || draggedSubclass === targetSubclassName) {
-      setDraggedSubclass(null);
+    if (!draggedClass || draggedClass === targetClassName) {
+      setDraggedClass(null);
       return;
     }
 
-    const currentOrder = subclassOrder.length > 0 ? subclassOrder : groupedAssets.map(g => g.subclassName);
+    const currentOrder = classOrder.length > 0 ? classOrder : groupedAssets.map(g => g.className);
     const newOrder = [...currentOrder];
 
-    if (!newOrder.includes(draggedSubclass)) newOrder.push(draggedSubclass);
-    if (!newOrder.includes(targetSubclassName)) newOrder.push(targetSubclassName);
+    if (!newOrder.includes(draggedClass)) newOrder.push(draggedClass);
+    if (!newOrder.includes(targetClassName)) newOrder.push(targetClassName);
 
-    const oldIndex = newOrder.indexOf(draggedSubclass);
+    const oldIndex = newOrder.indexOf(draggedClass);
     newOrder.splice(oldIndex, 1);
 
-    const newIndex = newOrder.indexOf(targetSubclassName);
-    newOrder.splice(newIndex, 0, draggedSubclass);
+    const newIndex = newOrder.indexOf(targetClassName);
+    newOrder.splice(newIndex, 0, draggedClass);
 
-    setSubclassOrder(newOrder);
-    localStorage.setItem('investmap_subclass_order', JSON.stringify(newOrder));
-    setDraggedSubclass(null);
+    setClassOrder(newOrder);
+    localStorage.setItem('investmap_class_order', JSON.stringify(newOrder));
+    setDraggedClass(null);
   };
 
   const startEditValue = (asset: AssetWithCalcs) => {
@@ -243,15 +250,15 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
           </thead>
           <tbody>
             {orderedGroups.map((group) => (
-              <React.Fragment key={group.subclassName}>
-                {/* Cabeçalho do Grupo (Subclasse) — com métricas agregadas */}
+              <React.Fragment key={group.className}>
+                {/* Cabeçalho do Grupo (Classe) — com métricas agregadas */}
                 <tr
                   className={styles.groupHeader}
                   draggable
-                  onDragStart={(e) => handleDragStart(e, group.subclassName)}
+                  onDragStart={(e) => handleDragStart(e, group.className)}
                   onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, group.subclassName)}
-                  onDragEnd={() => setDraggedSubclass(null)}
+                  onDrop={(e) => handleDrop(e, group.className)}
+                  onDragEnd={() => setDraggedClass(null)}
                 >
                   {/* Nome do grupo — colspan 2 (Ativo + Investido) */}
                   <td colSpan={2}>
@@ -259,7 +266,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                       <span title="Arraste para reordenar os grupos" aria-label="Arraste para reordenar os grupos">
                         <GripVertical size={16} className={styles.dragIcon} />
                       </span>
-                      <span className={styles.groupHeaderTitle}>{group.subclassName}</span>
+                      <span className={styles.groupHeaderTitle}>{group.className}</span>
                     </div>
                   </td>
 
@@ -309,6 +316,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                       <div className={styles.tickerCell}>
                         <span className={styles.ticker}>{asset.ticker}</span>
                         {asset.info && <span className={styles.info}>{asset.info}</span>}
+                        <span className={styles.subclassBadge}>{asset.category.subclassName}</span>
                       </div>
                     </td>
 
@@ -356,9 +364,9 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                       </div>
                     </td>
 
-                    {/* % Alvo — vazio no ativo (pertence ao grupo) */}
+                    {/* % Alvo do Ativo (baseado na divisão ou valor explícito) */}
                     <td className={`${styles.right} ${styles.muted}`}>
-                      <span style={{ opacity: 0.3 }}>&mdash;</span>
+                      <span>{formatPercentAbs(asset.assetTargetPercent)}</span>
                     </td>
 
                     {/* % Carteira */}
