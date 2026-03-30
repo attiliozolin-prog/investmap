@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Asset, StrategyCategory } from '@/types';
 import styles from './AssetModal.module.css';
 import { X } from 'lucide-react';
@@ -21,6 +21,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
   const [investedValue, setInvestedValue] = useState('');
   const [currentValue, setCurrentValue] = useState('');
   const [error, setError] = useState('');
+  const currentInputRef = useRef<HTMLInputElement>(null);
 
   const uniqueClasses = Array.from(new Set(categories.map((c) => c.className)));
   const [selectedClass, setSelectedClass] = useState<string>('');
@@ -38,6 +39,14 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
       
       setInvestedValue(asset.investedValue.toFixed(2).replace('.', ','));
       setCurrentValue(asset.currentValue.toFixed(2).replace('.', ','));
+
+      // Auto-foco inteligente ao editar
+      setTimeout(() => {
+        if (currentInputRef.current) {
+          currentInputRef.current.focus();
+          currentInputRef.current.select();
+        }
+      }, 100);
     } else if (categories.length > 0) {
       const initialClass = uniqueClasses.length > 0 ? uniqueClasses[0] : '';
       setSelectedClass(initialClass);
@@ -175,6 +184,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
               <label className="label" htmlFor="asset-current">Valor Atual (R$) *</label>
               <input
                 id="asset-current"
+                ref={currentInputRef}
                 className="input"
                 placeholder="0,00"
                 value={currentValue}
