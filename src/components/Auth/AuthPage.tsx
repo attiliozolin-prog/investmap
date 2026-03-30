@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { TrendingUp } from 'lucide-react';
+import { TrendingUp, Eye, EyeOff } from 'lucide-react';
 import styles from './AuthPage.module.css';
 
 type Mode = 'login' | 'signup' | 'forgot-password';
