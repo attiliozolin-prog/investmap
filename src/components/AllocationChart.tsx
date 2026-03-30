@@ -10,7 +10,7 @@ import {
 } from 'recharts';
 import { CHART_COLORS, formatCurrency, formatPercentAbs } from '@/lib/calculations';
 import styles from './AllocationChart.module.css';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 interface Props {
   summary: PortfolioSummary;
@@ -42,6 +42,11 @@ const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] 
 
 export default function AllocationChart({ summary }: Props) {
   const { categorySummaries, assetsWithCalcs, totalValue } = summary;
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Agrupamento por Classe (Renda Fixa, Variável, Cripto)
   const classGroups = useMemo(() => {
@@ -110,18 +115,18 @@ export default function AllocationChart({ summary }: Props) {
         </div>
 
         <div className={styles.macroContent}>
-          <div className={styles.macroChartSide}>
-            <ResponsiveContainer width="100%" height={220}>
+          {isMounted && (
+            <ResponsiveContainer key={`macro-${classGroups.length}`} width="100%" height={220}>
               <PieChart>
                 <Pie
                   data={macroData}
                   cx="50%" cy="50%"
                   outerRadius={90} innerRadius={65}
                   dataKey="value" strokeWidth={0}
-                  isAnimationActive={false} // Desativa animação que às vezes trava no mobile
+                  isAnimationActive={true}
                 >
                   {macroData.map((entry, index) => (
-                    <Cell key={index} fill={entry.color} />
+                    <Cell key={`macro-cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
                 <Pie
@@ -130,16 +135,16 @@ export default function AllocationChart({ summary }: Props) {
                   outerRadius={60} innerRadius={45}
                   dataKey="value" strokeWidth={0}
                   opacity={0.3}
-                  isAnimationActive={false}
+                  isAnimationActive={true}
                 >
                   {macroTargetData.map((entry, index) => (
-                    <Cell key={index} fill={entry.color} />
+                    <Cell key={`macro-target-cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip content={<CustomTooltip />} />
               </PieChart>
             </ResponsiveContainer>
-          </div>
+          )}
 
           <div className={styles.macroLegendSide}>
             {macroData.map((d, i) => (
@@ -177,21 +182,23 @@ export default function AllocationChart({ summary }: Props) {
               </div>
 
               <div className={styles.microChartSection}>
-                <ResponsiveContainer width="100%" height={140}>
-                  <PieChart>
-                    <Pie
-                      data={assetData}
-                      cx="50%" cy="50%"
-                      outerRadius={60} innerRadius={40}
-                      dataKey="value" strokeWidth={0}
-                    >
-                      {assetData.map((entry, index) => (
-                        <Cell key={index} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
+                {isMounted && (
+                  <ResponsiveContainer key={`micro-${group.name}`} width="100%" height={140}>
+                    <PieChart>
+                      <Pie
+                        data={assetData}
+                        cx="50%" cy="50%"
+                        outerRadius={60} innerRadius={40}
+                        dataKey="value" strokeWidth={0}
+                      >
+                        {assetData.map((entry, index) => (
+                          <Cell key={`micro-cell-${group.name}-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
                 
                 <div className={styles.microBriefLegend}>
                   {assetData.slice(0, 4).map(a => (
