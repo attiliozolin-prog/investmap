@@ -159,14 +159,6 @@ export default function Navbar({ activeTab, onTabChange }: {
                 {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
                 <span className={styles.iconBtnLabel}>Tema</span>
               </button>
-              <button className={styles.iconBtn} onClick={handleExport}>
-                <Download size={15} />
-                <span className={styles.iconBtnLabel}>Backup</span>
-              </button>
-              <button className={styles.iconBtn} onClick={() => importRef.current?.click()}>
-                <Upload size={15} />
-                <span className={styles.iconBtnLabel}>Importar</span>
-              </button>
               <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportFile} />
               <button className={`${styles.iconBtn} ${activeTab === 'profile' ? styles.iconBtnActive : ''}`} onClick={() => onTabChange?.('profile')}>
                 <User size={15} />
