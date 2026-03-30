@@ -13,6 +13,7 @@ export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -111,34 +112,53 @@ export default function AuthPage() {
                   </button>
                 )}
               </div>
-              <input
-                id="auth-password"
-                type="password"
-                className={`input ${styles.input}`}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                minLength={6}
-              />
+              <div className={styles.passwordWrapper}>
+                <input
+                  id="auth-password"
+                  type={showPassword ? 'text' : 'password'}
+                  className={`input ${styles.input}`}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  className={styles.eyeBtn}
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
           )}
 
           {mode === 'signup' && (
             <div className={styles.field}>
               <label htmlFor="auth-confirm" className={styles.label}>Confirmar senha</label>
-              <input
-                id="auth-confirm"
-                type="password"
-                className={`input ${styles.input}`}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                autoComplete="new-password"
-                minLength={6}
-              />
+              <div className={styles.passwordWrapper}>
+                <input
+                  id="auth-confirm"
+                  type={showPassword ? 'text' : 'password'}
+                  className={`input ${styles.input}`}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  autoComplete="new-password"
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  className={styles.eyeBtn}
+                  onClick={() => setShowPassword(!showPassword)}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
           )}
 

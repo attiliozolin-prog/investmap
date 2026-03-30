@@ -214,7 +214,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } else {
       // Se logou → carrega o cache específico DESTE usuário primeiro
       const userId = user.id;
-      const storedOnboarding = loadFromStorage<boolean>('onboarding', true, userId);
+      const storedOnboarding = loadFromStorage<boolean>('onboarding', false, userId);
       const stored = loadFromStorage<Strategy[]>('strategies', [defaultStrategy], userId);
       const storedActive = loadFromStorage<string>('active', DEFAULT_STRATEGY_ID, userId);
       const storedAssets = loadFromStorage<Asset[]>('assets', [], userId);
