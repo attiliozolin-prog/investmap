@@ -16,6 +16,9 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   updateUser: (attributes: { password?: string; data?: { full_name?: string } }) => Promise<{ error: string | null }>;
+  requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
+  resendConfirmationEmail: (email: string) => Promise<{ error: string | null }>;
+  deleteAccountData: () => Promise<{ error: string | null }>;
 }
 
 // ============================================
@@ -67,8 +70,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error?.message ?? null };
   }, []);
 
+  const requestPasswordReset = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/`,
+    });
+    return { error: error?.message ?? null };
+  }, []);
+
+  const resendConfirmationEmail = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+    });
+    return { error: error?.message ?? null };
+  }, []);
+
+  const deleteAccountData = useCallback(async () => {
+    if (!user) return { error: 'Usuário não autenticado' };
+    const userId = user.id;
+
+    try {
+      // Deletar dados em ordem para evitar erros de FK
+      await supabase.from('portfolio_snapshots').delete().eq('user_id', userId);
+      await supabase.from('transactions').delete().eq('user_id', userId);
+      await supabase.from('assets').delete().eq('user_id', userId);
+      await supabase.from('strategy_categories').delete().eq('user_id', userId);
+      await supabase.from('strategies').delete().eq('user_id', userId);
+
+      await signOut();
+      return { error: null };
+    } catch (err: any) {
+      return { error: err.message || 'Erro ao deletar dados' };
+    }
+  }, [user, signOut]);
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut, updateUser }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      loading, 
+      signUp, 
+      signIn, 
+      signOut, 
+      updateUser,
+      requestPasswordReset,
+      resendConfirmationEmail,
+      deleteAccountData
+    }}>
       {children}
     </AuthContext.Provider>
   );

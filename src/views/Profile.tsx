@@ -187,6 +187,67 @@ export default function Profile() {
           </form>
         </div>
       </div>
+
+      <div className={styles.dangerZone}>
+        <div className={styles.dangerCard}>
+          <h3>Zona de Perigo</h3>
+          <p className={styles.helpText}>
+            A exclusão da conta removerá permanentemente todos os seus ativos, estratégias e histórico. Esta ação não pode ser desfeita.
+          </p>
+          <button 
+            className={styles.deleteBtn}
+            onClick={() => setShowDeleteModal(true)}
+          >
+            Excluir Minha Conta
+          </button>
+        </div>
+      </div>
+
+      {showDeleteModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modal}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
+              <AlertTriangle color="#EF4444" size={32} />
+              <h2 style={{ margin: 0 }}>Você tem certeza?</h2>
+            </div>
+            <p>
+              Ao confirmar, <strong>todos os seus dados do InvestMap serão apagados</strong>. 
+              Você perderá acesso às suas carteiras e histórico de ativos imediatamente.
+            </p>
+            
+            <div className={styles.fieldGroup} style={{ marginTop: '1.5rem' }}>
+              <label>Digite <strong>DELETAR</strong> para confirmar:</label>
+              <input 
+                type="text" 
+                className={styles.input}
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="DELETAR"
+              />
+            </div>
+
+            <div className={styles.modalActions}>
+              <button 
+                className={styles.cancelBtn}
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeleteConfirmText('');
+                }}
+              >
+                Cancelar
+              </button>
+              <button 
+                className={styles.deleteBtn}
+                disabled={deleteConfirmText !== 'DELETAR' || deleteLoading}
+                onClick={handleDeleteAccount}
+                style={{ marginTop: 0, flex: 1 }}
+              >
+                {deleteLoading ? 'Excluindo...' : 'Confirmar Exclusão'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
