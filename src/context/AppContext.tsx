@@ -704,15 +704,60 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     importData,
   ]);
 
+  const isActuallyReady = useMemo(() => {
+    if (!mounted) return false;
+    // Se o usuário está logado, só libera quando o banco estiver sincronizado
+    if (user && !dbSynced) return false;
+    return true;
+  }, [mounted, user, dbSynced]);
+
   return (
     <AppContext.Provider value={contextValue}>
       <div suppressHydrationWarning>
-        {mounted ? children : (
-          <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0B0B14' }}>
-            <div style={{ width: 32, height: 32, border: '2px solid #252538', borderTopColor: '#8B5CF6', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+        {isActuallyReady ? children : (
+          <div style={{ 
+            minHeight: '100vh', 
+            display: 'flex', 
+            flexDirection: 'column',
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            background: '#0B0B14',
+            gap: '24px'
+          }}>
+            <div style={{ 
+              width: 48, 
+              height: 48, 
+              border: '3px solid rgba(139, 92, 246, 0.1)', 
+              borderTopColor: '#8B5CF6', 
+              borderRadius: '50%', 
+              animation: 'spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite' 
+            }} />
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ 
+                color: '#8B5CF6', 
+                fontSize: '1.2rem', 
+                fontWeight: 600,
+                margin: '0 0 8px 0',
+                letterSpacing: '-0.02em'
+              }}>
+                InvestMap
+              </p>
+              <p style={{ 
+                color: '#64748B', 
+                fontSize: '0.9rem',
+                margin: 0
+              }}>
+                {user ? 'Sincronizando sua carteira...' : 'Carregando preferências...'}
+              </p>
+            </div>
           </div>
         )}
       </div>
+      <style jsx global>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </AppContext.Provider>
   );
 }
