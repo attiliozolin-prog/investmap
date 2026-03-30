@@ -108,6 +108,9 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
     });
 
     map.forEach((g) => {
+      // Ordena os ativos dentro do grupo por Ticker (alfabético)
+      g.assets.sort((a, b) => a.ticker.localeCompare(b.ticker));
+
       if (g.totalRebalance > 10) g.groupAction = 'buy';
       else if (g.totalRebalance < -10) g.groupAction = 'sell';
       else g.groupAction = 'ok';
@@ -124,7 +127,10 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
   }, [assets]);
 
   const orderedGroups = useMemo(() => {
-    if (classOrder.length === 0) return groupedAssets;
+    if (classOrder.length === 0) {
+      // Ordenação padrão: Alfabética por Subclasse
+      return [...groupedAssets].sort((a, b) => a.className.localeCompare(b.className));
+    }
     return [...groupedAssets].sort((a, b) => {
       const idxA = classOrder.indexOf(a.className);
       const idxB = classOrder.indexOf(b.className);
