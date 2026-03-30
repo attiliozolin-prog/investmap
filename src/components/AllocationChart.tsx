@@ -43,9 +43,14 @@ const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] 
 export default function AllocationChart({ summary }: Props) {
   const { categorySummaries, assetsWithCalcs, totalValue } = summary;
   const [isMounted, setIsMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   // Agrupamento por Classe (Renda Fixa, Variável, Cripto)
@@ -117,12 +122,12 @@ export default function AllocationChart({ summary }: Props) {
         <div className={styles.macroContent}>
           <div className={styles.macroChartSide}>
             {isMounted && (
-              <ResponsiveContainer key={`macro-${classGroups.length}`} width="100%" height={220}>
-                <PieChart>
+              <div style={{ width: '100%', height: 220, display: 'flex', justifyContent: 'center' }}>
+                <PieChart width={isMobile ? 300 : 320} height={220}>
                   <Pie
                     data={macroData}
                     cx="50%" cy="50%"
-                    outerRadius={90} innerRadius={65}
+                    outerRadius={isMobile ? 85 : 90} innerRadius={isMobile ? 60 : 65}
                     dataKey="value" strokeWidth={0}
                     isAnimationActive={true}
                   >
@@ -133,7 +138,7 @@ export default function AllocationChart({ summary }: Props) {
                   <Pie
                     data={macroTargetData}
                     cx="50%" cy="50%"
-                    outerRadius={60} innerRadius={45}
+                    outerRadius={isMobile ? 55 : 60} innerRadius={isMobile ? 40 : 45}
                     dataKey="value" strokeWidth={0}
                     opacity={0.3}
                     isAnimationActive={true}
@@ -144,7 +149,7 @@ export default function AllocationChart({ summary }: Props) {
                   </Pie>
                   <Tooltip content={<CustomTooltip />} />
                 </PieChart>
-              </ResponsiveContainer>
+              </div>
             )}
           </div>
 
