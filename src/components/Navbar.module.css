@@ -153,12 +153,124 @@
 }
 
 @media (max-width: 640px) {
+  .nav {
+    height: 56px;
+  }
+  .inner {
+    height: 56px;
+    padding: 0 var(--space-4);
+    justify-content: space-between;
+    gap: 0;
+  }
   .logoText { display: none; }
-  .tabs { gap: 0; }
-  .tab { padding: var(--space-2) var(--space-3); font-size: 0.8125rem; }
-  .strategySwitcher { display: none; }
-  .iconBtnLabel { display: none; }
+  .tabs { display: none; } /* Esconde abas do topo no mobile */
+  .strategySwitcher { 
+    max-width: 140px;
+  }
+  .strategyBtn {
+    padding: var(--space-1) var(--space-3);
+    font-size: 0.75rem;
+  }
+  .strategyBtn div {
+    display: none !important; /* Esconde texto "Carteira Ativa" no mobile */
+  }
+  .strategyBtn span {
+    display: block !important;
+    font-weight: 600;
+  }
+  .dataActions { display: none; } /* Esconde ações no mobile para mover para o menu */
+  .mobileActionBtn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+  }
 }
+
+/* Tab Bar Inferior (Mobile Only) */
+.mobileTabNav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  z-index: 1000;
+  padding: 8px 16px;
+  padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 640px) {
+  .mobileTabNav {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+  }
+}
+
+.mobileTabItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-dimmed);
+  font-size: 0.7rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: 60px;
+}
+
+.mobileTabItemActive {
+  color: var(--color-primary);
+}
+
+.mobileTabItemActive .tabIcon {
+  color: var(--color-primary);
+}
+
+.tabIcon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Novo Menu Flutuante de Perfil (Mobile) */
+.mobileMenuOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1100;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+
+.mobileMenu {
+  position: absolute;
+  top: 64px;
+  right: 16px;
+  width: 240px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2);
+  box-shadow: var(--shadow-xl);
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideDown { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
 /* Right group */
 .right {

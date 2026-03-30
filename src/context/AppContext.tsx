@@ -250,7 +250,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const firstId = appStrategies[0].id;
 
         setStrategies(appStrategies);
-        setActiveStrategyId(loadFromStorage<string>('investmap_active', firstId));
+        
+        // Prioriza a estratégia com updatedAt mais recente do Banco de Dados
+        const sortedStrats = [...appStrategies].sort((a,b) => 
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+        const mostRecentId = sortedStrats[0]?.id || firstId;
+
+        setActiveStrategyId(mostRecentId);
         setAssets(appAssets);
         setTransactions(appTransactions);
         setSnapshots(appSnapshots);
@@ -433,7 +440,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
-  const setActiveStrategy = useCallback((id: string) => { setActiveStrategyId(id); }, []);
+  const setActiveStrategy = useCallback((id: string) => { 
+    setActiveStrategyId(id); 
+    if (user) {
+      // Atualiza o updatedAt no banco para marcar como a "última usada"
+      supabase.from('strategies')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .then(({ error }) => { if (error) console.error('Erro ao salvar carteira ativa:', error); });
+    }
+  }, [user]);
 
   // ============================================
   // Category CRUD

@@ -135,9 +135,16 @@ p  { color: var(--color-text-2); }
 
 /* --- Utilities --- */
 .container {
+  width: 100%;
   max-width: 1280px;
   margin: 0 auto;
-  padding: 0 var(--space-6);
+  padding: 0 var(--space-4);
+}
+
+@media (max-width: 640px) {
+  body {
+    padding-bottom: 80px; /* Espaço para a Tab Bar inferior não cobrir o conteúdo */
+  }
 }
 
 .card {
