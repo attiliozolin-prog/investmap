@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { AssetWithCalcs } from '@/types';
 import { formatCurrency, formatPercent, formatPercentAbs } from '@/lib/calculations';
 import styles from './AssetsTable.module.css';
-import { Pencil, Trash2, ArrowUp, ArrowDown, Minus, RefreshCw, AlertCircle, PlusCircle, GripVertical } from 'lucide-react';
+import { Pencil, Trash2, ArrowUp, ArrowDown, Minus, RefreshCw, AlertCircle, PlusCircle, GripVertical, Info } from 'lucide-react';
 import TransactionModal from './TransactionModal';
 
 interface Props {
@@ -366,7 +366,14 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
 
                     {/* % Alvo do Ativo (baseado na divisão ou valor explícito) */}
                     <td className={`${styles.right} ${styles.muted}`}>
-                      <span>{formatPercentAbs(asset.assetTargetPercent)}</span>
+                      <div className={styles.targetCell}>
+                        <span title="Meta individual deste ativo">{formatPercentAbs(asset.assetTargetPercent)}</span>
+                        {Math.abs(asset.assetTargetPercent - asset.targetPercent) > 0.01 && (
+                          <span className={styles.targetInfo} title={`Meta total da subclasse: ${asset.targetPercent}%`}>
+                            <Info size={10} />
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* % Carteira */}

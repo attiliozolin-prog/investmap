@@ -73,12 +73,17 @@
 }
 
 :root[data-theme='light'] {
-  /* Colors for light theme */
+  --color-text: #111111;
+  --color-text-dimmed: #4b5563;
+  --color-border: #e2e8f0;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f8fafc;
+  --color-surface-active: #f1f5f9;
+  --color-card-bg: #ffffff;
+  --header-bg: rgba(255, 255, 255, 0.82);
   --color-bg: #F3F4F6;
-  --color-surface: #FFFFFF;
   --color-surface-2: #F9FAFB;
   --color-surface-3: #E5E7EB;
-  --color-border: rgba(0, 0, 0, 0.1);
   --color-border-hover: rgba(0, 0, 0, 0.2);
 
   --color-primary: #7C3AED;
@@ -95,7 +100,6 @@
   --color-neutral: #4B5563;
   --color-neutral-bg: rgba(75, 85, 99, 0.12);
 
-  --color-text: #111827;
   --color-text-2: #4B5563;
   --color-text-3: #6B7280;
 
@@ -237,6 +241,13 @@ p  { color: var(--color-text-2); }
   box-shadow: 0 0 0 3px var(--color-primary-glow);
 }
 .input::placeholder { color: var(--color-text-3); }
+
+.input:disabled {
+  opacity: 1;
+  color: var(--color-text-dimmed);
+  background: var(--color-surface);
+  cursor: not-allowed;
+}
 
 .label {
   display: block;

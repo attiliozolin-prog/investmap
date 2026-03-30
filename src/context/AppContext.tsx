@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useState,
   useCallback,
+  useMemo,
 } from 'react';
 import { Strategy, Asset, StrategyCategory, Transaction, PortfolioSnapshot } from '@/types';
 import { generateId } from '@/lib/calculations';
@@ -328,8 +329,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (mounted) saveToStorage('investmap_transactions', transactions); }, [transactions, mounted]);
   useEffect(() => { if (mounted) saveToStorage('investmap_snapshots', snapshots); }, [snapshots, mounted]);
 
-  const activeStrategy = strategies.find((s) => s.id === activeStrategyId) ?? null;
-  const activeAssets = assets.filter((a) => a.strategyId === activeStrategyId);
+  const activeStrategy = useMemo(() => 
+    strategies.find((s) => s.id === activeStrategyId) ?? null,
+  [strategies, activeStrategyId]);
+
+  const activeAssets = useMemo(() => 
+    assets.filter((a) => a.strategyId === activeStrategyId),
+  [assets, activeStrategyId]);
 
   // ============================================
   // Onboarding
@@ -631,32 +637,58 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const contextValue = useMemo(() => ({
+    hasCompletedOnboarding,
+    completeOnboarding,
+    strategies,
+    activeStrategyId,
+    activeStrategy,
+    assets,
+    activeAssets,
+    transactions,
+    snapshots,
+    dbSynced,
+    createStrategy,
+    updateStrategy,
+    deleteStrategy,
+    setActiveStrategy,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    addAsset,
+    updateAsset,
+    deleteAsset,
+    addTransaction,
+    saveSnapshot,
+    importData,
+  }), [
+    hasCompletedOnboarding,
+    completeOnboarding,
+    strategies,
+    activeStrategyId,
+    activeStrategy,
+    assets,
+    activeAssets,
+    transactions,
+    snapshots,
+    dbSynced,
+    createStrategy,
+    updateStrategy,
+    deleteStrategy,
+    setActiveStrategy,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    addAsset,
+    updateAsset,
+    deleteAsset,
+    addTransaction,
+    saveSnapshot,
+    importData,
+  ]);
+
   return (
-    <AppContext.Provider value={{
-      hasCompletedOnboarding,
-      completeOnboarding,
-      strategies,
-      activeStrategyId,
-      activeStrategy,
-      assets,
-      activeAssets,
-      transactions,
-      snapshots,
-      dbSynced,
-      createStrategy,
-      updateStrategy,
-      deleteStrategy,
-      setActiveStrategy,
-      addCategory,
-      updateCategory,
-      deleteCategory,
-      addAsset,
-      updateAsset,
-      deleteAsset,
-      addTransaction,
-      saveSnapshot,
-      importData,
-    }}>
+    <AppContext.Provider value={contextValue}>
       <div suppressHydrationWarning>
         {mounted ? children : (
           <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0B0B14' }}>

@@ -38,6 +38,15 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
   useEffect(() => {
     if (summary && activeStrategy) {
       const today = new Date().toISOString().split('T')[0];
+      
+      // Evita loop: verifica se já existe um snapshot para hoje com os mesmos valores
+      const existing = snapshots.find(s => s.strategyId === activeStrategy.id && s.date === today);
+      if (existing && 
+          existing.totalValue === summary.totalValue && 
+          existing.totalInvested === summary.totalInvested) {
+        return;
+      }
+
       saveSnapshot({
         date: today,
         strategyId: activeStrategy.id,
@@ -46,7 +55,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
         profitLoss: summary.profitLoss
       });
     }
-  }, [summary, activeStrategy, saveSnapshot]);
+  }, [summary, activeStrategy, saveSnapshot, snapshots]);
 
   if (!activeStrategy) {
     return (

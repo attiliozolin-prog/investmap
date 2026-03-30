@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { StrategyCategory } from '@/types';
 import { generateId } from '@/lib/calculations';
@@ -28,9 +28,24 @@ export default function Strategy() {
   const [tolerance, setTolerance] = useState(activeStrategy?.deviationTolerance ?? 3);
   const [saved, setSaved] = useState(false);
 
+  // Sincroniza campos locais quando a estratégia ativa muda (evita mostrar dados da carteira anterior)
+  useEffect(() => {
+    if (activeStrategy) {
+      setStratName(activeStrategy.name);
+      setStratDesc(activeStrategy.description);
+      setTolerance(activeStrategy.deviationTolerance);
+    }
+  }, [activeStrategy?.id]);
+
   const [newClassName, setNewClassName] = useState('');
   const [newSubclass, setNewSubclass] = useState('');
   const [newTarget, setNewTarget] = useState('');
+
+  // Classes únicas já existentes para sugestão
+  const existingClasses = useMemo(() => {
+    if (!activeStrategy) return [];
+    return Array.from(new Set(activeStrategy.categories.map(c => c.className))).sort();
+  }, [activeStrategy?.categories]);
 
   const categories = activeStrategy?.categories ?? [];
   const totalTarget = categories.reduce((s, c) => s + c.targetPercent, 0);
@@ -212,7 +227,13 @@ export default function Strategy() {
             value={newClassName}
             onChange={(e) => setNewClassName(e.target.value)}
             placeholder="Classe (ex: Renda Variável)"
+            list="existing-classes"
           />
+          <datalist id="existing-classes">
+            {existingClasses.map(cls => (
+              <option key={cls} value={cls} />
+            ))}
+          </datalist>
           <input
             id="new-subclass"
             className={`input ${styles.catInput}`}

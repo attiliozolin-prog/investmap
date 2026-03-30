@@ -20,6 +20,26 @@
 }
 
 /* Barra lateral colorida indicando ação */
+.targetCell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.targetInfo {
+  display: flex;
+  align-items: center;
+  opacity: 0.5;
+  cursor: help;
+  color: var(--color-primary);
+  transition: opacity 0.2s;
+}
+
+.targetInfo:hover {
+  opacity: 1;
+}
+
 .row_buy td:first-child::before,
 .row_sell td:first-child::before {
   content: '';
@@ -154,7 +174,7 @@
 .profit { color: var(--color-success); }
 .loss   { color: var(--color-danger); }
 
-.rebalance { font-weight: 600; }
+.rebalance { font-weight: 600; white-space: nowrap; }
 
 .actionBadge {
   white-space: nowrap;
