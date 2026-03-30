@@ -115,36 +115,38 @@ export default function AllocationChart({ summary }: Props) {
         </div>
 
         <div className={styles.macroContent}>
-          {isMounted && (
-            <ResponsiveContainer key={`macro-${classGroups.length}`} width="100%" height={220}>
-              <PieChart>
-                <Pie
-                  data={macroData}
-                  cx="50%" cy="50%"
-                  outerRadius={90} innerRadius={65}
-                  dataKey="value" strokeWidth={0}
-                  isAnimationActive={true}
-                >
-                  {macroData.map((entry, index) => (
-                    <Cell key={`macro-cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Pie
-                  data={macroTargetData}
-                  cx="50%" cy="50%"
-                  outerRadius={60} innerRadius={45}
-                  dataKey="value" strokeWidth={0}
-                  opacity={0.3}
-                  isAnimationActive={true}
-                >
-                  {macroTargetData.map((entry, index) => (
-                    <Cell key={`macro-target-cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
+          <div className={styles.macroChartSide}>
+            {isMounted && (
+              <ResponsiveContainer key={`macro-${classGroups.length}`} width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={macroData}
+                    cx="50%" cy="50%"
+                    outerRadius={90} innerRadius={65}
+                    dataKey="value" strokeWidth={0}
+                    isAnimationActive={true}
+                  >
+                    {macroData.map((entry, index) => (
+                      <Cell key={`macro-cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Pie
+                    data={macroTargetData}
+                    cx="50%" cy="50%"
+                    outerRadius={60} innerRadius={45}
+                    dataKey="value" strokeWidth={0}
+                    opacity={0.3}
+                    isAnimationActive={true}
+                  >
+                    {macroTargetData.map((entry, index) => (
+                      <Cell key={`macro-target-cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
 
           <div className={styles.macroLegendSide}>
             {macroData.map((d, i) => (
