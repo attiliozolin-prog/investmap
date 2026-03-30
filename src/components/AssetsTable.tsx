@@ -233,17 +233,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
         </div>
       )}
 
-      <div className="table-wrapper">
-        <style jsx>{`
-          .table-wrapper table th {
-            white-space: nowrap;
-            position: sticky;
-            top: 64px;
-            background: var(--color-surface);
-            z-index: 10;
-            box-shadow: 0 1px 0 var(--color-border);
-          }
-        `}</style>
+      <div className={styles.tableWrapper}>
         <table>
           <thead>
             <tr>

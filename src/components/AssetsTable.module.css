@@ -2,19 +2,31 @@
 .center { text-align: center !important; }
 .nowrap { white-space: nowrap !important; }
 
-.table-wrapper table th {
+.tableWrapper {
+  overflow: visible;
+  position: relative;
+}
+
+.tableWrapper table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+.tableWrapper table th {
   white-space: nowrap;
   position: sticky;
   top: 64px;
   background: var(--color-surface);
-  z-index: 10;
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
-  padding-top: 12px;
-  padding-bottom: 12px;
+  z-index: 40;
+  box-shadow: 0 2px 0 var(--color-border);
+  padding-top: 14px;
+  padding-bottom: 14px;
 }
 
-:global([data-theme='light']) .table-wrapper table th {
-  background: var(--color-surface-1);
+:global([data-theme='light']) .tableWrapper table th {
+  background: #ffffff;
+  box-shadow: 0 2px 0 var(--color-border);
 }
 
 .row { position: relative; }
