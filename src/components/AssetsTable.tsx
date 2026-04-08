@@ -4,8 +4,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { AssetWithCalcs } from '@/types';
 import { formatCurrency, formatPercent, formatPercentAbs } from '@/lib/calculations';
 import styles from './AssetsTable.module.css';
-import { Pencil, Trash2, ArrowUp, ArrowDown, Minus, RefreshCw, AlertCircle, PlusCircle, GripVertical, Info } from 'lucide-react';
+import { Pencil, Trash2, ArrowUp, ArrowDown, Minus, RefreshCw, AlertCircle, PlusCircle, GripVertical, Info, History } from 'lucide-react';
 import TransactionModal from './TransactionModal';
+import AssetHistoryDrawer from './AssetHistoryDrawer';
 
 interface Props {
   assets: AssetWithCalcs[];
@@ -56,6 +57,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
   const [editingValue, setEditingValue] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [transactionAssetId, setTransactionAssetId] = useState<string | null>(null);
+  const [historyAssetId, setHistoryAssetId] = useState<string | null>(null);
 
   // Group and reorder logic
   const [classOrder, setClassOrder] = useState<string[]>([]);
@@ -397,9 +399,17 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                       <ActionBadge action={asset.action} />
                     </td>
 
-                    {/* Ações — hierarquia: Editar → Aporte → Excluir */}
+                    {/* Ações — hierarquia: Histórico → Editar → Aporte → Excluir */}
                     <td className={`${styles.center} ${styles.actionsCell}`}>
                       <div className={styles.actions}>
+                        <button
+                          id={`history-asset-${asset.id}`}
+                          className={`btn btn-ghost btn-sm ${styles.actionBtn}`}
+                          onClick={() => setHistoryAssetId(asset.id)}
+                          title="Ver histórico de transações"
+                        >
+                          <History size={13} />
+                        </button>
                         <button
                           id={`edit-asset-${asset.id}`}
                           className={`btn btn-ghost btn-sm ${styles.actionBtn}`}
@@ -438,6 +448,14 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
         <TransactionModal
           assetId={transactionAssetId}
           onClose={() => setTransactionAssetId(null)}
+        />
+      )}
+
+      {/* Drawer de Histórico */}
+      {historyAssetId && (
+        <AssetHistoryDrawer
+          assetId={historyAssetId}
+          onClose={() => setHistoryAssetId(null)}
         />
       )}
     </>

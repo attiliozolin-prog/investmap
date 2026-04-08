@@ -14,6 +14,7 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
 
   const [type, setType] = useState<'buy' | 'sell'>('buy');
   const [value, setValue] = useState('');
+  const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
 
   // Fechar no Esc
@@ -50,7 +51,8 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
     addTransaction({
       assetId: asset.id,
       type,
-      value: numValue
+      value: numValue,
+      notes: notes.trim() || undefined,
     });
 
     // 2. Atualiza os valores do ativo consolidados
@@ -59,18 +61,17 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
 
     if (type === 'buy') {
       newInvested += numValue;
-      newCurrent += numValue; // Suposição base: aporte aumenta saldo atual em 1:1 na largada
+      newCurrent += numValue;
     } else {
-      // Venda parcial:
-      // Reduz o valor atual diretamente
+      // Venda parcial: reduz o valor atual diretamente
       newCurrent -= numValue;
-      
+
       // Proporcionaliza o valor investido que foi retirado
       const proportionSold = numValue / asset.currentValue;
       const investedToRemove = asset.investedValue * proportionSold;
-      
+
       newInvested -= investedToRemove;
-      
+
       // Garante que não fique negativo por erro de arredondamento
       if (newInvested < 0 || newCurrent <= 0.01) {
         newInvested = 0;
@@ -80,7 +81,7 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
 
     updateAsset(asset.id, {
       investedValue: newInvested,
-      currentValue: newCurrent
+      currentValue: newCurrent,
     });
 
     onClose();
@@ -102,7 +103,7 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal">
-        {/* Header no Padrão Ouro */}
+        {/* Header */}
         <div className={styles.header}>
           <h2>Nova Transação em {asset.ticker}</h2>
           <button type="button" className={`btn btn-ghost btn-sm`} onClick={onClose}>
@@ -124,7 +125,7 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
                 style={{ flex: 1 }}
                 onClick={() => setType('buy')}
               >
-                Novo Aporte (+)
+                Aporte (+)
               </button>
               <button
                 type="button"
@@ -147,6 +148,22 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
               onChange={handleNumberInput}
               required
               placeholder="0,00"
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="label" htmlFor="transactionNotes">
+              Observações <span style={{ color: 'var(--color-text-3)', fontWeight: 400 }}>(opcional)</span>
+            </label>
+            <input
+              type="text"
+              id="transactionNotes"
+              className="input"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value.slice(0, 200))}
+              placeholder="Ex: Rebalanceamento trimestral"
+              maxLength={200}
               autoComplete="off"
             />
           </div>

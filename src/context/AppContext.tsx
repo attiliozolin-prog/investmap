@@ -67,6 +67,8 @@ interface AppContextType {
   deleteAsset: (id: string) => void;
 
   addTransaction: (data: Omit<Transaction, 'id' | 'date'>) => void;
+  deleteTransaction: (id: string) => void;
+  updateTransaction: (id: string, data: Pick<Transaction, 'notes'>) => void;
   saveSnapshot: (snapshot: Omit<PortfolioSnapshot, 'id'>) => void;
 
   importData: (strategies: Strategy[], assets: Asset[], transactions?: Transaction[], snapshots?: PortfolioSnapshot[]) => void;
@@ -151,8 +153,6 @@ function dbTransactionToApp(row: any): Transaction {
     assetId: row.asset_id,
     type: row.type,
     value: Number(row.value),
-    quantity: row.quantity ? Number(row.quantity) : undefined,
-    price: row.price ? Number(row.price) : undefined,
     notes: row.notes ?? '',
     date: row.date,
   };
@@ -654,11 +654,66 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         user_id: user.id,
         type: newTx.type,
         value: newTx.value,
-        quantity: newTx.quantity ?? null,
-        price: newTx.price ?? null,
         notes: newTx.notes ?? '',
         date: now,
       }).then(({ error }) => { if (error) console.error(error); });
+    }
+  }, [user]);
+
+  const deleteTransaction = useCallback((id: string) => {
+    setTransactions((prev) => {
+      const toDelete = prev.find(t => t.id === id);
+      if (!toDelete) return prev;
+
+      const remaining = prev.filter(t => t.id !== id);
+
+      // Recalcula o investedValue do ativo via replay das transações restantes
+      const assetTransactions = remaining
+        .filter(t => t.assetId === toDelete.assetId)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      let newInvested = 0;
+      for (const tx of assetTransactions) {
+        if (tx.type === 'buy') {
+          newInvested += tx.value;
+        } else {
+          // Proporcional: reduz o investido na proporção que foi vendida
+          // Usamos o investido acumulado antes desta venda
+          // Para simplificar: reduz proporcionalmente
+          const proportionSold = newInvested > 0 ? Math.min(tx.value / (newInvested + tx.value), 1) : 0;
+          newInvested -= newInvested * proportionSold;
+        }
+      }
+      newInvested = Math.max(0, newInvested);
+
+      setAssets(prevAssets =>
+        prevAssets.map(a =>
+          a.id === toDelete.assetId
+            ? { ...a, investedValue: newInvested, updatedAt: new Date().toISOString() }
+            : a
+        )
+      );
+
+      if (user) {
+        supabase.from('transactions').delete().eq('id', id).eq('user_id', user.id)
+          .then(({ error }) => { if (error) console.error(error); });
+        supabase.from('assets').update({
+          invested_value: newInvested,
+          updated_at: new Date().toISOString(),
+        }).eq('id', toDelete.assetId).eq('user_id', user.id)
+          .then(({ error }) => { if (error) console.error(error); });
+      }
+
+      return remaining;
+    });
+  }, [user]);
+
+  const updateTransaction = useCallback((id: string, data: Pick<Transaction, 'notes'>) => {
+    setTransactions(prev => prev.map(t => t.id === id ? { ...t, ...data } : t));
+    if (user) {
+      supabase.from('transactions').update({ notes: data.notes ?? '' })
+        .eq('id', id).eq('user_id', user.id)
+        .then(({ error }) => { if (error) console.error(error); });
     }
   }, [user]);
 
@@ -744,6 +799,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     updateAsset,
     deleteAsset,
     addTransaction,
+    deleteTransaction,
+    updateTransaction,
     saveSnapshot,
     importData,
   }), [
@@ -768,6 +825,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     updateAsset,
     deleteAsset,
     addTransaction,
+    deleteTransaction,
+    updateTransaction,
     saveSnapshot,
     importData,
   ]);

@@ -41,9 +41,14 @@ export interface Transaction {
   type: TransactionType;
   date: string;                // ISO Date
   value: number;               // Valor financeiro da transação
-  quantity?: number;           // Quantidade de cotas/ações (opcional)
-  price?: number;              // Preço unitário (opcional)
   notes?: string;              // Observações (opcional)
+}
+
+// Tipo derivado com cálculos para exibição no histórico
+export interface TransactionWithCalcs extends Transaction {
+  runningInvested: number;     // Valor investido acumulado após esta transação
+  realizedProfit?: number;     // Lucro/prejuízo realizado nesta venda (apenas type='sell')
+  index: number;               // Posição cronológica (1 = mais antiga)
 }
 
 export interface PortfolioSnapshot {
