@@ -132,14 +132,30 @@ export default function AssetHistoryDrawer({ assetId, onClose }: Props) {
     const buys = enriched.filter(t => t.type === 'buy');
     const sells = enriched.filter(t => t.type === 'sell');
 
-    const totalBought = buys.reduce((s, t) => s + t.value, 0);
+    const totalBoughtFromTxs = buys.reduce((s, t) => s + t.value, 0);
     const totalSold = sells.reduce((s, t) => s + t.value, 0);
     const totalRealizedProfit = sells.reduce((s, t) => s + (t.realizedProfit ?? 0), 0);
+
+    // ─── Correção para aporte inicial não registrado ────────────────────────
+    // Quando o ativo foi criado antes do sistema de transações, ou os dados foram
+    // migrados de guest→conta sem incluir transações, o aporte original não existe
+    // na tabela de transações. Nesse caso, o `investedValue` do ativo (atualizado
+    // pelo sistema) é maior do que o `runningInvested` final das transações.
+    // Usamos essa diferença para recuperar o valor "escondido".
+    const lastRunningInvested = enriched.length > 0
+      ? enriched[enriched.length - 1].runningInvested
+      : 0;
+    const hiddenInitial = asset ? Math.max(0, asset.investedValue - lastRunningInvested) : 0;
+
+    // Total final corrigido: transações conhecidas + aporte inicial não registrado
+    const totalBought = totalBoughtFromTxs + hiddenInitial;
+    // ────────────────────────────────────────────────────────────────────────
+
     const unrealizedProfit = asset ? asset.currentValue - asset.investedValue : 0;
     const totalReturn = totalBought > 0
       ? ((asset?.currentValue ?? 0) + totalSold - totalBought) / totalBought * 100
       : 0;
-    const avgBuy = buys.length > 0 ? totalBought / buys.length : 0;
+    const avgBuy = buys.length > 0 ? totalBoughtFromTxs / buys.length : 0;
     const firstDate = enriched.length > 0 ? enriched[0].date : null;
 
     return {
@@ -152,6 +168,7 @@ export default function AssetHistoryDrawer({ assetId, onClose }: Props) {
       buyCount: buys.length,
       sellCount: sells.length,
       firstDate,
+      hiddenInitial,  // expõe para o gráfico poder incluir o ponto inicial
     };
   }, [enriched, asset]);
 
@@ -159,18 +176,32 @@ export default function AssetHistoryDrawer({ assetId, onClose }: Props) {
   // Dados do gráfico
   // ============================================
   const chartData = useMemo(() => {
-    // Cronológico, inclui ponto "Hoje" com o currentValue
-    const points = enriched.map(tx => ({
-      label: formatDate(tx.date),
-      value: tx.runningInvested,
-    }));
+    const points: { label: string; value: number }[] = [];
 
-    // Adiciona ponto de hoje com o currentValue real se diferente do último runningInvested
+    // Se há um aporte inicial não registrado, adiciona ponto sintético no início
+    if (metrics.hiddenInitial > 0 && asset) {
+      const firstTxDate = enriched.length > 0 ? enriched[0].date : asset.updatedAt;
+      // Coloca o ponto de origem um instante antes da 1ª transação registrada
+      const originDate = new Date(new Date(firstTxDate).getTime() - 1000 * 60 * 60 * 24);
+      points.push({ label: formatDate(originDate.toISOString()), value: metrics.hiddenInitial });
+    }
+
+    // Pontos das transações reais (runningInvested já inclui apenas o que foi registrado)
+    // Para o gráfico, somamos o hiddenInitial como base
+    enriched.forEach(tx => {
+      points.push({
+        label: formatDate(tx.date),
+        value: tx.runningInvested + metrics.hiddenInitial,
+      });
+    });
+
+    // Ponto "Hoje" com o currentValue real
     if (asset && enriched.length > 0) {
       points.push({ label: 'Hoje', value: asset.currentValue });
     }
     return points;
-  }, [enriched, asset]);
+  }, [enriched, asset, metrics.hiddenInitial]);
+
 
   const handleDelete = useCallback((id: string) => {
     deleteTransaction(id);
