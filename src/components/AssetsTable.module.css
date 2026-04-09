@@ -168,6 +168,28 @@
   display: block;
 }
 
+.truncatedInfo {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  cursor: help;
+  color: var(--color-text-3);
+}
+
+.truncatedInfo:hover {
+  color: var(--color-text-2);
+}
+
+.infoIcon {
+  color: var(--color-text-3);
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.truncatedInfo:hover .infoIcon {
+  color: var(--color-primary-light);
+}
+
 .subclassBadge {
   display: inline-block;
   font-size: 0.65rem;
