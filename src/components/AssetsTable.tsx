@@ -325,7 +325,18 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                     <td>
                       <div className={styles.tickerCell}>
                         <span className={styles.ticker}>{asset.ticker}</span>
-                        {asset.info && <span className={styles.info}>{asset.info}</span>}
+                        {asset.info && (
+                          <span className={styles.info}>
+                            {asset.info.length > 25 ? (
+                              <span title={asset.info} className={styles.truncatedInfo}>
+                                {asset.info.slice(0, 22).trim()}... 
+                                <Info size={11} className={styles.infoIcon} />
+                              </span>
+                            ) : (
+                              asset.info
+                            )}
+                          </span>
+                        )}
                         {asset.createdAt && (
                           <span className={styles.info} style={{ fontSize: '0.65rem' }}>
                             {formatDistanceToNow(new Date(asset.createdAt), { locale: ptBR })} na carteira
