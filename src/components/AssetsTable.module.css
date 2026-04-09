@@ -125,10 +125,25 @@
 
 /* Métricas agregadas no cabeçalho do grupo */
 .groupMeta {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  color: var(--color-text-2) !important;
-  opacity: 0.85;
+  color: var(--color-text) !important;
+}
+
+.groupTotal {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.groupLabel {
+  font-size: 0.6875rem;
+  color: var(--color-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
 }
 
 /* ──────────────────────────────────────────
