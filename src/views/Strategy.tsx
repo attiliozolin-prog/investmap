@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { StrategyCategory } from '@/types';
-import { generateId } from '@/lib/calculations';
+import { generateId, CHART_COLORS } from '@/lib/calculations';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import styles from './Strategy.module.css';
 import { Plus, Trash2, Save, AlertCircle, CheckCircle } from 'lucide-react';
 import DeleteStrategyModal from '@/components/DeleteStrategyModal';
@@ -50,6 +51,31 @@ export default function Strategy() {
   const categories = activeStrategy?.categories ?? [];
   const totalTarget = categories.reduce((s, c) => s + c.targetPercent, 0);
   const isValid = Math.abs(totalTarget - 100) < 0.01;
+
+  const groupedCategories = useMemo(() => {
+    const groups: Record<string, StrategyCategory[]> = {};
+    categories.forEach(c => {
+      if (!groups[c.className]) groups[c.className] = [];
+      groups[c.className].push(c);
+    });
+    return Object.fromEntries(
+      Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
+    );
+  }, [categories]);
+
+  const chartData = useMemo(() => {
+    return Object.entries(groupedCategories).map(([className, cats], i) => {
+      const targetVal = cats.reduce((sum, c) => sum + c.targetPercent, 0);
+      return {
+        name: className,
+        value: targetVal,
+        color: CHART_COLORS[i % CHART_COLORS.length]
+      };
+    }).filter(d => d.value > 0).sort((a,b) => b.value - a.value);
+  }, [groupedCategories]);
+
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => setIsMounted(true), []);
 
   const handleSaveStrategy = () => {
     if (!activeStrategy) return;
@@ -175,45 +201,90 @@ export default function Strategy() {
           </div>
         </div>
 
+        {/* Gráfico de Alocação Macro */}
+        {categories.length > 0 && isMounted && (
+          <div className={styles.chartContainer}>
+            <div className={styles.chartArea}>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    cx="50%" cy="50%"
+                    outerRadius={80} innerRadius={50}
+                    dataKey="value" strokeWidth={0}
+                    isAnimationActive={false}
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value: number) => [`${value.toFixed(1)}%`, 'Alvo']}
+                    contentStyle={{ borderRadius: 8, background: '#1E1E2D', border: 'none', color: '#fff' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className={styles.chartLegend}>
+              {chartData.map(d => (
+                <div key={d.name} className={styles.legendItem}>
+                  <div className={styles.legendDot} style={{ background: d.color }} />
+                  <span className={styles.legendName}>{d.name}</span>
+                  <span className={styles.legendVal}>{d.value.toFixed(1)}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Category list */}
         <div className={styles.catList}>
-          {categories.map((cat) => (
-            <div key={cat.id} className={styles.catRow}>
-              <div className={styles.catNames}>
-                <input
-                  className={`input ${styles.catInput}`}
-                  defaultValue={cat.className}
-                  onBlur={(e) => updateCategory(cat.id, { className: e.target.value })}
-                  placeholder="Classe"
-                />
-                <input
-                  className={`input ${styles.catInput}`}
-                  defaultValue={cat.subclassName}
-                  onBlur={(e) => updateCategory(cat.id, { subclassName: e.target.value })}
-                  placeholder="Subclasse"
-                />
-              </div>
-              <div className={styles.catRight}>
-                <div className={styles.percentInput}>
-                  <input
-                    className={`input ${styles.pctField}`}
-                    defaultValue={cat.targetPercent}
-                    onBlur={(e) => handleUpdateCategoryPercent(cat.id, e.target.value)}
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.5"
-                  />
-                  <span className={styles.pctSymbol}>%</span>
-                </div>
-                <button
-                  id={`delete-cat-${cat.id}`}
-                  className="btn btn-danger btn-sm"
-                  onClick={() => deleteCategory(cat.id)}
-                  title="Remover subclasse"
-                >
-                  <Trash2 size={13} />
-                </button>
+          {Object.entries(groupedCategories).map(([className, cats]) => (
+            <div key={className} className={styles.classGroupContainer}>
+              <h4 className={styles.classGroupHeader}>
+                {className} <span className={styles.classGroupTotal}>({cats.reduce((s,c)=>s+c.targetPercent,0).toFixed(1)}%)</span>
+              </h4>
+              <div className={styles.classGroupItems}>
+                {cats.map((cat) => (
+                  <div key={cat.id} className={styles.catRow}>
+                    <div className={styles.catNames}>
+                      <input
+                        className={`input ${styles.catInput}`}
+                        defaultValue={cat.className}
+                        onBlur={(e) => updateCategory(cat.id, { className: e.target.value })}
+                        placeholder="Classe"
+                      />
+                      <input
+                        className={`input ${styles.catInput}`}
+                        defaultValue={cat.subclassName}
+                        onBlur={(e) => updateCategory(cat.id, { subclassName: e.target.value })}
+                        placeholder="Subclasse"
+                      />
+                    </div>
+                    <div className={styles.catRight}>
+                      <div className={styles.percentInput}>
+                        <input
+                          className={`input ${styles.pctField}`}
+                          defaultValue={cat.targetPercent}
+                          onBlur={(e) => handleUpdateCategoryPercent(cat.id, e.target.value)}
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.5"
+                        />
+                        <span className={styles.pctSymbol}>%</span>
+                      </div>
+                      <button
+                        id={`delete-cat-${cat.id}`}
+                        className="btn btn-danger btn-sm"
+                        onClick={() => deleteCategory(cat.id)}
+                        title="Remover subclasse"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
