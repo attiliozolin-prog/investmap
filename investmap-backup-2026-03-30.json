@@ -1,0 +1,305 @@
+{
+  "strategies": [
+    {
+      "id": "1774823165959-2v54dzrzarf",
+      "name": "Minha Carteira",
+      "description": "Foco em dividendos",
+      "deviationTolerance": 3,
+      "categories": [
+        {
+          "id": "1774826313704-qtnr91iha3",
+          "strategyId": "1774823165959-2v54dzrzarf",
+          "className": "Renda Fixa",
+          "subclassName": "Reserva de emergência",
+          "targetPercent": 16
+        },
+        {
+          "id": "1774826341687-7aqn3czn92t",
+          "strategyId": "1774823165959-2v54dzrzarf",
+          "className": "Renda Fixa",
+          "subclassName": "Caixa de oportunidade",
+          "targetPercent": 5
+        },
+        {
+          "id": "1774826359707-e5p1ulizl2n",
+          "strategyId": "1774823165959-2v54dzrzarf",
+          "className": "Cripto",
+          "subclassName": "Bitcoin",
+          "targetPercent": 25
+        },
+        {
+          "id": "1774826374042-cm1ua4w30l9",
+          "strategyId": "1774823165959-2v54dzrzarf",
+          "className": "Cripto",
+          "subclassName": "Ethereum",
+          "targetPercent": 2
+        },
+        {
+          "id": "1774826391442-moj5m6qoax",
+          "strategyId": "1774823165959-2v54dzrzarf",
+          "className": "Cripto",
+          "subclassName": "Solana",
+          "targetPercent": 2
+        },
+        {
+          "id": "1774826404230-t1o388jpucs",
+          "strategyId": "1774823165959-2v54dzrzarf",
+          "className": "Cripto",
+          "subclassName": "Altcoins",
+          "targetPercent": 2
+        },
+        {
+          "id": "1774826439187-lvl2xbqgwo",
+          "strategyId": "1774823165959-2v54dzrzarf",
+          "className": "Renda Variável",
+          "subclassName": "ETF - EUA S&P",
+          "targetPercent": 10
+        },
+        {
+          "id": "1774826477955-cwbkg6p7qnl",
+          "strategyId": "1774823165959-2v54dzrzarf",
+          "className": "Renda Variável",
+          "subclassName": "ETF - China",
+          "targetPercent": 5
+        },
+        {
+          "id": "1774826493358-1nd8nwcvtoy",
+          "strategyId": "1774823165959-2v54dzrzarf",
+          "className": "Renda Variável",
+          "subclassName": "ETF - Índia",
+          "targetPercent": 5
+        },
+        {
+          "id": "1774826541260-y0lh9xy4xbr",
+          "strategyId": "1774823165959-2v54dzrzarf",
+          "className": "Renda Variável",
+          "subclassName": "Ações/Dividendos",
+          "targetPercent": 16
+        },
+        {
+          "id": "1774826569473-9m33enkffsf",
+          "strategyId": "1774823165959-2v54dzrzarf",
+          "className": "Renda Variável",
+          "subclassName": "Fundos Imobiliários",
+          "targetPercent": 12
+        }
+      ],
+      "createdAt": "2026-03-29T22:26:05.959+00:00",
+      "updatedAt": "2026-03-29T23:55:14.510983+00:00"
+    }
+  ],
+  "assets": [
+    {
+      "id": "1774826627839-hkbpqp396mg",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826313704-qtnr91iha3",
+      "ticker": "RESERVA NU",
+      "info": "Nubank",
+      "investedValue": 35500,
+      "currentValue": 38790,
+      "updatedAt": "2026-03-29T23:23:47.839+00:00"
+    },
+    {
+      "id": "1774826667697-t55r17348d",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826341687-7aqn3czn92t",
+      "ticker": "CAIXA OPORT.",
+      "info": "Nubank",
+      "investedValue": 10000,
+      "currentValue": 11474,
+      "updatedAt": "2026-03-29T23:24:27.697+00:00"
+    },
+    {
+      "id": "1774826701658-34rurnvn4y",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826359707-e5p1ulizl2n",
+      "ticker": "BTC",
+      "info": "Nubank",
+      "investedValue": 54877,
+      "currentValue": 48736,
+      "updatedAt": "2026-03-29T23:25:17.869126+00:00"
+    },
+    {
+      "id": "1774826842914-emkr000woph",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826374042-cm1ua4w30l9",
+      "ticker": "ETH",
+      "info": "Nubank",
+      "investedValue": 43150,
+      "currentValue": 27319,
+      "updatedAt": "2026-03-29T23:27:22.914+00:00"
+    },
+    {
+      "id": "1774826963446-rutwc9wk29",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826391442-moj5m6qoax",
+      "ticker": "SOL",
+      "info": "Nubank",
+      "investedValue": 28289,
+      "currentValue": 13985,
+      "updatedAt": "2026-03-29T23:29:23.446+00:00"
+    },
+    {
+      "id": "1774827006062-r2pz2evcsp",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826439187-lvl2xbqgwo",
+      "ticker": "IVVB11",
+      "info": "Blackrock",
+      "investedValue": 28896,
+      "currentValue": 32090,
+      "updatedAt": "2026-03-29T23:30:06.062+00:00"
+    },
+    {
+      "id": "1774827127977-6g6wyw1jae7",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826477955-cwbkg6p7qnl",
+      "ticker": "BFXI39",
+      "info": "ISHARES CHINA LARGE-CAP ETF",
+      "investedValue": 12018,
+      "currentValue": 11454,
+      "updatedAt": "2026-03-29T23:32:07.977+00:00"
+    },
+    {
+      "id": "1774827416091-28worocwqia",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826541260-y0lh9xy4xbr",
+      "ticker": "BBAS3",
+      "info": "BCO BRASIL S.A.",
+      "investedValue": 8317,
+      "currentValue": 8553,
+      "updatedAt": "2026-03-29T23:36:56.091+00:00"
+    },
+    {
+      "id": "1774827448888-yja1cuxijq",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826541260-y0lh9xy4xbr",
+      "ticker": "BBSE3",
+      "info": "BB SEGURIDADE PARTICIPAÇÕES S.A.",
+      "investedValue": 6882,
+      "currentValue": 6449,
+      "updatedAt": "2026-03-29T23:37:28.888+00:00"
+    },
+    {
+      "id": "1774827582958-7j5tuuev8i9",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826541260-y0lh9xy4xbr",
+      "ticker": "CSMG3",
+      "info": "CIA SANEAMENTO DE MINAS GERAIS-COPASA MG",
+      "investedValue": 3021,
+      "currentValue": 7840,
+      "updatedAt": "2026-03-29T23:39:42.958+00:00"
+    },
+    {
+      "id": "1774827614181-ju8n4e18qtk",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826541260-y0lh9xy4xbr",
+      "ticker": "ITSA4",
+      "info": "ITAUSA S.A.",
+      "investedValue": 5902,
+      "currentValue": 7317,
+      "updatedAt": "2026-03-29T23:40:14.181+00:00"
+    },
+    {
+      "id": "1774827653887-ofvlzrdvkdb",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826541260-y0lh9xy4xbr",
+      "ticker": "EGIE3",
+      "info": "ENGIE BRASIL ENERGIA S.A.",
+      "investedValue": 5792,
+      "currentValue": 6616,
+      "updatedAt": "2026-03-29T23:40:53.887+00:00"
+    },
+    {
+      "id": "1774827693913-zpadtxkig5",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826541260-y0lh9xy4xbr",
+      "ticker": "PETR4",
+      "info": "PETROLEO BRASILEIRO S.A. PETROBRAS",
+      "investedValue": 6121,
+      "currentValue": 7993,
+      "updatedAt": "2026-03-29T23:41:33.913+00:00"
+    },
+    {
+      "id": "1774827730357-p6xun0wbe",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826541260-y0lh9xy4xbr",
+      "ticker": "TAEE11",
+      "info": "TRANSMISSORA ALIANÇA DE ENERGIA ELÉTRICA S.A.",
+      "investedValue": 5541,
+      "currentValue": 6246,
+      "updatedAt": "2026-03-29T23:42:10.357+00:00"
+    },
+    {
+      "id": "1774827774169-6jwafvil4g",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826541260-y0lh9xy4xbr",
+      "ticker": "WEGE3",
+      "info": "WEG S.A.",
+      "investedValue": 6073,
+      "currentValue": 7018,
+      "updatedAt": "2026-03-29T23:42:54.169+00:00"
+    },
+    {
+      "id": "1774827832992-7hlsz3guukk",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826404230-t1o388jpucs",
+      "ticker": "ALTCOINS",
+      "info": "Binance",
+      "investedValue": 31339,
+      "currentValue": 11681,
+      "updatedAt": "2026-03-29T23:43:52.992+00:00"
+    },
+    {
+      "id": "1774827165470-ll55ktlonvf",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826493358-1nd8nwcvtoy",
+      "ticker": "BNDA39",
+      "info": "ISHARES MSCI INDIA ETF",
+      "investedValue": 11954,
+      "currentValue": 10662,
+      "updatedAt": "2026-03-29T23:44:35.172751+00:00"
+    },
+    {
+      "id": "1774827934098-jqm5o5qsnq",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826569473-9m33enkffsf",
+      "ticker": "HGLG11",
+      "info": "Logística",
+      "investedValue": 8894,
+      "currentValue": 8861,
+      "updatedAt": "2026-03-29T23:45:34.098+00:00"
+    },
+    {
+      "id": "1774827974250-izlv4ec8yw",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826569473-9m33enkffsf",
+      "ticker": "MXRF11",
+      "info": "XP Maxi Renda",
+      "investedValue": 9028,
+      "currentValue": 9298,
+      "updatedAt": "2026-03-29T23:46:14.25+00:00"
+    },
+    {
+      "id": "1774828005056-swn37wph8h",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826569473-9m33enkffsf",
+      "ticker": "KNRI11",
+      "info": "KNRI11",
+      "investedValue": 8348,
+      "currentValue": 9569,
+      "updatedAt": "2026-03-29T23:46:45.056+00:00"
+    },
+    {
+      "id": "1774828036590-t336ljs9xda",
+      "strategyId": "1774823165959-2v54dzrzarf",
+      "categoryId": "1774826569473-9m33enkffsf",
+      "ticker": "VISC11",
+      "info": "Vinci Shopping",
+      "investedValue": 8370,
+      "currentValue": 8812,
+      "updatedAt": "2026-03-29T23:47:16.59+00:00"
+    }
+  ],
+  "exportedAt": "2026-03-30T01:43:35.645Z",
+  "version": 1
+}

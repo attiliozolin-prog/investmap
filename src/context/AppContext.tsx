@@ -62,7 +62,7 @@ interface AppContextType {
   updateCategory: (id: string, data: Partial<StrategyCategory>) => void;
   deleteCategory: (id: string) => void;
 
-  addAsset: (data: Omit<Asset, 'id' | 'updatedAt'>) => void;
+  addAsset: (data: Omit<Asset, 'id' | 'updatedAt' | 'createdAt'>) => void;
   updateAsset: (id: string, data: Partial<Asset>) => void;
   deleteAsset: (id: string) => void;
 
@@ -142,6 +142,7 @@ function dbAssetToApp(row: any): Asset {
     info: row.info ?? '',
     investedValue: Number(row.invested_value),
     currentValue: Number(row.current_value),
+    createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
@@ -580,7 +581,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ============================================
   const addAsset = useCallback((data: Omit<Asset, 'id' | 'updatedAt'>) => {
     const now = new Date().toISOString();
-    const newAsset: Asset = { ...data, id: generateId(), updatedAt: now };
+    const newAsset: Asset = { ...data, id: generateId(), createdAt: now, updatedAt: now };
     setAssets((prev) => [...prev, newAsset]);
 
     // Primeira transação automática
@@ -597,6 +598,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         info: newAsset.info ?? '',
         invested_value: newAsset.investedValue,
         current_value: newAsset.currentValue,
+        created_at: now,
         updated_at: now,
       }).then(({ error }) => { if (error) console.error(error); });
 

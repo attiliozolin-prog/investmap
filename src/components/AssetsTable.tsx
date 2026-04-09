@@ -5,6 +5,8 @@ import { AssetWithCalcs } from '@/types';
 import { formatCurrency, formatPercent, formatPercentAbs } from '@/lib/calculations';
 import styles from './AssetsTable.module.css';
 import { Pencil, Trash2, ArrowUp, ArrowDown, Minus, RefreshCw, AlertCircle, PlusCircle, GripVertical, Info, History } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import TransactionModal from './TransactionModal';
 import AssetHistoryDrawer from './AssetHistoryDrawer';
 
@@ -324,6 +326,11 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                       <div className={styles.tickerCell}>
                         <span className={styles.ticker}>{asset.ticker}</span>
                         {asset.info && <span className={styles.info}>{asset.info}</span>}
+                        {asset.createdAt && (
+                          <span className={styles.info} style={{ fontSize: '0.65rem' }}>
+                            {formatDistanceToNow(new Date(asset.createdAt), { locale: ptBR })} na carteira
+                          </span>
+                        )}
                         <span className={styles.subclassBadge}>{asset.category.subclassName}</span>
                       </div>
                     </td>
@@ -372,15 +379,10 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                       </div>
                     </td>
 
-                    {/* % Alvo do Ativo (baseado na divisão ou valor explícito) */}
-                    <td className={`${styles.right} ${styles.muted}`}>
-                      <div className={styles.targetCell}>
-                        <span title="Meta individual deste ativo">{formatPercentAbs(asset.assetTargetPercent)}</span>
-                        {Math.abs(asset.assetTargetPercent - asset.targetPercent) > 0.01 && (
-                          <span className={styles.targetInfo} title={`Meta total da subclasse: ${asset.targetPercent}%`}>
-                            <Info size={10} />
-                          </span>
-                        )}
+                    {/* % Alvo do Ativo */}
+                    <td className={styles.center} title={`Meta total da subclasse: ${asset.targetPercent}%`}>
+                      <div className={styles.targetCell} style={{ justifyContent: 'center' }}>
+                        <span className={styles.muted}>{asset.assetTargetPercent.toFixed(2)}%</span>
                       </div>
                     </td>
 

@@ -120,10 +120,31 @@ export default function AssetHistoryDrawer({ assetId, onClose }: Props) {
   const enriched = useMemo(() => enrichTransactions(rawTxs), [rawTxs]);
 
   // Transações em ordem decrescente para exibição
-  const displayTxs = useMemo(
-    () => [...enriched].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    [enriched]
-  );
+  const displayTxs = useMemo(() => {
+    const sorted = [...enriched].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Calcula o lastRunningInvested para saber se há hiddenInitial
+    const lastRunningInvested = enriched.length > 0 ? enriched[enriched.length - 1].runningInvested : 0;
+    const hiddenInitial = asset ? Math.max(0, asset.investedValue - lastRunningInvested) : 0;
+    
+    // Adiciona o aporte inicial no final da lista (data mais antiga)
+    if (hiddenInitial > 0 && asset) {
+      const assetDate = asset.createdAt || asset.updatedAt;
+      const firstTxDate = enriched.length > 0 ? enriched[0].date : assetDate;
+      const originDate = new Date(new Date(firstTxDate).getTime() - 1000 * 60 * 60 * 24).toISOString();
+      
+      sorted.push({
+        id: 'initial_deposit',
+        assetId: asset.id,
+        type: 'buy',
+        value: hiddenInitial,
+        date: originDate,
+        notes: 'Aporte Inicial (Legado)',
+        runningInvested: hiddenInitial,
+        index: 0
+      } as any);
+    }
+    return sorted;
+  }, [enriched, asset]);
 
   // ============================================
   // Métricas calculadas
@@ -156,7 +177,15 @@ export default function AssetHistoryDrawer({ assetId, onClose }: Props) {
       ? ((asset?.currentValue ?? 0) + totalSold - totalBought) / totalBought * 100
       : 0;
     const avgBuy = buys.length > 0 ? totalBoughtFromTxs / buys.length : 0;
-    const firstDate = enriched.length > 0 ? enriched[0].date : null;
+    
+    let firstDate = enriched.length > 0 ? enriched[0].date : null;
+    if (asset) {
+      const assetDate = asset.createdAt || asset.updatedAt;
+      if (assetDate && (!firstDate || new Date(assetDate).getTime() < new Date(firstDate).getTime())) {
+        // Recua 1 dia para bater com as lógicas de gráfico
+        firstDate = new Date(new Date(assetDate).getTime() - 1000 * 60 * 60 * 24).toISOString();
+      }
+    }
 
     return {
       totalBought,
