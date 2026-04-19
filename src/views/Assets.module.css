@@ -7,7 +7,140 @@
   gap: var(--space-4);
 }
 
-@media (max-width: 480px) {
+/* ──────────────────────────────────────────
+   Barra de Busca e Filtros
+   ────────────────────────────────────────── */
+.filterBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.searchWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 180px;
+  max-width: 300px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  color: var(--color-text-3);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 7px 32px 7px 32px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-family: var(--font);
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.searchInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-3);
+}
+
+.clearSearch {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--color-text-3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 3px;
+  transition: color 0.15s;
+}
+
+.clearSearch:hover { color: var(--color-text-2); }
+
+/* Chips de filtro */
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-text-2);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font);
+  white-space: nowrap;
+}
+
+.chip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.chipActive {
+  border-color: var(--color-primary);
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--color-primary-light);
+}
+
+.chipBuy.chipActive {
+  border-color: var(--color-success);
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--color-success);
+}
+
+.chipSell.chipActive {
+  border-color: var(--color-danger);
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--color-danger);
+}
+
+.clearAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--color-text-3);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  transition: color 0.15s;
+  white-space: nowrap;
+}
+
+.clearAll:hover { color: var(--color-text-2); }
+
+/* ──────────────────────────────────────────
+   Responsivo
+   ────────────────────────────────────────── */
+@media (max-width: 640px) {
   .header { flex-direction: column; }
   .header .btn { width: 100%; justify-content: center; }
+  .searchWrapper { max-width: 100%; flex: 1 1 100%; }
+  .filterBar { gap: 8px; }
 }

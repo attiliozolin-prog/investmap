@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { AssetWithCalcs } from '@/types';
 import { formatCurrency, formatPercent, formatPercentAbs } from '@/lib/calculations';
 import styles from './AssetsTable.module.css';
-import { Pencil, Trash2, ArrowUp, ArrowDown, Minus, RefreshCw, AlertCircle, PlusCircle, GripVertical, Info, History } from 'lucide-react';
+import { Pencil, Trash2, ArrowUp, ArrowDown, Minus, RefreshCw, AlertCircle, PlusCircle, GripVertical, Info, History, ChevronDown, ChevronRight, TrendingUp, ChevronsUpDown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import TransactionModal from './TransactionModal';
@@ -54,12 +54,29 @@ function StaleValueBadge({ updatedAt }: { updatedAt: string }) {
   );
 }
 
+type SortField = 'ticker' | 'currentValue' | 'profitLoss' | 'rebalanceAmount' | null;
+
+function getDeviationColor(current: number, target: number): string {
+  if (target === 0) return 'var(--color-text-3)';
+  const deviation = Math.abs((current - target) / target);
+  if (deviation <= 0.1) return 'var(--color-success)';
+  if (deviation <= 0.3) return '#F59E0B';
+  return 'var(--color-danger)';
+}
+
 export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }: Props) {
   const [editingValueId, setEditingValueId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [transactionAssetId, setTransactionAssetId] = useState<string | null>(null);
   const [historyAssetId, setHistoryAssetId] = useState<string | null>(null);
+
+  // Ordenação por coluna
+  const [sortField, setSortField] = useState<SortField>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  // Collapse de grupos
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   // Group and reorder logic
   const [classOrder, setClassOrder] = useState<string[]>([]);
@@ -132,7 +149,6 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
 
   const orderedGroups = useMemo(() => {
     if (classOrder.length === 0) {
-      // Ordenação padrão: Alfabética por Subclasse
       return [...groupedAssets].sort((a, b) => a.className.localeCompare(b.className));
     }
     return [...groupedAssets].sort((a, b) => {
@@ -144,6 +160,37 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
       return idxA - idxB;
     });
   }, [groupedAssets, classOrder]);
+
+  // Aplica ordenação por coluna dentro de cada grupo
+  const sortedGroups = useMemo(() => {
+    if (!sortField) return orderedGroups;
+    return orderedGroups.map(group => ({
+      ...group,
+      assets: [...group.assets].sort((a, b) => {
+        let valA: number | string = 0;
+        let valB: number | string = 0;
+        switch (sortField) {
+          case 'ticker':         valA = a.ticker;           valB = b.ticker;           break;
+          case 'currentValue':   valA = a.currentValue;     valB = b.currentValue;     break;
+          case 'profitLoss':     valA = a.profitLoss;       valB = b.profitLoss;       break;
+          case 'rebalanceAmount':valA = a.rebalanceAmount;  valB = b.rebalanceAmount;  break;
+        }
+        if (typeof valA === 'string' && typeof valB === 'string') {
+          return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        }
+        return sortDir === 'asc'
+          ? (valA as number) - (valB as number)
+          : (valB as number) - (valA as number);
+      }),
+    }));
+  }, [orderedGroups, sortField, sortDir]);
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ChevronsUpDown size={12} className={styles.sortIconInactive} />;
+    return sortDir === 'asc'
+      ? <ArrowUp size={12} className={styles.sortIconActive} />
+      : <ArrowDown size={12} className={styles.sortIconActive} />;
+  };
 
   // Drag and Drop Handlers
   const handleDragStart = (e: React.DragEvent, className: string) => {
@@ -181,6 +228,24 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
     setDraggedClass(null);
   };
 
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
+
+  const toggleGroup = (className: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(className)) next.delete(className);
+      else next.add(className);
+      return next;
+    });
+  };
+
   const startEditValue = (asset: AssetWithCalcs) => {
     setEditingValueId(asset.id);
     setEditingValue(asset.currentValue.toFixed(2).replace('.', ','));
@@ -208,9 +273,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
   if (assets.length === 0) {
     return (
       <div className="empty-state">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M3 3h18v18H3zM16 8l-4 4-4-4" />
-        </svg>
+        <TrendingUp size={48} strokeWidth={1.25} style={{ color: 'var(--color-primary-light)', opacity: 0.6 }} />
         <h3>Nenhum ativo cadastrado</h3>
         <p>Clique em &quot;Adicionar Ativo&quot; para começar a montar sua carteira.</p>
       </div>
@@ -247,19 +310,43 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
         <table>
           <thead>
             <tr>
-              <th>Ativo</th>
+              <th
+                className={styles.sortableHeader}
+                onClick={() => handleSort('ticker')}
+                title="Ordenar por ticker"
+              >
+                <span>Ativo</span><SortIcon field="ticker" />
+              </th>
               <th className={styles.right}>Investido</th>
-              <th className={styles.right}>Atual</th>
-              <th className={styles.right}>Lucro/Prejuízo</th>
+              <th
+                className={`${styles.right} ${styles.sortableHeader}`}
+                onClick={() => handleSort('currentValue')}
+                title="Ordenar por valor atual"
+              >
+                <span>Atual</span><SortIcon field="currentValue" />
+              </th>
+              <th
+                className={`${styles.right} ${styles.sortableHeader}`}
+                onClick={() => handleSort('profitLoss')}
+                title="Ordenar por lucro/prejuízo"
+              >
+                <span>Lucro/Prejuízo</span><SortIcon field="profitLoss" />
+              </th>
               <th className={styles.right}>% Alvo</th>
               <th className={styles.right}>% Carteira</th>
-              <th className={styles.right}>Rebalancear</th>
+              <th
+                className={`${styles.right} ${styles.sortableHeader}`}
+                onClick={() => handleSort('rebalanceAmount')}
+                title="Ordenar por valor a rebalancear"
+              >
+                <span>Rebalancear</span><SortIcon field="rebalanceAmount" />
+              </th>
               <th>Status</th>
               <th className={styles.center}>Ações</th>
             </tr>
           </thead>
           <tbody>
-            {orderedGroups.map((group) => (
+            {sortedGroups.map((group) => (
               <React.Fragment key={group.className}>
                 {/* Cabeçalho do Grupo (Classe) — com métricas agregadas */}
                 <tr
@@ -273,10 +360,24 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                   {/* Nome do grupo — colspan 2 (Ativo + Investido) */}
                   <td colSpan={2}>
                     <div className={styles.groupHeaderContent}>
+                      <button
+                        className={styles.collapseBtn}
+                        onClick={(e) => { e.stopPropagation(); toggleGroup(group.className); }}
+                        title={collapsedGroups.has(group.className) ? 'Expandir grupo' : 'Recolher grupo'}
+                        aria-label={collapsedGroups.has(group.className) ? 'Expandir grupo' : 'Recolher grupo'}
+                      >
+                        {collapsedGroups.has(group.className)
+                          ? <ChevronRight size={14} />
+                          : <ChevronDown size={14} />
+                        }
+                      </button>
                       <span title="Arraste para reordenar os grupos" aria-label="Arraste para reordenar os grupos">
                         <GripVertical size={16} className={styles.dragIcon} />
                       </span>
                       <span className={styles.groupHeaderTitle}>{group.className}</span>
+                      {collapsedGroups.has(group.className) && (
+                        <span className={styles.collapsedCount}>{group.assets.length} ativo{group.assets.length !== 1 ? 's' : ''}</span>
+                      )}
                     </div>
                   </td>
 
@@ -318,8 +419,8 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                   <td />
                 </tr>
 
-                {/* Ativos dentro do Grupo */}
-                {group.assets.map((asset) => (
+                {/* Ativos dentro do Grupo — apenas se não estiver colapsado */}
+                {!collapsedGroups.has(group.className) && group.assets.map((asset) => (
                   <tr key={asset.id} className={`${styles.row} ${styles[`row_${asset.action}`]}`}>
                     {/* Ativo */}
                     <td>
@@ -327,9 +428,9 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                         <span className={styles.ticker}>{asset.ticker}</span>
                         {asset.info && (
                           <span className={styles.info}>
-                            {asset.info.length > 25 ? (
+                            {asset.info.length > 35 ? (
                               <span title={asset.info} className={styles.truncatedInfo}>
-                                {asset.info.slice(0, 22).trim()}... 
+                                {asset.info.slice(0, 32).trim()}... 
                                 <Info size={11} className={styles.infoIcon} />
                               </span>
                             ) : (
@@ -397,8 +498,23 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                       </div>
                     </td>
 
-                    {/* % Carteira */}
-                    <td className={styles.right}>{formatPercentAbs(asset.currentPortfolioPercent)}</td>
+                    {/* % Carteira com mini progress bar */}
+                    <td className={styles.right}>
+                      <div className={styles.percentCell}>
+                        <span>{formatPercentAbs(asset.currentPortfolioPercent)}</span>
+                        {asset.assetTargetPercent > 0 && (
+                          <div className={styles.progressTrack}>
+                            <div
+                              className={styles.progressFill}
+                              style={{
+                                width: `${Math.min(100, (asset.currentPortfolioPercent / asset.assetTargetPercent) * 100)}%`,
+                                background: getDeviationColor(asset.currentPortfolioPercent, asset.assetTargetPercent),
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </td>
 
                     {/* Rebalancear */}
                     <td className={`${styles.right} ${styles.rebalance}`}>
@@ -412,7 +528,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                       <ActionBadge action={asset.action} />
                     </td>
 
-                    {/* Ações — hierarquia: Histórico → Editar → Aporte → Excluir */}
+                    {/* Ações — hierarquia: Histórico → Editar → Aporte | Excluir */}
                     <td className={`${styles.center} ${styles.actionsCell}`}>
                       <div className={styles.actions}>
                         <button
@@ -438,6 +554,8 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                         >
                           <PlusCircle size={14} />
                         </button>
+                        {/* Separador visual antes do delete */}
+                        <span className={styles.actionDivider} />
                         <button
                           id={`delete-asset-${asset.id}`}
                           className={`btn btn-danger btn-sm ${styles.actionBtn}`}
