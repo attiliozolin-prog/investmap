@@ -4,7 +4,7 @@ import { useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import styles from './Navbar.module.css';
-import { TrendingUp, Download, Upload, LogOut, Sun, Moon, BarChart3, ChevronDown, User, LayoutDashboard, Briefcase, Target, Settings, X } from 'lucide-react';
+import { TrendingUp, Download, Upload, LogOut, Sun, Moon, BarChart3, ChevronDown, User, LayoutDashboard, Briefcase, Target, Settings, X, WalletContext, Wallet } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function Navbar({ activeTab, onTabChange }: {
@@ -40,6 +40,7 @@ export default function Navbar({ activeTab, onTabChange }: {
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard' },
+    { id: 'finances', label: 'Finanças' },
     { id: 'assets', label: 'Ativos' },
     { id: 'strategy', label: 'Estratégia' },
   ];
@@ -222,7 +223,11 @@ export default function Navbar({ activeTab, onTabChange }: {
       <div className={styles.mobileTabNav}>
         <button className={`${styles.mobileTabItem} ${activeTab === 'dashboard' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('dashboard')}>
           <LayoutDashboard className={styles.tabIcon} />
-          <span>Dashboard</span>
+          <span>Visão</span>
+        </button>
+        <button className={`${styles.mobileTabItem} ${activeTab === 'finances' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('finances')}>
+          <Wallet className={styles.tabIcon} />
+          <span>Finanças</span>
         </button>
         <button className={`${styles.mobileTabItem} ${activeTab === 'assets' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('assets')}>
           <Briefcase className={styles.tabIcon} />
@@ -230,7 +235,7 @@ export default function Navbar({ activeTab, onTabChange }: {
         </button>
         <button className={`${styles.mobileTabItem} ${activeTab === 'strategy' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('strategy')}>
           <Target className={styles.tabIcon} />
-          <span>Estratégia</span>
+          <span>Metas</span>
         </button>
       </div>
     </>
