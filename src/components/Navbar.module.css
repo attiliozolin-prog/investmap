@@ -96,6 +96,35 @@
   background: var(--color-primary-glow) !important;
 }
 
+.tabDivider {
+  width: 1px;
+  background-color: var(--color-border);
+  margin: 0 var(--space-2);
+  height: 24px;
+  align-self: center;
+}
+
+.financeTab {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 20, 147, 0.05); /* very light hot pink */
+  color: #FF69B4;
+  border: 1px solid rgba(255, 20, 147, 0.2);
+}
+
+.financeTab:hover {
+  background: rgba(255, 20, 147, 0.1);
+  color: #FF1493;
+  border-color: rgba(255, 20, 147, 0.3);
+}
+
+.financeTabActive {
+  background: rgba(255, 20, 147, 0.15) !important;
+  color: #FF1493 !important;
+  border-color: rgba(255, 20, 147, 0.4) !important;
+  box-shadow: 0 0 10px rgba(255, 20, 147, 0.1);
+}
+
 /* Strategy switcher */
 .strategySwitcher {
   position: relative;
