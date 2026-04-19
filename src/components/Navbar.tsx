@@ -105,16 +105,6 @@ export default function Navbar({ activeTab, onTabChange }: {
                   {tab.label}
                 </button>
               ))}
-
-              <div className={styles.tabDivider} />
-
-              <button
-                id="nav-finances"
-                className={`${styles.tab} ${styles.financeTab} ${activeTab === 'finances' ? styles.financeTabActive : ''}`}
-                onClick={() => onTabChange('finances')}
-              >
-                <Wallet size={16} style={{ marginRight: 6 }} /> Finanças
-              </button>
             </div>
 
             <div className={styles.strategySwitcher}>
@@ -160,6 +150,16 @@ export default function Navbar({ activeTab, onTabChange }: {
                 </div>
               )}
             </div>
+
+            <div className={styles.tabDivider} />
+
+            <button
+              id="nav-finances"
+              className={`${styles.tab} ${styles.financeTab} ${activeTab === 'finances' ? styles.financeTabActive : ''}`}
+              onClick={() => onTabChange('finances')}
+            >
+              <Wallet size={16} style={{ marginRight: 6 }} /> Finanças
+            </button>
           </div>
 
           {/* Right Section: Actions + Mobile Menu Toggle */}
