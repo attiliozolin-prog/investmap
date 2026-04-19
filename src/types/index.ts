@@ -94,3 +94,42 @@ export interface PortfolioSummary {
   categorySummaries: CategorySummary[];
   needsRebalancing: boolean;
 }
+
+// ============================================
+// Types — Finances
+// ============================================
+
+export type FinanceMonthStatus = 'open' | 'closed';
+
+export interface FinanceMonth {
+  id: string;
+  month: string;      // Formato YYYY-MM
+  status: FinanceMonthStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type FinanceTransactionType = 'income' | 'expense';
+export type FinanceTransactionCategory = 'Fixo' | 'Variável' | 'Assinatura';
+
+export interface FinanceTransaction {
+  id: string;
+  monthId: string;    // Referência ao FinanceMonth
+  type: FinanceTransactionType;
+  category: FinanceTransactionCategory;
+  description: string;
+  value: number;
+  date: string;       // ISO Date YYYY-MM-DD
+  createdAt: string;
+}
+
+// Computed finance interfaces
+export interface FinanceMonthSummary {
+  monthId: string;
+  totalIncome: number;
+  totalExpenseFixed: number;
+  totalExpenseVariable: number;
+  totalExpenseSubscription: number;
+  totalExpense: number;
+  balance: number; // leftover
+}

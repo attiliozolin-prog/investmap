@@ -8,13 +8,14 @@ import Navbar from '@/components/Navbar';
 import Dashboard from '@/views/Dashboard';
 import Assets from '@/views/Assets';
 import Strategy from '@/views/Strategy';
+import Finances from '@/views/Finances';
 import LandingPage from '@/components/LandingPage/LandingPage';
 import OnboardingFlow from '@/components/Onboarding/OnboardingFlow';
 import AuthPage from '@/components/Auth/AuthPage';
 import Profile from '@/views/Profile';
 import styles from './page.module.css';
 
-type Tab = 'dashboard' | 'assets' | 'strategy' | 'profile';
+type Tab = 'dashboard' | 'finances' | 'assets' | 'strategy' | 'profile';
 
 function AppContent() {
   const { user, loading: authLoading } = useAuth();
@@ -50,6 +51,7 @@ function AppContent() {
       <main className={styles.main}>
         <div className={`container ${styles.content}`}>
           {activeTab === 'dashboard' && <Dashboard onNavigate={(tab) => setActiveTab(tab as Tab)} />}
+          {activeTab === 'finances'  && <Finances onNavigate={(tab) => setActiveTab(tab as Tab)} />}
           {activeTab === 'assets'    && <Assets />}
           {activeTab === 'strategy'  && <Strategy />}
           {activeTab === 'profile'   && <Profile />}
@@ -59,12 +61,16 @@ function AppContent() {
   );
 }
 
+import { FinanceProvider } from '@/context/FinanceContext';
+
 export default function Home() {
   return (
     <ErrorBoundary>
       <AuthProvider>
         <AppProvider>
-          <AppContent />
+          <FinanceProvider>
+            <AppContent />
+          </FinanceProvider>
         </AppProvider>
       </AuthProvider>
     </ErrorBoundary>
