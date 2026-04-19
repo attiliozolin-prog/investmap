@@ -31,16 +31,16 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: var(--card-bg);
+  background: var(--color-surface);
   padding: 0.25rem;
   border-radius: 0.5rem;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--color-border);
 }
 
 .monthBtn {
   background: transparent;
   border: none;
-  color: var(--text-secondary);
+  color: var(--color-text-2);
   cursor: pointer;
   padding: 0.5rem;
   display: flex;
@@ -51,14 +51,14 @@
 }
 
 .monthBtn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+  background: var(--color-surface-2);
+  color: var(--color-text);
 }
 
 .monthSelect {
   background: transparent;
   border: none;
-  color: var(--text-primary);
+  color: var(--color-text);
   font-weight: 600;
   font-size: 1rem;
   padding: 0.5rem 1rem;
@@ -69,8 +69,8 @@
 }
 
 .monthSelect option {
-  background: var(--card-bg);
-  color: var(--text-primary);
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .actionBtn {
@@ -100,8 +100,8 @@
 }
 
 .card {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 1rem;
   padding: 1.25rem;
   display: flex;
@@ -139,7 +139,7 @@
 }
 
 .cardTitle {
-  color: var(--text-secondary);
+  color: var(--color-text-2);
   font-size: 0.875rem;
   font-weight: 500;
   display: flex;
@@ -150,7 +150,7 @@
 .cardValue {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--color-text);
 }
 
 .survivalValue {
@@ -166,21 +166,21 @@
 
 .survivalDesc {
   font-size: 0.85rem;
-  color: var(--text-secondary);
+  color: var(--color-text-2);
   max-width: 60%;
 }
 
 /* Tabela e Filtros */
 .tableSection {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 1rem;
   overflow: hidden;
 }
 
 .tableHeader {
   padding: 1.25rem;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -198,15 +198,15 @@
 
 .table th {
   padding: 0.75rem 1.25rem;
-  background: var(--bg-hover);
-  color: var(--text-secondary);
+  background: var(--color-surface-2);
+  color: var(--color-text-2);
   font-weight: 500;
   font-size: 0.875rem;
 }
 
 .table td {
   padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
 }
 
@@ -215,7 +215,7 @@
 }
 
 .table tr:hover td {
-  background: var(--bg-hover);
+  background: var(--color-surface-2);
 }
 
 .typeLabel {
@@ -264,7 +264,7 @@
 
 .delBtn {
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--color-text-2);
   border: none;
   cursor: pointer;
   padding: 0.5rem;
@@ -291,8 +291,8 @@
 }
 
 .modalContent {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 1rem;
   width: 100%;
   max-width: 400px;
@@ -307,7 +307,7 @@
 
 .modalHeader {
   padding: 1.25rem;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -321,12 +321,12 @@
 .closeBtn {
   background: transparent;
   border: none;
-  color: var(--text-secondary);
+  color: var(--color-text-2);
   cursor: pointer;
 }
 
 .closeBtn:hover {
-  color: var(--text-primary);
+  color: var(--color-text);
 }
 
 .modalBody {
@@ -344,13 +344,13 @@
 
 .formGroup label {
   font-size: 0.875rem;
-  color: var(--text-secondary);
+  color: var(--color-text-2);
 }
 
 .input {
-  background: var(--bg-color);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
   padding: 0.75rem;
   border-radius: 0.5rem;
   font-size: 1rem;
