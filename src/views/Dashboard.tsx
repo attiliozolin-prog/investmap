@@ -50,9 +50,9 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
       saveSnapshot({
         date: today,
         strategyId: activeStrategy.id,
-        totalInvested: summary.totalInvested,
-        totalValue: summary.totalValue,
-        profitLoss: summary.profitLoss
+        totalInvested: isNaN(summary.totalInvested) ? 0 : summary.totalInvested,
+        totalValue: isNaN(summary.totalValue) ? 0 : summary.totalValue,
+        profitLoss: isNaN(summary.profitLoss) ? 0 : summary.profitLoss,
       });
     }
   }, [summary, activeStrategy, saveSnapshot, snapshots]);
@@ -92,13 +92,28 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
       {/* Rebalancing alert */}
       {needsRebalancing && (
         <div className={styles.alert}>
-          <AlertTriangle size={16} />
-          <span>
-            <strong>Rebalanceamento necessário:</strong>{' '}
-            {buyAssets.length > 0 && `Comprar: ${buyAssets.map((a) => a.ticker).join(', ')}`}
-            {buyAssets.length > 0 && sellAssets.length > 0 && ' · '}
-            {sellAssets.length > 0 && `Vender/Reduzir: ${sellAssets.map((a) => a.ticker).join(', ')}`}
-          </span>
+          <AlertTriangle size={16} className={styles.alertIcon} />
+          <div className={styles.alertContent}>
+            <strong>Rebalanceamento necessário</strong>
+            <div className={styles.alertBadges}>
+              {buyAssets.length > 0 && (
+                <div className={styles.alertGroup}>
+                  <span className={styles.alertGroupLabel}>↑ Comprar</span>
+                  {buyAssets.map((a) => (
+                    <span key={a.id} className={styles.alertTickerBuy}>{a.ticker}</span>
+                  ))}
+                </div>
+              )}
+              {sellAssets.length > 0 && (
+                <div className={styles.alertGroup}>
+                  <span className={styles.alertGroupLabel}>↓ Reduzir</span>
+                  {sellAssets.map((a) => (
+                    <span key={a.id} className={styles.alertTickerSell}>{a.ticker}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

@@ -19,22 +19,49 @@ interface Props {
 const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
+
+  // Anel interno = dados do Alvo
+  if (d.isTarget) {
+    return (
+      <div className={styles.tooltip}>
+        <div className={styles.tooltipTitle}>{d.name}</div>
+        <div className={styles.tooltipRow}>
+          <span>Alvo</span>
+          <span style={{ color: 'var(--color-primary-light)' }}>{(d.targetPercent ?? 0).toFixed(1)}%</span>
+        </div>
+        <div className={styles.tooltipRow}>
+          <span>Atual</span>
+          <span>{(d.currentPercent ?? 0).toFixed(1)}%</span>
+        </div>
+        <div className={styles.tooltipRow}>
+          <span>Valor alvo est.</span>
+          <span>{formatCurrency((d.targetPercent / 100) * d.totalValue)}</span>
+        </div>
+        <div className={styles.tooltipRow}>
+          <span>Valor atual</span>
+          <span>{formatCurrency(d.currentValue)}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Anel externo (atual) ou gráficos micro
   return (
     <div className={styles.tooltip}>
       <div className={styles.tooltipTitle}>{d.name}</div>
       <div className={styles.tooltipRow}>
         <span>Atual</span>
-        <span>{formatPercentAbs(d.currentPercent || (d.value / d.total * 100))}</span>
+        <span>{(d.currentPercent ?? 0).toFixed(1)}%</span>
       </div>
       {d.targetPercent !== undefined && (
         <div className={styles.tooltipRow}>
           <span>Alvo</span>
-          <span>{formatPercentAbs(d.targetPercent)}</span>
+          <span>{(d.targetPercent).toFixed(1)}%</span>
         </div>
       )}
       <div className={styles.tooltipRow}>
         <span>Valor</span>
-        <span>{formatCurrency(d.currentValue || d.value)}</span>
+        <span>{formatCurrency(d.currentValue ?? d.value)}</span>
       </div>
     </div>
   );
@@ -102,6 +129,11 @@ export default function AllocationChart({ summary }: Props) {
   const macroTargetData = classGroups.map((g, i) => ({
     name: g.name,
     value: Math.max(g.targetPercent, 0.1),
+    isTarget: true,
+    currentPercent: totalValue > 0 ? (g.currentValue / totalValue) * 100 : 0,
+    currentValue: g.currentValue,
+    targetPercent: g.targetPercent,
+    totalValue,
     color: CHART_COLORS[i % CHART_COLORS.length]
   }));
 
@@ -211,7 +243,7 @@ export default function AllocationChart({ summary }: Props) {
                   {assetData.slice(0, 4).map(a => (
                     <div key={a.name} className={styles.briefItem}>
                       <span className={styles.briefDot} style={{ background: a.color }} />
-                      <span className={styles.briefName}>{a.name}</span>
+                      <span className={styles.briefName} title={a.name}>{a.name}</span>
                       <span className={styles.briefVal}>{a.currentPercent.toFixed(1)}%</span>
                     </div>
                   ))}
@@ -240,7 +272,7 @@ export default function AllocationChart({ summary }: Props) {
                         />
                         <div 
                           className={styles.barTargetMarker} 
-                          style={{ left: `${cs.targetPercent}%` }}
+                          style={{ left: `${Math.min(cs.targetPercent, 100)}%` }}
                         />
                       </div>
                       <div className={`${styles.barDiff} ${diff > 0.5 ? styles.diffBuy : diff < -0.5 ? styles.diffSell : ''}`}>
