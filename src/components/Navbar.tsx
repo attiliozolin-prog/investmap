@@ -40,7 +40,6 @@ export default function Navbar({ activeTab, onTabChange }: {
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard' },
-    { id: 'finances', label: 'Finanças' },
     { id: 'assets', label: 'Ativos' },
     { id: 'strategy', label: 'Estratégia' },
   ];
@@ -106,6 +105,16 @@ export default function Navbar({ activeTab, onTabChange }: {
                   {tab.label}
                 </button>
               ))}
+
+              <div className={styles.tabDivider} />
+
+              <button
+                id="nav-finances"
+                className={`${styles.tab} ${styles.financeTab} ${activeTab === 'finances' ? styles.financeTabActive : ''}`}
+                onClick={() => onTabChange('finances')}
+              >
+                <Wallet size={16} style={{ marginRight: 6 }} /> Finanças
+              </button>
             </div>
 
             <div className={styles.strategySwitcher}>
@@ -225,10 +234,6 @@ export default function Navbar({ activeTab, onTabChange }: {
           <LayoutDashboard className={styles.tabIcon} />
           <span>Visão</span>
         </button>
-        <button className={`${styles.mobileTabItem} ${activeTab === 'finances' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('finances')}>
-          <Wallet className={styles.tabIcon} />
-          <span>Finanças</span>
-        </button>
         <button className={`${styles.mobileTabItem} ${activeTab === 'assets' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('assets')}>
           <Briefcase className={styles.tabIcon} />
           <span>Ativos</span>
@@ -236,6 +241,10 @@ export default function Navbar({ activeTab, onTabChange }: {
         <button className={`${styles.mobileTabItem} ${activeTab === 'strategy' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('strategy')}>
           <Target className={styles.tabIcon} />
           <span>Metas</span>
+        </button>
+        <button className={`${styles.mobileTabItem} ${activeTab === 'finances' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('finances')}>
+          <Wallet className={styles.tabIcon} />
+          <span>Finanças</span>
         </button>
       </div>
     </>
