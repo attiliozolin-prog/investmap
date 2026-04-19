@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
-import { X, TrendingUp, TrendingDown, ArrowDownCircle, ArrowUpCircle, CalendarDays, Hash, Trash2, PlusCircle, ChevronRight } from 'lucide-react';
+import { X, TrendingUp, TrendingDown, ArrowDownCircle, ArrowUpCircle, CalendarDays, Hash, Trash2, PlusCircle, ChevronRight, Receipt } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { TransactionWithCalcs } from '@/types';
 import { formatCurrency, formatPercent } from '@/lib/calculations';
@@ -105,12 +105,14 @@ export default function AssetHistoryDrawer({ assetId, onClose }: Props) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
 
-  // Fechar no Escape
+  // Fechar no Escape — só fecha o drawer se o TransactionModal NÃO estiver aberto
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !showTransactionModal) onClose();
+    };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [onClose]);
+  }, [onClose, showTransactionModal]);
 
   const rawTxs = useMemo(
     () => transactions.filter(t => t.assetId === assetId),
@@ -176,8 +178,10 @@ export default function AssetHistoryDrawer({ assetId, onClose }: Props) {
     const totalReturn = totalBought > 0
       ? ((asset?.currentValue ?? 0) + totalSold - totalBought) / totalBought * 100
       : 0;
-    const avgBuy = buys.length > 0 ? totalBoughtFromTxs / buys.length : 0;
-    
+    // Ticket médio corrigido: inclui o aporte legado (hiddenInitial) no cálculo
+    const buyCountTotal = buys.length + (hiddenInitial > 0 ? 1 : 0);
+    const avgBuy = buyCountTotal > 0 ? totalBought / buyCountTotal : 0;
+
     let firstDate = enriched.length > 0 ? enriched[0].date : null;
     if (asset) {
       const assetDate = asset.createdAt || asset.updatedAt;
@@ -194,10 +198,10 @@ export default function AssetHistoryDrawer({ assetId, onClose }: Props) {
       unrealizedProfit,
       totalReturn,
       avgBuy,
-      buyCount: buys.length,
+      buyCount: buys.length + (hiddenInitial > 0 ? 1 : 0),
       sellCount: sells.length,
       firstDate,
-      hiddenInitial,  // expõe para o gráfico poder incluir o ponto inicial
+      hiddenInitial,
     };
   }, [enriched, asset]);
 
@@ -363,7 +367,10 @@ export default function AssetHistoryDrawer({ assetId, onClose }: Props) {
                       axisLine={false}
                       tickLine={false}
                       width={55}
-                      tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`}
+                      tickFormatter={(v) => v >= 1000
+                        ? `R$ ${(v / 1000).toFixed(0)}k`
+                        : `R$ ${v.toFixed(0)}`
+                      }
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <ReferenceLine y={0} stroke="var(--color-border)" strokeDasharray="3 3" />
@@ -385,7 +392,7 @@ export default function AssetHistoryDrawer({ assetId, onClose }: Props) {
           <section>
             <div className={styles.tableHeader}>
               <p className={styles.sectionTitle} style={{ margin: 0 }}>
-                Transações ({rawTxs.length})
+                Transações ({displayTxs.length})
               </p>
               <button
                 className="btn btn-primary btn-sm"
@@ -399,7 +406,7 @@ export default function AssetHistoryDrawer({ assetId, onClose }: Props) {
 
             {displayTxs.length === 0 ? (
               <div className={styles.emptyState}>
-                <ChevronRight size={32} />
+                <Receipt size={32} />
                 <p>Nenhuma transação registrada ainda.</p>
               </div>
             ) : (

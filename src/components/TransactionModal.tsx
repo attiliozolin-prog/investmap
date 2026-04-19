@@ -14,6 +14,11 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
 
   const [type, setType] = useState<'buy' | 'sell'>('buy');
   const [value, setValue] = useState('');
+  const [date, setDate] = useState<string>(() => {
+    // Default: hoje no formato YYYY-MM-DD (timezone local)
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  });
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
 
@@ -47,11 +52,13 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
       return;
     }
 
-    // 1. Registra a transação
+    // 1. Registra a transação com a data informada pelo usuário
+    const dateIso = date ? new Date(date + 'T12:00:00').toISOString() : new Date().toISOString();
     addTransaction({
       assetId: asset.id,
       type,
       value: numValue,
+      date: dateIso,
       notes: notes.trim() || undefined,
     });
 
@@ -149,6 +156,18 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
               required
               placeholder="0,00"
               autoComplete="off"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="label" htmlFor="transactionDate">Data da transação</label>
+            <input
+              type="date"
+              id="transactionDate"
+              className="input"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`}
             />
           </div>
 

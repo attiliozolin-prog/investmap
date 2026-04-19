@@ -66,7 +66,7 @@ interface AppContextType {
   updateAsset: (id: string, data: Partial<Asset>) => void;
   deleteAsset: (id: string) => void;
 
-  addTransaction: (data: Omit<Transaction, 'id' | 'date'>) => void;
+  addTransaction: (data: Omit<Transaction, 'id'> & { date?: string }) => void;
   deleteTransaction: (id: string) => void;
   updateTransaction: (id: string, data: Pick<Transaction, 'notes'>) => void;
   saveSnapshot: (snapshot: Omit<PortfolioSnapshot, 'id'>) => void;
@@ -644,9 +644,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ============================================
   // Transaction
   // ============================================
-  const addTransaction = useCallback((data: Omit<Transaction, 'id' | 'date'>) => {
+  const addTransaction = useCallback((data: Omit<Transaction, 'id'> & { date?: string }) => {
     const now = new Date().toISOString();
-    const newTx: Transaction = { ...data, id: generateId(), date: now };
+    const txDate = data.date || now;
+    const newTx: Transaction = { ...data, id: generateId(), date: txDate };
     setTransactions((prev) => [...prev, newTx]);
 
     if (user) {
@@ -657,7 +658,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         type: newTx.type,
         value: newTx.value,
         notes: newTx.notes ?? '',
-        date: now,
+        date: txDate,
       }).then(({ error }) => { if (error) console.error(error); });
     }
   }, [user]);
