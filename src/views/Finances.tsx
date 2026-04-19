@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { useApp } from '@/context/AppContext';
-import { FinanceTransactionType, FinanceTransactionCategory } from '@/types';
+import { FinanceTransaction, FinanceTransactionType, FinanceTransactionCategory } from '@/types';
 import { Plus, Trash2, X, Wallet, TrendingDown, Clock, ShieldAlert } from 'lucide-react';
 import styles from './Finances.module.css';
 
