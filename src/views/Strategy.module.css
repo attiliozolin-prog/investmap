@@ -33,7 +33,7 @@
   animation: fadeIn 0.2s ease;
 }
 
-/* Categories */
+/* ── Cabeçalho de "Subclasses e Metas" ── */
 .catHeader {
   display: flex;
   align-items: center;
@@ -56,6 +56,7 @@
 .totalOk   { background: var(--color-success-bg); color: var(--color-success); }
 .totalError { background: var(--color-danger-bg);  color: var(--color-danger); }
 
+/* ── Lista de Categorias ── */
 .catList {
   display: flex;
   flex-direction: column;
@@ -71,6 +72,17 @@
   background: var(--color-surface-2);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
+  transition: border-color 0.3s, background 0.3s;
+}
+
+/* Micro-animação ao salvar % */
+@keyframes rowSaved {
+  0%   { border-color: var(--color-success); background: rgba(16, 185, 129, 0.06); }
+  100% { border-color: var(--color-border);  background: var(--color-surface-2); }
+}
+
+.catRowSaved {
+  animation: rowSaved 1.2s ease forwards;
 }
 
 .catNames {
@@ -113,6 +125,174 @@
   pointer-events: none;
 }
 
+/* ── Agrupamento por Classe ── */
+.classGroupContainer {
+  margin-bottom: var(--space-5);
+}
+
+.classGroupHeader {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Botão do nome da classe (clicável para editar) */
+.classNameBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s, color 0.15s;
+  font-family: var(--font);
+}
+
+.classNameBtn:hover {
+  background: rgba(139, 92, 246, 0.08);
+  color: var(--color-primary-light);
+}
+
+.classEditIcon {
+  color: var(--color-text-3);
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.classNameBtn:hover .classEditIcon {
+  opacity: 1;
+}
+
+/* Modo edição do nome da classe */
+.classNameEdit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1;
+}
+
+.classNameInput {
+  padding: 4px 10px !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  height: auto !important;
+  max-width: 220px;
+}
+
+.iconBtn {
+  padding: 4px !important;
+  width: 26px;
+  height: 26px;
+}
+
+.classGroupTotal {
+  font-size: 0.8125rem;
+  color: var(--color-text-3);
+  font-weight: 400;
+}
+
+/* Botão de adicionar subclasse por grupo */
+.addSubBtn {
+  margin-left: auto;
+  font-size: 0.75rem !important;
+  padding: 3px 10px !important;
+  opacity: 0.6;
+  transition: opacity 0.15s !important;
+}
+
+.classGroupHeader:hover .addSubBtn,
+.addSubBtn:focus {
+  opacity: 1;
+}
+
+.classGroupItems {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ── Formulário inline de adição dentro de grupo ── */
+.inlineAddRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: rgba(139, 92, 246, 0.06);
+  border-radius: var(--radius-md);
+  border: 1px dashed rgba(139, 92, 246, 0.3);
+  animation: fadeIn 0.15s ease;
+}
+
+/* ── Formulário de nova classe ── */
+.newClassSection {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-4);
+  margin-top: var(--space-2);
+}
+
+.newClassLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-3);
+  margin-bottom: var(--space-3);
+}
+
+/* Chips de classes existentes */
+.classChips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+
+.chipsHint {
+  font-size: 0.72rem;
+  color: var(--color-text-3);
+  white-space: nowrap;
+}
+
+.classChip {
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-text-2);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font);
+}
+
+.classChip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.classChipActive {
+  border-color: var(--color-primary);
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--color-primary-light);
+}
+
 /* Add row */
 .addRow {
   display: flex;
@@ -124,6 +304,7 @@
   border: 1px dashed var(--color-border-hover);
 }
 
+/* Aviso de soma != 100% */
 .warning {
   display: flex;
   align-items: center;
@@ -137,7 +318,42 @@
   font-size: 0.875rem;
 }
 
-/* Strategy list */
+/* ── Confirmação de exclusão inline ── */
+.deleteConfirm {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: rgba(239, 68, 68, 0.07);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.8rem;
+  color: var(--color-danger);
+  font-weight: 500;
+  animation: fadeIn 0.15s ease;
+}
+
+.deleteConfirm button {
+  font-size: 0.72rem;
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-family: var(--font);
+}
+
+.deleteConfirmYes {
+  background: var(--color-danger);
+  color: white;
+}
+
+.deleteConfirmNo {
+  background: var(--color-surface-2);
+  color: var(--color-text-2);
+}
+
+/* ── Lista de Estratégias ── */
 .stratRow {
   display: flex;
   align-items: center;
@@ -160,10 +376,26 @@
   color: var(--color-text);
 }
 
+.stratMeta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
 .stratDesc {
   font-size: 0.8125rem;
   color: var(--color-text-3);
-  margin-top: 2px;
+}
+
+.stratCount {
+  font-size: 0.75rem;
+  color: var(--color-text-3);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-weight: 500;
 }
 
 .stratActions {
@@ -172,45 +404,7 @@
   gap: var(--space-2);
 }
 
-@media (max-width: 640px) {
-  .grid2 { grid-template-columns: 1fr; }
-  .catRow { flex-direction: column; align-items: stretch; }
-  .catNames { flex-direction: column; }
-  .catRight { justify-content: flex-end; }
-  .addRow { flex-direction: column; }
-  .addRow .btn { width: 100%; justify-content: center; }
-}
-
-/* Agrupamento por Classe */
-.classGroupContainer {
-  margin-bottom: var(--space-4);
-}
-
-.classGroupHeader {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: var(--space-2);
-  padding-bottom: var(--space-1);
-  border-bottom: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.classGroupTotal {
-  font-size: 0.8125rem;
-  color: var(--color-text-3);
-  font-weight: 400;
-}
-
-.classGroupItems {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-/* Gráfico de Alocação de Alvos */
+/* ── Gráfico de pizza ── */
 .chartContainer {
   display: flex;
   align-items: center;
@@ -264,9 +458,16 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Responsivo ── */
 @media (max-width: 640px) {
-  .chartContainer {
-    flex-direction: column;
-    padding: var(--space-3);
-  }
+  .grid2 { grid-template-columns: 1fr; }
+  .catRow { flex-direction: column; align-items: stretch; }
+  .catNames { flex-direction: column; }
+  .catRight { justify-content: flex-end; }
+  .addRow { flex-direction: column; }
+  .addRow .btn { width: 100%; justify-content: center; }
+  .inlineAddRow { flex-direction: column; }
+  .chartContainer { flex-direction: column; padding: var(--space-3); }
+  .classGroupHeader { flex-wrap: wrap; }
+  .addSubBtn { margin-left: 0; }
 }

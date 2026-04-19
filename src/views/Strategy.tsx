@@ -3,10 +3,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { StrategyCategory } from '@/types';
-import { generateId, CHART_COLORS } from '@/lib/calculations';
+import { CHART_COLORS } from '@/lib/calculations';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import styles from './Strategy.module.css';
-import { Plus, Trash2, Save, AlertCircle, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, Save, AlertCircle, CheckCircle, Pencil, Check, X } from 'lucide-react';
 import DeleteStrategyModal from '@/components/DeleteStrategyModal';
 
 export default function Strategy() {
@@ -29,7 +29,7 @@ export default function Strategy() {
   const [tolerance, setTolerance] = useState(activeStrategy?.deviationTolerance ?? 3);
   const [saved, setSaved] = useState(false);
 
-  // Sincroniza campos locais quando a estratégia ativa muda (evita mostrar dados da carteira anterior)
+  // Sincroniza campos locais quando a estratégia ativa muda
   useEffect(() => {
     if (activeStrategy) {
       setStratName(activeStrategy.name ?? '');
@@ -38,11 +38,26 @@ export default function Strategy() {
     }
   }, [activeStrategy?.id]);
 
+  // Estado do formulário de nova subclasse (linha global / nova classe)
   const [newClassName, setNewClassName] = useState('');
   const [newSubclass, setNewSubclass] = useState('');
   const [newTarget, setNewTarget] = useState('');
 
-  // Classes únicas já existentes para sugestão
+  // Confirmação de exclusão inline
+  const [confirmDeleteCatId, setConfirmDeleteCatId] = useState<string | null>(null);
+
+  // Edição do nome do grupo (renomear classe inteira)
+  const [editingClass, setEditingClass] = useState<string | null>(null);
+  const [editingClassName, setEditingClassName] = useState('');
+
+  // Add inline por grupo
+  const [inlineAddClass, setInlineAddClass] = useState<string | null>(null);
+  const [inlineSubclass, setInlineSubclass] = useState('');
+  const [inlineTarget, setInlineTarget] = useState('');
+
+  // Micro-animação ao salvar %
+  const [savedCatId, setSavedCatId] = useState<string | null>(null);
+
   const existingClasses = useMemo(() => {
     if (!activeStrategy) return [];
     return Array.from(new Set(activeStrategy.categories.map(c => c.className))).sort();
@@ -71,7 +86,7 @@ export default function Strategy() {
         value: targetVal,
         color: CHART_COLORS[i % CHART_COLORS.length]
       };
-    }).filter(d => d.value > 0).sort((a,b) => b.value - a.value);
+    }).filter(d => d.value > 0).sort((a, b) => b.value - a.value);
   }, [groupedCategories]);
 
   const [isMounted, setIsMounted] = useState(false);
@@ -88,9 +103,10 @@ export default function Strategy() {
     setTimeout(() => setSaved(false), 2500);
   };
 
+  // Adiciona subclasse usando o formulário inferior (nova classe ou classe existente via chip)
   const handleAddCategory = () => {
     const target = parseFloat(newTarget.replace(',', '.'));
-    if (!newSubclass.trim() || isNaN(target) || target <= 0) return;
+    if (!newSubclass.trim() || isNaN(target) || target <= 0 || target > 100) return;
     addCategory({
       className: newClassName.trim() || 'Geral',
       subclassName: newSubclass.trim(),
@@ -101,22 +117,46 @@ export default function Strategy() {
     setNewTarget('');
   };
 
+  // Adiciona subclasse inline dentro de um grupo existente
+  const handleInlineAdd = () => {
+    if (!inlineAddClass) return;
+    const target = parseFloat(inlineTarget.replace(',', '.'));
+    if (!inlineSubclass.trim() || isNaN(target) || target <= 0 || target > 100) return;
+    addCategory({
+      className: inlineAddClass,
+      subclassName: inlineSubclass.trim(),
+      targetPercent: target,
+    });
+    setInlineSubclass('');
+    setInlineTarget('');
+    setInlineAddClass(null);
+  };
+
+  // Renomeia todas as categorias de uma classe de uma vez
+  const handleRenameClass = (oldName: string) => {
+    const trimmed = editingClassName.trim();
+    setEditingClass(null);
+    if (!trimmed || trimmed === oldName) return;
+    const cats = groupedCategories[oldName] ?? [];
+    cats.forEach(cat => updateCategory(cat.id, { className: trimmed }));
+  };
+
   const handleConfirmDeleteStrategy = (id: string) => {
     deleteStrategy(id);
     setStrategyToDelete(null);
-
-    // Se a carteira que estava ativa foi a deletada, atrela à primeira restante (se houver)
     if (id === activeStrategyId) {
-      const remainingStrategies = strategies.filter((s) => s.id !== id);
-      if (remainingStrategies.length > 0) {
-        setActiveStrategy(remainingStrategies[0].id);
-      }
+      const remaining = strategies.filter((s) => s.id !== id);
+      if (remaining.length > 0) setActiveStrategy(remaining[0].id);
     }
   };
 
   const handleUpdateCategoryPercent = (id: string, val: string) => {
     const num = parseFloat(val.replace(',', '.'));
-    if (!isNaN(num)) updateCategory(id, { targetPercent: num });
+    if (!isNaN(num) && num >= 0 && num <= 100) {
+      updateCategory(id, { targetPercent: num });
+      setSavedCatId(id);
+      setTimeout(() => setSavedCatId(null), 1200);
+    }
   };
 
   if (!activeStrategy) {
@@ -140,7 +180,8 @@ export default function Strategy() {
 
   return (
     <div className={styles.wrapper}>
-      {/* Strategy Info */}
+
+      {/* ── Seção 1: Informações da Carteira ── */}
       <div className={`card ${styles.section}`}>
         <h3 className={styles.secTitle}>Informações da Carteira</h3>
         <div className={styles.grid2}>
@@ -191,7 +232,7 @@ export default function Strategy() {
         </div>
       </div>
 
-      {/* Categories */}
+      {/* ── Seção 2: Subclasses e Metas ── */}
       <div className={`card ${styles.section}`}>
         <div className={styles.catHeader}>
           <h3>Subclasses e Metas de Alocação</h3>
@@ -201,7 +242,7 @@ export default function Strategy() {
           </div>
         </div>
 
-        {/* Gráfico de Alocação Macro */}
+        {/* Gráfico de pizza */}
         {categories.length > 0 && isMounted && (
           <div className={styles.chartContainer}>
             <div className={styles.chartArea}>
@@ -218,9 +259,15 @@ export default function Strategy() {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: number) => [`${value.toFixed(1)}%`, 'Alvo']}
-                    contentStyle={{ borderRadius: 8, background: '#1E1E2D', border: 'none', color: '#fff' }}
+                    contentStyle={{
+                      borderRadius: 8,
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      color: 'var(--color-text)',
+                      fontSize: '0.82rem',
+                    }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -237,102 +284,225 @@ export default function Strategy() {
           </div>
         )}
 
-        {/* Category list */}
+        {/* Lista de categorias agrupadas por classe */}
         <div className={styles.catList}>
-          {Object.entries(groupedCategories).map(([className, cats]) => (
-            <div key={className} className={styles.classGroupContainer}>
-              <h4 className={styles.classGroupHeader}>
-                {className} <span className={styles.classGroupTotal}>({cats.reduce((s,c)=>s+c.targetPercent,0).toFixed(1)}%)</span>
-              </h4>
-              <div className={styles.classGroupItems}>
-                {cats.map((cat) => (
-                  <div key={cat.id} className={styles.catRow}>
-                    <div className={styles.catNames}>
+          {Object.entries(groupedCategories).map(([className, cats]) => {
+            const groupTotal = cats.reduce((s, c) => s + c.targetPercent, 0);
+            const isEditingThisClass = editingClass === className;
+            return (
+              <div key={className} className={styles.classGroupContainer}>
+
+                {/* Cabeçalho do grupo — editável com clique */}
+                <div className={styles.classGroupHeader}>
+                  {isEditingThisClass ? (
+                    <div className={styles.classNameEdit}>
                       <input
-                        className={`input ${styles.catInput}`}
-                        defaultValue={cat.className}
-                        onBlur={(e) => updateCategory(cat.id, { className: e.target.value })}
-                        placeholder="Classe"
+                        className={`input ${styles.classNameInput}`}
+                        value={editingClassName}
+                        autoFocus
+                        onChange={(e) => setEditingClassName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleRenameClass(className);
+                          if (e.key === 'Escape') setEditingClass(null);
+                        }}
+                        onBlur={() => handleRenameClass(className)}
                       />
-                      <input
-                        className={`input ${styles.catInput}`}
-                        defaultValue={cat.subclassName}
-                        onBlur={(e) => updateCategory(cat.id, { subclassName: e.target.value })}
-                        placeholder="Subclasse"
-                      />
+                      <button className={`btn btn-ghost btn-sm ${styles.iconBtn}`} onClick={() => handleRenameClass(className)} title="Confirmar">
+                        <Check size={13} />
+                      </button>
+                      <button className={`btn btn-ghost btn-sm ${styles.iconBtn}`} onClick={() => setEditingClass(null)} title="Cancelar">
+                        <X size={13} />
+                      </button>
                     </div>
-                    <div className={styles.catRight}>
+                  ) : (
+                    <button
+                      className={styles.classNameBtn}
+                      title="Clique para renomear a classe"
+                      onClick={() => { setEditingClass(className); setEditingClassName(className); }}
+                    >
+                      {className}
+                      <Pencil size={11} className={styles.classEditIcon} />
+                    </button>
+                  )}
+                  <span className={styles.classGroupTotal}>({groupTotal.toFixed(1)}%)</span>
+                  <button
+                    className={`btn btn-ghost btn-sm ${styles.addSubBtn}`}
+                    onClick={() => {
+                      setInlineAddClass(inlineAddClass === className ? null : className);
+                      setInlineSubclass('');
+                      setInlineTarget('');
+                    }}
+                    title="Adicionar subclasse neste grupo"
+                  >
+                    <Plus size={13} /> Adicionar
+                  </button>
+                </div>
+
+                {/* Linhas de subclasse */}
+                <div className={styles.classGroupItems}>
+                  {cats.map((cat) => (
+                    <div key={cat.id}>
+                      {confirmDeleteCatId === cat.id ? (
+                        <div className={styles.deleteConfirm}>
+                          <Trash2 size={13} />
+                          <span>Remover <strong>{cat.subclassName}</strong>?</span>
+                          <button
+                            className={styles.deleteConfirmYes}
+                            onClick={() => { deleteCategory(cat.id); setConfirmDeleteCatId(null); }}
+                          >
+                            Sim
+                          </button>
+                          <button className={styles.deleteConfirmNo} onClick={() => setConfirmDeleteCatId(null)}>
+                            Não
+                          </button>
+                        </div>
+                      ) : (
+                        <div className={`${styles.catRow} ${savedCatId === cat.id ? styles.catRowSaved : ''}`}>
+                          <div className={styles.catNames}>
+                            <input
+                              key={`${cat.id}-sub`}
+                              className={`input ${styles.catInput}`}
+                              defaultValue={cat.subclassName}
+                              onBlur={(e) => updateCategory(cat.id, { subclassName: e.target.value })}
+                              placeholder="Nome da subclasse"
+                            />
+                          </div>
+                          <div className={styles.catRight}>
+                            <div className={styles.percentInput}>
+                              <input
+                                key={`${cat.id}-pct`}
+                                className={`input ${styles.pctField}`}
+                                defaultValue={cat.targetPercent}
+                                onBlur={(e) => handleUpdateCategoryPercent(cat.id, e.target.value)}
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.5"
+                              />
+                              <span className={styles.pctSymbol}>%</span>
+                            </div>
+                            <button
+                              id={`delete-cat-${cat.id}`}
+                              className="btn btn-danger btn-sm"
+                              onClick={() => setConfirmDeleteCatId(cat.id)}
+                              title="Remover subclasse"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Formulário de adição inline dentro do grupo */}
+                  {inlineAddClass === className && (
+                    <div className={styles.inlineAddRow}>
+                      <input
+                        autoFocus
+                        className={`input ${styles.catInput}`}
+                        value={inlineSubclass}
+                        onChange={(e) => setInlineSubclass(e.target.value)}
+                        placeholder="Nome da subclasse..."
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleInlineAdd();
+                          if (e.key === 'Escape') setInlineAddClass(null);
+                        }}
+                      />
                       <div className={styles.percentInput}>
                         <input
                           className={`input ${styles.pctField}`}
-                          defaultValue={cat.targetPercent}
-                          onBlur={(e) => handleUpdateCategoryPercent(cat.id, e.target.value)}
+                          value={inlineTarget}
+                          onChange={(e) => setInlineTarget(e.target.value)}
+                          placeholder="0"
                           type="number"
                           min="0"
                           max="100"
-                          step="0.5"
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleInlineAdd(); }}
                         />
                         <span className={styles.pctSymbol}>%</span>
                       </div>
                       <button
-                        id={`delete-cat-${cat.id}`}
-                        className="btn btn-danger btn-sm"
-                        onClick={() => deleteCategory(cat.id)}
-                        title="Remover subclasse"
+                        className="btn btn-primary btn-sm"
+                        onClick={handleInlineAdd}
+                        disabled={!inlineSubclass.trim() || !inlineTarget}
+                        title="Confirmar"
                       >
-                        <Trash2 size={13} />
+                        <Check size={14} />
+                      </button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setInlineAddClass(null)} title="Cancelar">
+                        <X size={14} />
                       </button>
                     </div>
-                  </div>
-                ))}
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* Add new category */}
-        <div className={styles.addRow}>
-          <input
-            id="new-classname"
-            className={`input ${styles.catInput}`}
-            value={newClassName}
-            onChange={(e) => setNewClassName(e.target.value)}
-            placeholder="Classe (ex: Renda Variável)"
-            list="existing-classes"
-          />
-          <datalist id="existing-classes">
-            {existingClasses.map(cls => (
-              <option key={cls} value={cls} />
-            ))}
-          </datalist>
-          <input
-            id="new-subclass"
-            className={`input ${styles.catInput}`}
-            value={newSubclass}
-            onChange={(e) => setNewSubclass(e.target.value)}
-            placeholder="Subclasse (ex: ETF)"
-          />
-          <div className={styles.percentInput}>
+        {/* Formulário de adição de nova classe / subclasse */}
+        <div className={styles.newClassSection}>
+          <p className={styles.newClassLabel}>
+            <Plus size={13} />
+            {existingClasses.length > 0 ? 'Adicionar em nova classe' : 'Adicionar primeira subclasse'}
+          </p>
+
+          {/* Chips das classes existentes para seleção rápida */}
+          {existingClasses.length > 0 && (
+            <div className={styles.classChips}>
+              <span className={styles.chipsHint}>Usar classe existente:</span>
+              {existingClasses.map(cls => (
+                <button
+                  key={cls}
+                  className={`${styles.classChip} ${newClassName === cls ? styles.classChipActive : ''}`}
+                  onClick={() => setNewClassName(prev => prev === cls ? '' : cls)}
+                >
+                  {cls}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className={styles.addRow}>
             <input
-              id="new-target"
-              className={`input ${styles.pctField}`}
-              value={newTarget}
-              onChange={(e) => setNewTarget(e.target.value)}
-              placeholder="0"
-              type="number"
-              min="0"
-              max="100"
+              id="new-classname"
+              className={`input ${styles.catInput}`}
+              value={newClassName}
+              onChange={(e) => setNewClassName(e.target.value)}
+              placeholder="Nome da classe (ex: Renda Variável)"
             />
-            <span className={styles.pctSymbol}>%</span>
+            <input
+              id="new-subclass"
+              className={`input ${styles.catInput}`}
+              value={newSubclass}
+              onChange={(e) => setNewSubclass(e.target.value)}
+              placeholder="Subclasse (ex: ETF)"
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory(); }}
+            />
+            <div className={styles.percentInput}>
+              <input
+                id="new-target"
+                className={`input ${styles.pctField}`}
+                value={newTarget}
+                onChange={(e) => setNewTarget(e.target.value)}
+                placeholder="0"
+                type="number"
+                min="0"
+                max="100"
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory(); }}
+              />
+              <span className={styles.pctSymbol}>%</span>
+            </div>
+            <button
+              id="add-category-btn"
+              className="btn btn-primary"
+              onClick={handleAddCategory}
+              disabled={!newSubclass.trim() || !newTarget}
+            >
+              <Plus size={15} /> Adicionar
+            </button>
           </div>
-          <button
-            id="add-category-btn"
-            className="btn btn-primary"
-            onClick={handleAddCategory}
-            disabled={!newSubclass.trim() || !newTarget}
-          >
-            <Plus size={15} /> Adicionar
-          </button>
         </div>
 
         {!isValid && categories.length > 0 && (
@@ -343,40 +513,43 @@ export default function Strategy() {
         )}
       </div>
 
-      {/* Multiple strategies */}
+      {/* ── Seção 3: Outras Carteiras ── */}
       <div className={`card ${styles.section}`}>
         <h3>Outras Carteiras</h3>
         <p style={{ marginTop: 8 }}>Você pode criar múltiplas carteiras com estratégias diferentes.</p>
         <div style={{ marginTop: 16 }}>
-          {strategies.map((s) => (
-            <div key={s.id} className={`${styles.stratRow} ${s.id === activeStrategyId ? styles.stratActive : ''}`}>
-              <div>
-                <div className={styles.stratName}>{s.name}</div>
-                {s.description && <div className={styles.stratDesc}>{s.description}</div>}
-              </div>
-              <div className={styles.stratActions}>
-                {s.id !== activeStrategyId && (
+          {strategies.map((s) => {
+            const subclassCount = s.categories?.length ?? 0;
+            return (
+              <div key={s.id} className={`${styles.stratRow} ${s.id === activeStrategyId ? styles.stratActive : ''}`}>
+                <div>
+                  <div className={styles.stratName}>{s.name}</div>
+                  <div className={styles.stratMeta}>
+                    {s.description && <span className={styles.stratDesc}>{s.description} · </span>}
+                    <span className={styles.stratCount}>{subclassCount} subclasse{subclassCount !== 1 ? 's' : ''}</span>
+                  </div>
+                </div>
+                <div className={styles.stratActions}>
+                  {s.id !== activeStrategyId && (
+                    <button className="btn btn-ghost btn-sm" onClick={() => setActiveStrategy(s.id)}>
+                      Selecionar
+                    </button>
+                  )}
+                  {s.id === activeStrategyId && (
+                    <span className="badge badge-success">Ativa</span>
+                  )}
                   <button
                     className="btn btn-ghost btn-sm"
-                    onClick={() => setActiveStrategy(s.id)}
+                    style={{ color: 'var(--color-danger)' }}
+                    title="Excluir Carteira"
+                    onClick={() => setStrategyToDelete({ id: s.id, name: s.name })}
                   >
-                    Selecionar
+                    <Trash2 size={15} />
                   </button>
-                )}
-                {s.id === activeStrategyId && (
-                  <span className="badge badge-success">Ativa</span>
-                )}
-                <button
-                  className="btn btn-ghost btn-sm"
-                  style={{ color: 'var(--color-danger)' }}
-                  title="Excluir Carteira"
-                  onClick={() => setStrategyToDelete({ id: s.id, name: s.name })}
-                >
-                  <Trash2 size={15} />
-                </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           <button
             id="new-strategy-btn"
             className="btn btn-ghost"
