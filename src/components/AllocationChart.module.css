@@ -215,7 +215,7 @@
 }
 
 .diffBuy { color: var(--color-success); }
-.diffSell { color: var(--color-error); }
+.diffSell { color: var(--color-danger); }
 
 /* Common UI */
 .header {

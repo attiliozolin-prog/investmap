@@ -17,11 +17,60 @@
   line-height: 1.5;
 }
 
-.alert svg { flex-shrink: 0; margin-top: 2px; }
+.alertIcon { flex-shrink: 0; margin-top: 2px; }
+
+.alertContent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.alertBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.alertGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.alertGroupLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+.alertTickerBuy {
+  padding: 2px 9px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--color-success);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.alertTickerSell {
+  padding: 2px 9px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--color-danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
 
 .middleRow {
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: 1fr minmax(300px, 380px);
   gap: var(--space-6);
   align-items: start;
 }
