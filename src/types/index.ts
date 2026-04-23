@@ -73,7 +73,7 @@ export interface AssetWithCalcs extends Asset {
   diffPercent: number;
   rebalanceAmount: number;    // positivo = comprar, negativo = vender
   action: 'buy' | 'sell' | 'ok';
-  isArchived?: boolean;
+  isArchived: boolean;
 }
 
 export interface CategorySummary {
