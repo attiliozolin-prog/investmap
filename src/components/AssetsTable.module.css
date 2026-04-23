@@ -63,6 +63,17 @@
   opacity: 1;
 }
 
+.archivedRow {
+  opacity: 0.45;
+  filter: grayscale(80%);
+  transition: opacity 0.2s, filter 0.2s;
+}
+
+.archivedRow:hover {
+  opacity: 0.8;
+  filter: grayscale(0%);
+}
+
 .row_buy td:first-child::before,
 .row_sell td:first-child::before {
   content: '';

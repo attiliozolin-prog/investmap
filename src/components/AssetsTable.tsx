@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { AssetWithCalcs } from '@/types';
 import { formatCurrency, formatPercent, formatPercentAbs } from '@/lib/calculations';
 import styles from './AssetsTable.module.css';
-import { Pencil, Trash2, ArrowUp, ArrowDown, Minus, RefreshCw, AlertCircle, PlusCircle, GripVertical, Info, History, ChevronDown, ChevronRight, TrendingUp, ChevronsUpDown } from 'lucide-react';
+import { Pencil, Trash2, ArrowUp, ArrowDown, Minus, RefreshCw, AlertCircle, PlusCircle, GripVertical, Info, History, ChevronDown, ChevronRight, TrendingUp, ChevronsUpDown, Archive } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import TransactionModal from './TransactionModal';
@@ -15,6 +15,7 @@ interface Props {
   onEdit: (asset: AssetWithCalcs) => void;
   onDelete: (id: string) => void;
   onUpdateValue: (id: string, currentValue: number) => void;
+  onArchiveToggle?: (asset: AssetWithCalcs) => void;
 }
 
 function ActionBadge({ action }: { action: 'buy' | 'sell' | 'ok' }) {
@@ -106,7 +107,14 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
     }>();
 
     assets.forEach((a) => {
-      const cls = a.category.className;
+      let cls = a.category.className;
+      let subclassTarget = a.category.targetPercent;
+      
+      if (a.isArchived) {
+        cls = 'Ativos Encerrados';
+        subclassTarget = 0;
+      }
+
       if (!map.has(cls)) {
         map.set(cls, {
           className: cls,
@@ -121,7 +129,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
       }
       const g = map.get(cls)!;
       g.assets.push(a);
-      g.subclassTargets.set(a.category.id, a.category.targetPercent);
+      g.subclassTargets.set(a.category.id, subclassTarget);
       g.totalInvestedValue += a.investedValue;
       g.totalValue += a.currentValue;
       g.totalPercent += a.currentPortfolioPercent;
@@ -421,7 +429,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
 
                 {/* Ativos dentro do Grupo — apenas se não estiver colapsado */}
                 {!collapsedGroups.has(group.className) && group.assets.map((asset) => (
-                  <tr key={asset.id} className={`${styles.row} ${styles[`row_${asset.action}`]}`}>
+                  <tr key={asset.id} className={`${styles.row} ${styles[`row_${asset.action}`]} ${asset.isArchived ? styles.archivedRow : ''}`}>
                     {/* Ativo */}
                     <td>
                       <div className={styles.tickerCell}>
@@ -547,6 +555,15 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                         >
                           <Pencil size={13} />
                         </button>
+                        {onArchiveToggle && (
+                          <button
+                            className={`btn btn-ghost btn-sm ${styles.actionBtn}`}
+                            onClick={() => onArchiveToggle(asset)}
+                            title={asset.isArchived ? "Desarquivar (reativar) ativo" : "Encerrar ativo (Arquivar)"}
+                          >
+                            <Archive size={13} style={{ opacity: asset.isArchived ? 0.5 : 1 }} />
+                          </button>
+                        )}
                         <button
                           className={`btn btn-ghost btn-sm ${styles.actionBtn} ${styles.actionBtnTransaction}`}
                           onClick={() => setTransactionAssetId(asset.id)}

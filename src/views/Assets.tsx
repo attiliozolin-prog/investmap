@@ -69,6 +69,17 @@ export default function Assets() {
     setShowModal(false);
   };
 
+  const handleArchiveToggle = (asset: AssetWithCalcs) => {
+    const isArchived = asset.isArchived ?? false;
+    let newInfo = asset.info || '';
+    if (isArchived) {
+      newInfo = newInfo.replace('[[ARCHIVED]]', '').trim();
+    } else {
+      newInfo = `[[ARCHIVED]] ${newInfo}`.trim();
+    }
+    updateAsset(asset.id, { info: newInfo });
+  };
+
   if (!activeStrategy) {
     return (
       <div className="empty-state">
@@ -160,6 +171,7 @@ export default function Assets() {
         onEdit={handleEdit}
         onDelete={deleteAsset}
         onUpdateValue={(id, val) => updateAsset(id, { currentValue: val })}
+        onArchiveToggle={handleArchiveToggle}
       />
 
       {showModal && (
