@@ -61,6 +61,8 @@ export function calculatePortfolio(
         };
       }
 
+      const isArchived = asset.info?.includes('[[ARCHIVED]]') ?? false;
+
       const profitLoss = asset.currentValue - asset.investedValue;
       const profitLossPercent =
         asset.investedValue > 0
@@ -69,8 +71,13 @@ export function calculatePortfolio(
       const currentPortfolioPercent =
         totalValue > 0 ? (asset.currentValue / totalValue) * 100 : 0;
       const targetPercent = category.targetPercent;
-      const siblingCount = assets.filter(a => a.categoryId === asset.categoryId).length;
-      const assetTargetPercent = siblingCount > 0 ? targetPercent / siblingCount : targetPercent;
+      
+      const siblingCount = assets.filter(a => a.categoryId === asset.categoryId && !a.info?.includes('[[ARCHIVED]]')).length;
+      
+      let assetTargetPercent = 0;
+      if (!isArchived) {
+        assetTargetPercent = siblingCount > 0 ? targetPercent / siblingCount : targetPercent;
+      }
       
       const diffPercent = currentPortfolioPercent - assetTargetPercent;
 
@@ -78,9 +85,11 @@ export function calculatePortfolio(
       const rebalanceAmount = targetValue - asset.currentValue;
 
       let action: 'buy' | 'sell' | 'ok' = 'ok';
-      const absDiff = Math.abs(diffPercent);
-      if (absDiff > strategy.deviationTolerance) {
-        action = diffPercent > 0 ? 'sell' : 'buy';
+      if (!isArchived) {
+        const absDiff = Math.abs(diffPercent);
+        if (absDiff > strategy.deviationTolerance) {
+          action = diffPercent > 0 ? 'sell' : 'buy';
+        }
       }
 
       return {
@@ -94,6 +103,7 @@ export function calculatePortfolio(
         diffPercent,
         rebalanceAmount,
         action,
+        isArchived,
       };
     })
     .filter((a): a is AssetWithCalcs => a !== null);
