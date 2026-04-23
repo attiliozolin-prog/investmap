@@ -65,7 +65,7 @@ function getDeviationColor(current: number, target: number): string {
   return 'var(--color-danger)';
 }
 
-export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }: Props) {
+export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue, onArchiveToggle }: Props) {
   const [editingValueId, setEditingValueId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
