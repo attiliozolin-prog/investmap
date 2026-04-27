@@ -51,7 +51,7 @@ function AppContent() {
       <main className={styles.main}>
         <div className={`container ${styles.content}`}>
           {activeTab === 'dashboard' && <Dashboard onNavigate={(tab) => setActiveTab(tab as Tab)} />}
-          {activeTab === 'finances'  && <Finances onNavigate={(tab) => setActiveTab(tab as Tab)} />}
+          {activeTab === 'finances'  && <Finances />}
           {activeTab === 'assets'    && <Assets />}
           {activeTab === 'strategy'  && <Strategy />}
           {activeTab === 'profile'   && <Profile />}
