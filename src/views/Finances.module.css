@@ -289,8 +289,7 @@
 
 .descCell {
   font-weight: 500;
-  white-space: normal;   /* apenas a descrição pode quebrar */
-  min-width: 100px;
+  white-space: nowrap;
 }
 .centerCell { text-align: center; color: var(--color-text-2); white-space: nowrap; }
 
