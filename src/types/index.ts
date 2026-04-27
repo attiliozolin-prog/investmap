@@ -111,26 +111,44 @@ export interface FinanceMonth {
 }
 
 export type FinanceTransactionType = 'income' | 'expense';
-export type FinanceTransactionCategory = 'Fixo' | 'Variável' | 'Assinatura';
+
+// Seção na planilha a que pertence este lançamento
+export type FinanceSection = 'boleto' | 'assinatura' | 'extra' | 'income';
+
+// Status de pagamento do lançamento
+export type FinancePaymentStatus = 'pending' | 'paid' | 'auto_debit' | 'scheduled' | 'overdue';
+
+// Pessoa física ou jurídica
+export type FinanceCpfCnpj = 'CPF' | 'CNPJ';
 
 export interface FinanceTransaction {
   id: string;
-  monthId: string;    // Referência ao FinanceMonth
+  monthId: string;            // Referência ao FinanceMonth
   type: FinanceTransactionType;
-  category: FinanceTransactionCategory;
+  section: FinanceSection;    // Boleto / Assinatura / Extra / Receita
   description: string;
   value: number;
-  date: string;       // ISO Date YYYY-MM-DD
+  date: string;               // ISO Date YYYY-MM-DD
   createdAt: string;
+
+  // Campos específicos de Boletos
+  dueDay?: number;            // Dia de vencimento (1-31)
+  category?: string;          // Ex: Sobrevivência, Telefonia, Saúde, Impostos...
+  cpfCnpj?: FinanceCpfCnpj;  // CPF ou CNPJ
+  paymentStatus?: FinancePaymentStatus;
+  notes?: string;             // Observações livres
+
+  // Campo de assinaturas
+  card?: string;              // Cartão onde é debitado
 }
 
 // Computed finance interfaces
 export interface FinanceMonthSummary {
   monthId: string;
   totalIncome: number;
-  totalExpenseFixed: number;
-  totalExpenseVariable: number;
+  totalExpenseBoleto: number;
   totalExpenseSubscription: number;
+  totalExpenseExtra: number;
   totalExpense: number;
-  balance: number; // leftover
+  balance: number;
 }

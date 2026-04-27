@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { FinanceMonth, FinanceTransaction, FinanceTransactionType, FinanceTransactionCategory } from '@/types';
+import { FinanceMonth, FinanceTransaction } from '@/types';
 import { generateId } from '@/lib/calculations';
 import { useAuth } from '@/context/AuthContext';
 
@@ -9,9 +9,9 @@ interface FinanceContextType {
   months: FinanceMonth[];
   transactions: FinanceTransaction[];
   activeMonthId: string | null;
-  
+
   setActiveMonthId: (id: string | null) => void;
-  createMonth: (monthStr: string) => FinanceMonth; // 'YYYY-MM'
+  createMonth: (monthStr: string) => FinanceMonth;
   closeMonth: (id: string) => void;
   reopenMonth: (id: string) => void;
   deleteMonth: (id: string) => void;
@@ -30,15 +30,14 @@ function getStorageKey(key: string, userId?: string): string {
 
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  
+
   const [months, setMonths] = useState<FinanceMonth[]>([]);
   const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
   const [activeMonthId, setActiveMonthId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  // Carrega do LocalStorage na montagem / mudança de usuário
   useEffect(() => {
-    const userId = user?.id; // se undefined, cai pra guest
+    const userId = user?.id;
     try {
       const storedMonths = localStorage.getItem(getStorageKey('months', userId));
       const storedTxs = localStorage.getItem(getStorageKey('transactions', userId));
@@ -47,23 +46,21 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       const parsedMonths: FinanceMonth[] = storedMonths ? JSON.parse(storedMonths) : [];
       setMonths(parsedMonths);
       setTransactions(storedTxs ? JSON.parse(storedTxs) : []);
-      
+
       if (storedActive && parsedMonths.some(m => m.id === storedActive)) {
         setActiveMonthId(storedActive);
       } else if (parsedMonths.length > 0) {
-        // Pega o mês mais recente (ordem alfabética/numérica do mês 'YYYY-MM')
         const sorted = [...parsedMonths].sort((a, b) => b.month.localeCompare(a.month));
         setActiveMonthId(sorted[0].id);
       } else {
         setActiveMonthId(null);
       }
     } catch (e) {
-      console.error("Erro carregando finanças", e);
+      console.error('Erro carregando finanças', e);
     }
     setMounted(true);
   }, [user]);
 
-  // Persiste no LocalStorage a cada mudança
   useEffect(() => {
     if (!mounted) return;
     const userId = user?.id;
@@ -76,9 +73,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
   }, [months, transactions, activeMonthId, user, mounted]);
 
-  // ===================================
-  // CRUD Months
-  // ===================================
   const createMonth = useCallback((monthStr: string) => {
     const now = new Date().toISOString();
     const newMonth: FinanceMonth = {
@@ -89,7 +83,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       updatedAt: now,
     };
     setMonths(prev => {
-      // evita duplicados
       if (prev.some(m => m.month === monthStr)) return prev;
       return [...prev, newMonth];
     });
@@ -111,9 +104,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (activeMonthId === id) setActiveMonthId(null);
   }, [activeMonthId]);
 
-  // ===================================
-  // CRUD Transactions
-  // ===================================
   const addTransaction = useCallback((data: Omit<FinanceTransaction, 'id' | 'createdAt'>) => {
     const newTx: FinanceTransaction = {
       ...data,
