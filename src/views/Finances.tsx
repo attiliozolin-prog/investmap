@@ -100,6 +100,11 @@ export default function Finances() {
             {sortedMonths.length===0 && <option value="">Nenhum mês</option>}
             {sortedMonths.map(m=><option key={m.id} value={m.id}>{fmtMonth(m.month)}</option>)}
           </select>
+          {activeMonthId && (
+            <button className={styles.btnSecondary} onClick={() => { if(confirm('Tem certeza que deseja excluir este mês e TODOS os seus lançamentos?')) deleteMonth(activeMonthId) }}>
+              <Trash2 size={16}/> Excluir Mês
+            </button>
+          )}
           <button className={styles.btnPrimary} onClick={()=>setIsMonthModalOpen(true)}>
             <Plus size={16}/> Novo Mês
           </button>
