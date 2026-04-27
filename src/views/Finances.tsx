@@ -362,10 +362,11 @@ function TxModal({section,monthId,existing,onClose,onSave}:{section:FinanceSecti
   const [cpfCnpj,setCpf]   = useState<FinanceCpfCnpj>(existing?.cpfCnpj||'CPF');
   const [payStatus,setPay] = useState<FinancePaymentStatus>(existing?.paymentStatus||'pending');
   const [card,setCard]     = useState(existing?.card||'PF');
-  const [date,setDate]     = useState(existing?.date||()=>{
-    const d=new Date();
+  const defaultDate = existing?.date || (() => {
+    const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  });
+  })();
+  const [date,setDate] = useState(defaultDate);
 
   const isExpense = section !== 'income';
   const isEdit = !!existing;
