@@ -54,17 +54,19 @@ export default function Finances() {
   const totalAssinaturas = useMemo(() => assinaturas.reduce((s,t)=>s+t.value,0), [assinaturas]);
   const totalExtras      = useMemo(() => extras.reduce((s,t)=>s+t.value,0), [extras]);
   const totalIncome      = useMemo(() => incomes.reduce((s,t)=>s+t.value,0), [incomes]);
-  const totalExp         = totalBoletos + totalAssinaturas + totalExtras;
+  // Assinaturas não entram no cálculo de despesas pois já vêm cobradas na fatura do cartão (boleto)
+  const totalExp         = totalBoletos + totalExtras;
   const balance          = totalIncome - totalExp;
 
   const categoryTotals = useMemo(() => {
     const map: Record<string,number> = {};
-    [...boletos,...assinaturas,...extras].forEach(t => {
+    // Assinaturas também não entram no gráfico de gastos para evitar duplicidade
+    [...boletos,...extras].forEach(t => {
       const cat = t.category || 'Outro';
       map[cat] = (map[cat]||0) + t.value;
     });
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a,b)=>b.value-a.value);
-  }, [boletos, assinaturas, extras]);
+  }, [boletos, extras]);
 
   const totalInvestments = useMemo(() => assets.reduce((s,a)=>s+a.currentValue,0), [assets]);
   const survivalMonths = totalExp > 0 ? totalInvestments / totalExp : 0;
