@@ -34,7 +34,7 @@ const CHART_COLORS = ['#3B82F6','#F59E0B','#FF1493','#10B981','#8B5CF6','#EF4444
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 export default function Finances() {
-  const { months, transactions, activeMonthId, setActiveMonthId, createMonth, addTransaction, deleteTransaction, updateTransaction } = useFinance();
+  const { months, transactions, activeMonthId, setActiveMonthId, createMonth, deleteMonth, addTransaction, deleteTransaction, updateTransaction } = useFinance();
   const { assets } = useApp();
 
   const [isMonthModalOpen, setIsMonthModalOpen] = useState(false);
