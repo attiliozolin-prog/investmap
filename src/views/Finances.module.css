@@ -373,9 +373,8 @@
 
 /* ── Delete button ── */
 .actionCell {
-  display: flex;
-  gap: 0.2rem;
-  justify-content: flex-end;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .editBtn {
@@ -385,9 +384,10 @@
   cursor: pointer;
   padding: 0.3rem;
   border-radius: 0.25rem;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   transition: all 0.15s;
+  margin-right: 0.2rem;
 }
 .editBtn:hover { background: rgba(59,130,246,0.1); color: #60A5FA; }
 
@@ -398,7 +398,7 @@
   cursor: pointer;
   padding: 0.3rem;
   border-radius: 0.25rem;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   transition: all 0.15s;
 }
