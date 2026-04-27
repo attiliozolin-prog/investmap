@@ -280,12 +280,12 @@ export default function Finances() {
       )}
       {addSection && activeMonthId && (
         <TxModal section={addSection} monthId={activeMonthId} onClose={()=>setAddSection(null)}
-          onSave={data=>{addTransaction(data);setAddSection(null);}}/>
+          onSave={(data)=>{addTransaction(data);setAddSection(null);}}/>
       )}
       {editTx && (
         <TxModal section={editTx.section} monthId={editTx.monthId} existing={editTx}
           onClose={()=>setEditTx(null)}
-          onSave={data=>{updateTransaction(editTx.id, data as Partial<FinanceTransaction>);setEditTx(null);}}/>
+          onSave={(data)=>{updateTransaction(editTx.id, data as Partial<FinanceTransaction>);setEditTx(null);}}/>
       )}
     </div>
   );
@@ -354,7 +354,13 @@ function MonthModal({months,onClose,onCreate}:{months:{id:string;month:string}[]
 // ─── Transaction Modal ────────────────────────────────────────────────────────
 const SECTION_LABELS: Record<FinanceSection,string> = {boleto:'Boleto',assinatura:'Assinatura',extra:'Gasto Extra',income:'Receita'};
 
-function TxModal({section,monthId,existing,onClose,onSave}:{section:FinanceSection;monthId:string;existing?:FinanceTransaction;onClose:()=>void;onSave:(data:Omit<FinanceTransaction,'id'|'createdAt'>|Partial<FinanceTransaction>)=>void}) {
+function TxModal({section,monthId,existing,onClose,onSave}:{
+  section: FinanceSection;
+  monthId: string;
+  existing?: FinanceTransaction;
+  onClose: () => void;
+  onSave: (data: Omit<FinanceTransaction,'id'|'createdAt'>) => void;
+}) {
   const [desc,setDesc]     = useState(existing?.description||'');
   const [value,setValue]   = useState(existing?.value?String(existing.value):'');
   const [category,setCat]  = useState(existing?.category||CATEGORIES[0]);
