@@ -110,6 +110,11 @@ export interface FinanceMonth {
   updatedAt: string;
 }
 
+export interface FinanceCategory {
+  id: string;
+  name: string;
+}
+
 export type FinanceTransactionType = 'income' | 'expense';
 
 // Seção na planilha a que pertence este lançamento

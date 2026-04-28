@@ -1,13 +1,14 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { FinanceMonth, FinanceTransaction, FinanceCpfCnpj, FinancePaymentStatus, FinanceSection } from '@/types';
+import { FinanceMonth, FinanceTransaction, FinanceCpfCnpj, FinancePaymentStatus, FinanceSection, FinanceCategory } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 
 interface FinanceContextType {
   months: FinanceMonth[];
   transactions: FinanceTransaction[];
+  categories: FinanceCategory[];
   activeMonthId: string | null;
 
   setActiveMonthId: (id: string | null) => void;
@@ -19,6 +20,10 @@ interface FinanceContextType {
   addTransaction: (data: Omit<FinanceTransaction, 'id' | 'createdAt'>) => void;
   updateTransaction: (id: string, data: Partial<FinanceTransaction>) => void;
   deleteTransaction: (id: string) => void;
+
+  addCategory: (name: string) => void;
+  updateCategory: (id: string, name: string) => void;
+  deleteCategory: (id: string) => void;
 }
 
 const FinanceContext = createContext<FinanceContextType | null>(null);
@@ -52,11 +57,23 @@ const mapTxFromDB = (t: any): FinanceTransaction => ({
   createdAt: t.created_at,
 });
 
+const mapCategoryFromDB = (c: any): FinanceCategory => ({
+  id: c.id,
+  name: c.name,
+});
+
+export const DEFAULT_CATEGORIES = [
+  'Sobrevivência','Cartão Crédito','Telefonia','Esporte','Energia',
+  'Limpeza e Manutenção','Saúde','Contabilidade','Impostos','Lazer',
+  'Alimentação','Transporte','Educação','Outro'
+];
+
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
 
   const [months, setMonths] = useState<FinanceMonth[]>([]);
   const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
+  const [categories, setCategories] = useState<FinanceCategory[]>([]);
   const [activeMonthId, setActiveMonthId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -64,6 +81,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     if (!user) {
       setMonths([]);
       setTransactions([]);
+      setCategories([]);
       setMounted(true);
       return;
     }
@@ -76,8 +94,19 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         const { data: dbTxs, error: errTxs } = await supabase.from('finance_transactions').select('*').eq('user_id', user.id);
         if (errTxs) throw errTxs;
 
+        const { data: dbCats, error: errCats } = await supabase.from('finance_categories').select('*').eq('user_id', user.id);
+        if (errCats) throw errCats;
+
         let finalMonths = dbMonths?.map(mapMonthFromDB) || [];
         let finalTxs = dbTxs?.map(mapTxFromDB) || [];
+        let finalCats = dbCats?.map(mapCategoryFromDB) || [];
+
+        // Inicializar categorias padrão se o usuário não tiver nenhuma
+        if (finalCats.length === 0) {
+          const newCats = DEFAULT_CATEGORIES.map(name => ({ id: crypto.randomUUID(), name }));
+          await supabase.from('finance_categories').insert(newCats.map(c => ({ id: c.id, user_id: user.id, name: c.name })));
+          finalCats = newCats;
+        }
 
         // Migração do localStorage caso o Supabase esteja vazio (opcional)
         if (finalMonths.length === 0) {
@@ -139,6 +168,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
         setMonths(finalMonths);
         setTransactions(finalTxs);
+        setCategories(finalCats);
         
         const storedActive = localStorage.getItem(getStorageKey('activeMonthId', user.id));
         // Mapear o activeMonth caso tenha sido migrado (IDs mudaram)
@@ -280,9 +310,33 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const addCategory = useCallback((name: string) => {
+    if (!user) return;
+    const newCat = { id: crypto.randomUUID(), name };
+    setCategories(prev => [...prev, newCat]);
+    supabase.from('finance_categories').insert({ id: newCat.id, user_id: user.id, name }).then(({error}) => {
+      if (error) console.error("Erro inserindo categoria", error);
+    });
+  }, [user]);
+
+  const updateCategory = useCallback((id: string, name: string) => {
+    setCategories(prev => prev.map(c => c.id === id ? { ...c, name } : c));
+    supabase.from('finance_categories').update({ name }).eq('id', id).then(({error}) => {
+      if (error) console.error("Erro atualizando categoria", error);
+    });
+  }, []);
+
+  const deleteCategory = useCallback((id: string) => {
+    setCategories(prev => prev.filter(c => c.id !== id));
+    supabase.from('finance_categories').delete().eq('id', id).then(({error}) => {
+      if (error) console.error("Erro deletando categoria", error);
+    });
+  }, []);
+
   const contextValue = useMemo(() => ({
     months,
     transactions,
+    categories,
     activeMonthId,
     setActiveMonthId,
     createMonth,
@@ -292,10 +346,14 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     addTransaction,
     updateTransaction,
     deleteTransaction,
+    addCategory,
+    updateCategory,
+    deleteCategory
   }), [
-    months, transactions, activeMonthId,
+    months, transactions, categories, activeMonthId,
     setActiveMonthId, createMonth, closeMonth, reopenMonth, deleteMonth,
-    addTransaction, updateTransaction, deleteTransaction
+    addTransaction, updateTransaction, deleteTransaction,
+    addCategory, updateCategory, deleteCategory
   ]);
 
   return (

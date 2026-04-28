@@ -5,7 +5,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFinance } from '@/context/FinanceContext';
 import { useApp } from '@/context/AppContext';
 import { FinanceTransaction, FinanceSection, FinancePaymentStatus, FinanceCpfCnpj } from '@/types';
-import { Plus, Trash2, X, Wallet, ShieldAlert, Edit2, Clock } from 'lucide-react';
+import { Plus, Trash2, X, Wallet, ShieldAlert, Edit2, Clock, Tags } from 'lucide-react';
 import styles from './Finances.module.css';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -25,19 +25,16 @@ const STATUS_CSS: Record<FinancePaymentStatus, string> = {
   paid: styles.statusPaid, auto_debit: styles.statusAuto,
   scheduled: styles.statusScheduled, pending: styles.statusPending, overdue: styles.statusOverdue,
 };
-const CATEGORIES = [
-  'Sobrevivência','Cartão Crédito','Telefonia','Esporte','Energia',
-  'Limpeza e Manutenção','Saúde','Contabilidade','Impostos','Lazer',
-  'Alimentação','Transporte','Educação','Outro',
-];
+
 const CHART_COLORS = ['#3B82F6','#F59E0B','#FF1493','#10B981','#8B5CF6','#EF4444','#06B6D4','#F97316','#84CC16','#EC4899','#14B8A6','#A78BFA'];
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 export default function Finances() {
-  const { months, transactions, activeMonthId, setActiveMonthId, createMonth, deleteMonth, addTransaction, deleteTransaction, updateTransaction } = useFinance();
+  const { months, transactions, categories, activeMonthId, setActiveMonthId, createMonth, deleteMonth, addTransaction, deleteTransaction, updateTransaction } = useFinance();
   const { assets } = useApp();
 
   const [isMonthModalOpen, setIsMonthModalOpen] = useState(false);
+  const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
   const [addSection, setAddSection] = useState<FinanceSection | null>(null);
   const [editTx, setEditTx] = useState<FinanceTransaction | null>(null);
   const [monthToDelete, setMonthToDelete] = useState<string | null>(null);
@@ -106,6 +103,9 @@ export default function Finances() {
               <Trash2 size={16}/> Excluir Mês
             </button>
           )}
+          <button className={styles.btnSecondary} onClick={()=>setIsCategoriesModalOpen(true)}>
+            <Tags size={16}/> Categorias
+          </button>
           <button className={styles.btnPrimary} onClick={()=>setIsMonthModalOpen(true)}>
             <Plus size={16}/> Novo Mês
           </button>
@@ -295,6 +295,9 @@ export default function Finances() {
           onCreate={handleImportAndCreate}
         />
       )}
+      {isCategoriesModalOpen && (
+        <CategoriesModal onClose={()=>setIsCategoriesModalOpen(false)} />
+      )}
       {addSection && activeMonthId && (
         <TxModal section={addSection} monthId={activeMonthId} onClose={()=>setAddSection(null)}
           onSave={(data)=>{addTransaction(data);setAddSection(null);}}/>
@@ -368,6 +371,68 @@ function MonthModal({months,onClose,onCreate}:{months:{id:string;month:string}[]
   );
 }
 
+// ─── Categories Modal ─────────────────────────────────────────────────────────
+function CategoriesModal({ onClose }: { onClose: () => void }) {
+  const { categories, addCategory, updateCategory, deleteCategory } = useFinance();
+  const sorted = [...categories].sort((a,b)=>a.name.localeCompare(b.name));
+  const [newCat, setNewCat] = useState('');
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+
+  const handleAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if(newCat.trim()) {
+      addCategory(newCat.trim());
+      setNewCat('');
+    }
+  };
+
+  const handleSaveEdit = (id: string) => {
+    if(editName.trim()) {
+      updateCategory(id, editName.trim());
+    }
+    setEditId(null);
+  };
+
+  return (
+    <div className={styles.overlay} onClick={onClose}>
+      <div className={styles.modal} onClick={e=>e.stopPropagation()} style={{maxHeight:'90vh',display:'flex',flexDirection:'column'}}>
+        <div className={styles.modalHead}>
+          <h3>Categorias</h3>
+          <button className={styles.closeBtn} onClick={onClose}><X size={20}/></button>
+        </div>
+        <div className={styles.modalBody} style={{overflowY:'auto',padding:'1.5rem'}}>
+          <form onSubmit={handleAdd} style={{display:'flex',gap:'0.5rem',marginBottom:'1.5rem'}}>
+            <input required type="text" className={styles.input} style={{flex:1}} value={newCat} onChange={e=>setNewCat(e.target.value)} placeholder="Nova categoria..."/>
+            <button type="submit" className={styles.btnPrimary} style={{padding:'0 1rem'}}><Plus size={18}/></button>
+          </form>
+          <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
+            {sorted.map(c => (
+              <div key={c.id} style={{display:'flex',alignItems:'center',gap:'0.5rem',padding:'0.5rem 0.75rem',background:'var(--color-surface-2)',borderRadius:'0.5rem',border:'1px solid var(--color-border)'}}>
+                {editId === c.id ? (
+                  <form onSubmit={(e)=>{e.preventDefault(); handleSaveEdit(c.id);}} style={{display:'flex',flex:1,gap:'0.5rem'}}>
+                    <input autoFocus type="text" className={styles.input} style={{flex:1,padding:'0.3rem 0.5rem'}} value={editName} onChange={e=>setEditName(e.target.value)} />
+                    <button type="submit" className={styles.btnPrimary} style={{padding:'0 0.75rem'}}>Salvar</button>
+                    <button type="button" className={styles.btnSecondary} style={{padding:'0 0.75rem'}} onClick={()=>setEditId(null)}>Cancelar</button>
+                  </form>
+                ) : (
+                  <>
+                    <span style={{flex:1,fontSize:'0.9rem',color:'var(--color-text)'}}>{c.name}</span>
+                    <button className={styles.editBtn} onClick={()=>{setEditId(c.id); setEditName(c.name);}}><Edit2 size={15}/></button>
+                    <button className={styles.delBtn} onClick={()=>{if(confirm(`Excluir a categoria "${c.name}"?`)) deleteCategory(c.id);}}><Trash2 size={15}/></button>
+                  </>
+                )}
+              </div>
+            ))}
+            {sorted.length === 0 && <p style={{color:'var(--color-text-2)',fontSize:'0.9rem',textAlign:'center',padding:'1rem 0'}}>Nenhuma categoria.</p>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 // ─── Delete Month Modal ───────────────────────────────────────────────────────
 function DeleteMonthModal({monthName,onClose,onConfirm}:{monthName:string;onClose:()=>void;onConfirm:()=>void}) {
   const [val,setVal] = useState('');
@@ -402,9 +467,12 @@ function TxModal({section,monthId,existing,onClose,onSave}:{
   onClose: () => void;
   onSave: (data: Omit<FinanceTransaction,'id'|'createdAt'>) => void;
 }) {
+  const { categories } = useFinance();
+  const sortedCategories = [...categories].sort((a,b)=>a.name.localeCompare(b.name));
+
   const [desc,setDesc]     = useState(existing?.description||'');
   const [value,setValue]   = useState(existing?.value?String(existing.value):'');
-  const [category,setCat]  = useState(existing?.category||CATEGORIES[0]);
+  const [category,setCat]  = useState(existing?.category||(sortedCategories[0]?.name||'Outro'));
   const [dueDay,setDueDay] = useState(existing?.dueDay?String(existing.dueDay):'');
   const [cpfCnpj,setCpf]   = useState<FinanceCpfCnpj>(existing?.cpfCnpj||'CPF');
   const [payStatus,setPay] = useState<FinancePaymentStatus>(existing?.paymentStatus||'pending');
@@ -456,7 +524,7 @@ function TxModal({section,monthId,existing,onClose,onSave}:{
               <input required type="date" className={styles.input} value={date} onChange={e=>setDate(e.target.value)}/>
             </div>
           </div>
-          {isExpense&&<div className={styles.formGroup}><label>Categoria</label><select className={styles.input} value={category} onChange={e=>setCat(e.target.value)}>{CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>}
+          {isExpense&&<div className={styles.formGroup}><label>Categoria</label><select className={styles.input} value={category} onChange={e=>setCat(e.target.value)}>{sortedCategories.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}</select></div>}
           {section==='boleto'&&(
             <div className={styles.formRow}>
               <div className={styles.formGroup}><label>Dia de Vencimento</label><input type="number" min="1" max="31" className={styles.input} value={dueDay} placeholder="Ex: 5" onChange={e=>setDueDay(e.target.value)}/></div>
