@@ -40,6 +40,7 @@ export default function Finances() {
   const [isMonthModalOpen, setIsMonthModalOpen] = useState(false);
   const [addSection, setAddSection] = useState<FinanceSection | null>(null);
   const [editTx, setEditTx] = useState<FinanceTransaction | null>(null);
+  const [monthToDelete, setMonthToDelete] = useState<string | null>(null);
 
   const sortedMonths = useMemo(() => [...months].sort((a,b) => b.month.localeCompare(a.month)), [months]);
   const activeMonth = useMemo(() => months.find(m => m.id === activeMonthId), [months, activeMonthId]);
@@ -101,7 +102,7 @@ export default function Finances() {
             {sortedMonths.map(m=><option key={m.id} value={m.id}>{fmtMonth(m.month)}</option>)}
           </select>
           {activeMonthId && (
-            <button className={styles.btnSecondary} onClick={() => { if(confirm('Tem certeza que deseja excluir este mês e TODOS os seus lançamentos?')) deleteMonth(activeMonthId) }}>
+            <button className={styles.btnSecondary} onClick={() => setMonthToDelete(activeMonthId)}>
               <Trash2 size={16}/> Excluir Mês
             </button>
           )}
@@ -278,6 +279,16 @@ export default function Finances() {
       )}
 
       {/* Modals */}
+      {monthToDelete && (
+        <DeleteMonthModal
+          monthName={fmtMonth(months.find(m=>m.id===monthToDelete)?.month || '')}
+          onClose={()=>setMonthToDelete(null)}
+          onConfirm={()=>{
+            deleteMonth(monthToDelete);
+            setMonthToDelete(null);
+          }}
+        />
+      )}
       {isMonthModalOpen && (
         <MonthModal
           months={sortedMonths}
@@ -352,6 +363,30 @@ function MonthModal({months,onClose,onCreate}:{months:{id:string;month:string}[]
             </div>
           )}
           <button type="submit" className={styles.submitBtn}>Criar Mês</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Delete Month Modal ───────────────────────────────────────────────────────
+function DeleteMonthModal({monthName,onClose,onConfirm}:{monthName:string;onClose:()=>void;onConfirm:()=>void}) {
+  const [val,setVal] = useState('');
+  return (
+    <div className={styles.overlay} onClick={onClose}>
+      <div className={styles.modal} onClick={e=>e.stopPropagation()}>
+        <div className={styles.modalHead}><h3>Excluir Mês</h3><button className={styles.closeBtn} onClick={onClose}><X size={20}/></button></div>
+        <form className={styles.modalBody} onSubmit={e=>{e.preventDefault();if(val==='EXCLUIR')onConfirm();}}>
+          <p style={{fontSize:'0.9rem',color:'var(--color-text)',lineHeight:'1.5'}}>
+            Tem certeza que deseja excluir o mês <strong>{monthName}</strong> e TODOS os seus lançamentos?<br/>Esta ação é permanente.
+          </p>
+          <div className={styles.formGroup} style={{marginTop:'1rem',marginBottom:'1rem'}}>
+            <label>Digite <strong>EXCLUIR</strong> para confirmar</label>
+            <input type="text" required className={styles.input} value={val} onChange={e=>setVal(e.target.value)} placeholder="EXCLUIR"/>
+          </div>
+          <button type="submit" className={styles.btnSecondary} style={{width:'100%',justifyContent:'center',opacity:val!=='EXCLUIR'?0.5:1}} disabled={val!=='EXCLUIR'}>
+            <Trash2 size={16}/> Excluir Definitivamente
+          </button>
         </form>
       </div>
     </div>
