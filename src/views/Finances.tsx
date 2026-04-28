@@ -250,7 +250,7 @@ export default function Finances() {
                 <h3 className={styles.chartTitle}>Distribuição de Gastos por Categoria</h3>
               </div>
               <div className={styles.chartBody}>
-                <ResponsiveContainer width="100%" height={320}>
+                <ResponsiveContainer width="100%" height={400}>
                   <PieChart>
                     <Pie data={categoryTotals} cx="50%" cy="50%" innerRadius={75} outerRadius={130}
                       paddingAngle={3} dataKey="value"
