@@ -445,7 +445,7 @@
 
 .chartBody {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: 1fr 340px;
   align-items: center;
   gap: 0;
 }
