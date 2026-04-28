@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFinance } from '@/context/FinanceContext';
 import { useApp } from '@/context/AppContext';
 import { FinanceTransaction, FinanceSection, FinancePaymentStatus, FinanceCpfCnpj } from '@/types';
@@ -259,7 +259,6 @@ export default function Finances() {
                       {categoryTotals.map((_,i)=><Cell key={i} fill={CHART_COLORS[i%CHART_COLORS.length]}/>)}
                     </Pie>
                     <Tooltip formatter={(v:number)=>fmt(v)}/>
-                    <Legend formatter={(value)=>value}/>
                   </PieChart>
                 </ResponsiveContainer>
                 <div className={styles.chartLegend}>
