@@ -384,7 +384,7 @@
 .statusPaid      { background: rgba(16,185,129,0.15); color: #10B981; }
 .statusAuto      { background: rgba(59,130,246,0.15); color: #60A5FA; }
 .statusScheduled { background: rgba(245,158,11,0.15); color: #FBBF24; }
-.statusPending   { background: rgba(107,114,128,0.15); color: #9CA3AF; }
+.statusPending   { background: rgba(239,68,68,0.15); color: #EF4444; }
 .statusOverdue   { background: rgba(239,68,68,0.15); color: #EF4444; }
 
 /* ── Delete button ── */
