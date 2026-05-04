@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Asset, StrategyCategory } from '@/types';
 import styles from './AssetModal.module.css';
-import { X } from 'lucide-react';
+import { X, RefreshCw } from 'lucide-react';
 import TickerSearch from './TickerSearch';
+import { fetchAssetPrice } from '@/lib/brapi';
 
 interface Props {
   categories: StrategyCategory[];
@@ -18,9 +19,12 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
   const [ticker, setTicker] = useState('');
   const [info, setInfo] = useState('');
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '');
+  const [quantity, setQuantity] = useState('');
+  const [price, setPrice] = useState('');
   const [investedValue, setInvestedValue] = useState('');
   const [currentValue, setCurrentValue] = useState('');
   const [error, setError] = useState('');
+  const [isFetchingPrice, setIsFetchingPrice] = useState(false);
   const currentInputRef = useRef<HTMLInputElement>(null);
 
   const uniqueClasses = Array.from(new Set(categories.map((c) => c.className)));
@@ -39,6 +43,8 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
       
       setInvestedValue(asset.investedValue.toFixed(2).replace('.', ','));
       setCurrentValue(asset.currentValue.toFixed(2).replace('.', ','));
+      if (asset.quantity) setQuantity(asset.quantity.toString().replace('.', ','));
+      if (asset.customPrice) setPrice(asset.customPrice.toFixed(2).replace('.', ','));
 
       // Auto-foco inteligente ao editar
       setTimeout(() => {
@@ -73,12 +79,39 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
 
   const parseNum = (v: string) => parseFloat(v.replace(',', '.'));
 
+  const handleFetchPrice = async () => {
+    if (!ticker) return;
+    setIsFetchingPrice(true);
+    const fetchedPrice = await fetchAssetPrice(ticker);
+    setIsFetchingPrice(false);
+    if (fetchedPrice) {
+      setPrice(fetchedPrice.toFixed(2).replace('.', ','));
+      const qty = parseNum(quantity);
+      if (!isNaN(qty) && qty > 0) {
+        setCurrentValue((qty * fetchedPrice).toFixed(2).replace('.', ','));
+      }
+    } else {
+      setError('Não foi possível obter a cotação. Insira o preço manualmente.');
+    }
+  };
+
+  // Atualiza o valor atual automaticamente se quantidade e preço estiverem preenchidos
+  useEffect(() => {
+    const q = parseNum(quantity);
+    const p = parseNum(price);
+    if (!isNaN(q) && !isNaN(p) && q > 0 && p > 0) {
+      setCurrentValue((q * p).toFixed(2).replace('.', ','));
+    }
+  }, [quantity, price]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     const invested = parseNum(investedValue);
     const current = parseNum(currentValue);
+    const qty = quantity ? parseNum(quantity) : undefined;
+    const prc = price ? parseNum(price) : undefined;
 
     if (!ticker.trim()) return setError('Informe o ticker ou nome do ativo.');
     if (!categoryId) return setError('Selecione a subclasse.');
@@ -92,6 +125,8 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
       info: info.trim(),
       investedValue: invested,
       currentValue: current,
+      quantity: !isNaN(qty as number) ? qty : undefined,
+      customPrice: !isNaN(prc as number) ? prc : undefined,
     });
     onClose();
   };
@@ -170,7 +205,37 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
 
           <div className={styles.twoCol}>
             <div className="form-group">
-              <label className="label" htmlFor="asset-invested">Valor Investido (R$) *</label>
+              <label className="label" htmlFor="asset-qty">Quantidade (opcional)</label>
+              <input
+                id="asset-qty"
+                className="input"
+                placeholder="Ex: 100"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <div className="form-group">
+              <label className="label" htmlFor="asset-price" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Preço Atual (R$)</span>
+                <button type="button" onClick={handleFetchPrice} disabled={isFetchingPrice || !ticker} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', padding: 0 }}>
+                  <RefreshCw size={12} className={isFetchingPrice ? styles.spin : ''} /> Auto
+                </button>
+              </label>
+              <input
+                id="asset-price"
+                className="input"
+                placeholder="0,00"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+          </div>
+
+          <div className={styles.twoCol}>
+            <div className="form-group">
+              <label className="label" htmlFor="asset-invested">Valor Total Investido (R$) *</label>
               <input
                 id="asset-invested"
                 className="input"
@@ -181,7 +246,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
               />
             </div>
             <div className="form-group">
-              <label className="label" htmlFor="asset-current">Valor Atual (R$) *</label>
+              <label className="label" htmlFor="asset-current">Valor Total Atual (R$) *</label>
               <input
                 id="asset-current"
                 ref={currentInputRef}
