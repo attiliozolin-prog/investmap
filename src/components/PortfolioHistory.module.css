@@ -1,0 +1,412 @@
+/* ── Overlay / Drawer ─────────────────────────────────────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 900;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+}
+
+.drawer {
+  width: min(680px, 100vw);
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideIn 0.25s ease;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.5rem 1.5rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.title {
+  margin: 0 0 2px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-2);
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-2);
+  cursor: pointer;
+  padding: 0.3rem;
+  border-radius: 0.4rem;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+.closeBtn:hover { color: var(--color-text); }
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.75rem 1.5rem 0;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 0.4rem 0.4rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  margin-bottom: -1px;
+}
+
+.tab:hover { color: var(--color-text); background: var(--color-surface-2); }
+
+.tabActive {
+  color: var(--color-primary-light);
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  border-bottom-color: var(--color-surface);
+}
+
+/* ── Body ─────────────────────────────────────────────────────────────────── */
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem 1.5rem;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0.75rem 0 0.25rem;
+}
+
+/* ── Summary Grid ─────────────────────────────────────────────────────────── */
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.summaryCard {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.summaryCardIcon {
+  margin-bottom: 0.2rem;
+  opacity: 0.8;
+}
+
+.summaryCardLabel {
+  font-size: 0.72rem;
+  color: var(--color-text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.summaryCardValue {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+/* ── Alert Box ────────────────────────────────────────────────────────────── */
+.alertBox {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.85rem 1rem;
+  border: 1px solid;
+  border-radius: 0.65rem;
+}
+
+.alertBox svg { flex-shrink: 0; margin-top: 2px; }
+
+.alertBox p {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  color: var(--color-text-2);
+  line-height: 1.5;
+}
+
+/* ── Filter row ───────────────────────────────────────────────────────────── */
+.filterRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.filterLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--color-text-2);
+  font-weight: 600;
+}
+
+.chip {
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-2);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.chip:hover { background: var(--color-surface-3); color: var(--color-text); }
+.chipActive { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+
+/* ── List / Tx rows ───────────────────────────────────────────────────────── */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.txRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+}
+
+.txBuy  { border-left: 3px solid rgba(16,185,129,0.6); }
+.txSell { border-left: 3px solid rgba(239,68,68,0.6); }
+
+.txIcon { color: var(--color-text-2); flex-shrink: 0; }
+.txBuy  .txIcon { color: #10B981; }
+.txSell .txIcon { color: #EF4444; }
+
+.txInfo { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.txTicker { font-weight: 700; font-size: 0.88rem; color: var(--color-text); }
+.txNotes  { font-size: 0.72rem; color: var(--color-text-2); }
+
+.txRight { text-align: right; }
+.txValue { font-weight: 700; font-size: 0.9rem; display: block; }
+.txBuyColor  { color: #10B981; }
+.txSellColor { color: #EF4444; }
+.txDate { font-size: 0.7rem; color: var(--color-text-2); }
+
+/* ── Tax Cards ────────────────────────────────────────────────────────────── */
+.taxCard {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 0.65rem;
+  padding: 0.75rem 0.9rem;
+  border-left: 3px solid var(--color-border);
+}
+
+.taxCardDue   { border-left-color: #F59E0B; }
+.taxCardPaid  { border-left-color: #10B981; opacity: 0.8; }
+.taxCardExempt{ border-left-color: #10B981; }
+.taxCardLoss  { border-left-color: #EF4444; }
+
+.taxCardMain {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.taxCardTicker {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--color-text);
+  margin-right: 0.5rem;
+}
+
+.taxCardDate {
+  font-size: 0.72rem;
+  color: var(--color-text-2);
+}
+
+.taxCardRight {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.taxProfitGreen { color: #10B981; font-weight: 700; font-size: 0.9rem; }
+.taxLossRed     { color: #EF4444; font-weight: 700; font-size: 0.9rem; }
+
+.taxExemptBadge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(16,185,129,0.15);
+  color: #10B981;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.3rem;
+}
+
+.taxLossBadge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(239,68,68,0.15);
+  color: #EF4444;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.3rem;
+}
+
+.taxExemptReason {
+  font-size: 0.78rem;
+  color: var(--color-text-2);
+  margin: 0.4rem 0 0;
+}
+
+/* Tax card expanded details */
+.taxCardDetails {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.taxDetailGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.taxDetailGrid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.82rem;
+  color: var(--color-text);
+}
+
+.taxDetailLabel {
+  font-size: 0.68rem;
+  color: var(--color-text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Buttons in expanded */
+.darfBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(245,158,11,0.12);
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.7rem;
+  color: #FBBF24;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.darfBtn:hover { background: rgba(245,158,11,0.22); }
+
+.dateInput {
+  padding: 0.3rem 0.5rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-3);
+  color: var(--color-text);
+  font-size: 0.78rem;
+}
+
+.paidBtn {
+  background: rgba(16,185,129,0.15);
+  border: 1px solid rgba(16,185,129,0.3);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.7rem;
+  color: #10B981;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.paidBtn:hover { background: rgba(16,185,129,0.28); }
+
+.unpaidBtn {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 0.4rem;
+  padding: 0.25rem 0.6rem;
+  color: var(--color-text-2);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+/* Compensation summary */
+.compensationSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  background: var(--color-surface-2);
+  border: 1px solid rgba(251,191,36,0.3);
+  border-radius: 0.65rem;
+  font-size: 0.9rem;
+  color: var(--color-text-2);
+  margin-top: 0.25rem;
+}
+
+.compensationSummary strong { font-size: 1rem; }
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .drawer { width: 100vw; }
+  .summaryGrid { grid-template-columns: 1fr 1fr; }
+  .taxDetailGrid { grid-template-columns: 1fr 1fr; }
+}

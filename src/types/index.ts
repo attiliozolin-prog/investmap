@@ -157,3 +157,50 @@ export interface FinanceMonthSummary {
   totalExpense: number;
   balance: number;
 }
+
+// ============================================
+// Types — Tax / IR
+// ============================================
+
+// Tipo de ativo para fins tributários
+export type AssetType = 'acao' | 'etf' | 'fii' | 'lci_lca' | 'renda_fixa';
+
+export interface SellTaxRecord {
+  id: string;
+  userId?: string;
+  assetId: string;
+  assetTicker: string;
+  sellValue: number;
+  costBasis: number;
+  profitLoss: number;
+  assetType: AssetType;
+  taxRate: number;       // 0.0–1.0
+  taxDue: number;
+  isExempt: boolean;
+  exemptReason?: string;
+  isLoss: boolean;
+  lossUsedForCompensation: number;
+  taxPaid: boolean;
+  taxPaidAt?: string;
+  darfPeriod?: string;   // YYYY-MM
+  notes?: string;
+  sellDate: string;      // YYYY-MM-DD
+  createdAt: string;
+}
+
+// Resultado do cálculo de IR para exibição
+export interface TaxCalculation {
+  assetType: AssetType;
+  assetTypeLabel: string;
+  sellValue: number;
+  costBasis: number;
+  profitLoss: number;
+  isLoss: boolean;
+  isExempt: boolean;
+  exemptReason?: string;
+  taxRate: number;
+  taxDue: number;
+  darfPeriod: string;
+  darfUrl: string;
+  explanation: string[];
+}
