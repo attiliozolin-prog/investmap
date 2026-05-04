@@ -30,6 +30,8 @@ export interface Asset {
   info: string;                // Ex: "BlackRock"
   investedValue: number;       // Valor aplicado atual (já abatendo vendas)
   currentValue: number;        // Valor atual na cotação
+  quantity?: number;           // Quantidade de cotas/ações (opcional)
+  customPrice?: number;        // Preço atual (para cálculo quando não houver API)
   createdAt?: string;          // ISO Date
   updatedAt: string;
 }
