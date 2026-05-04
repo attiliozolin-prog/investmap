@@ -7,12 +7,14 @@ import AssetsTable from '@/components/AssetsTable';
 import AssetModal from '@/components/AssetModal';
 import { AssetWithCalcs, Asset } from '@/types';
 import styles from './Assets.module.css';
-import { Plus, Search, X } from 'lucide-react';
+import { Plus, Search, X, BookOpen } from 'lucide-react';
+import PortfolioHistory from '@/components/PortfolioHistory';
 
 export default function Assets() {
   const { activeStrategy, activeAssets, activeStrategyId, addAsset, updateAsset, deleteAsset } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterClass, setFilterClass] = useState<string | null>(null);
   const [filterAction, setFilterAction] = useState<string | null>(null);
@@ -96,14 +98,24 @@ export default function Assets() {
           <h2>Ativos</h2>
           <p style={{ marginTop: 4 }}>{activeAssets.length} ativo{activeAssets.length !== 1 ? 's' : ''} nesta carteira</p>
         </div>
-        <button
-          id="add-asset-btn"
-          className="btn btn-primary"
-          onClick={() => { setEditingAsset(null); setShowModal(true); }}
-        >
-          <Plus size={16} />
-          Adicionar Ativo
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            className="btn btn-ghost"
+            onClick={() => setShowHistory(true)}
+            title="Ver histórico geral, IR e compensações"
+          >
+            <BookOpen size={16} />
+            Histórico Geral
+          </button>
+          <button
+            id="add-asset-btn"
+            className="btn btn-primary"
+            onClick={() => { setEditingAsset(null); setShowModal(true); }}
+          >
+            <Plus size={16} />
+            Adicionar Ativo
+          </button>
+        </div>
       </div>
 
       {/* Barra de busca e filtros */}
@@ -182,6 +194,9 @@ export default function Assets() {
           onSave={handleSave}
           onClose={() => { setShowModal(false); setEditingAsset(null); }}
         />
+      )}
+      {showHistory && (
+        <PortfolioHistory onClose={() => setShowHistory(false)} />
       )}
     </div>
   );

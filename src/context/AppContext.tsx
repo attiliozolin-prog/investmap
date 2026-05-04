@@ -8,7 +8,7 @@ import React, {
   useCallback,
   useMemo,
 } from 'react';
-import { Strategy, Asset, StrategyCategory, Transaction, PortfolioSnapshot } from '@/types';
+import { Strategy, Asset, StrategyCategory, Transaction, PortfolioSnapshot, SellTaxRecord } from '@/types';
 import { generateId } from '@/lib/calculations';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -51,6 +51,7 @@ interface AppContextType {
   activeAssets: Asset[];
   transactions: Transaction[];
   snapshots: PortfolioSnapshot[];
+  sellTaxRecords: SellTaxRecord[];
   dbSynced: boolean;
 
   createStrategy: (data: Omit<Strategy, 'id' | 'createdAt' | 'updatedAt' | 'categories'>) => Strategy;
@@ -70,6 +71,9 @@ interface AppContextType {
   deleteTransaction: (id: string) => void;
   updateTransaction: (id: string, data: Pick<Transaction, 'notes'>) => void;
   saveSnapshot: (snapshot: Omit<PortfolioSnapshot, 'id'>) => void;
+
+  addSellTaxRecord: (record: Omit<SellTaxRecord, 'id' | 'createdAt'>) => void;
+  updateSellTaxRecord: (id: string, data: Partial<SellTaxRecord>) => void;
 
   importData: (strategies: Strategy[], assets: Asset[], transactions?: Transaction[], snapshots?: PortfolioSnapshot[]) => void;
 }
@@ -187,6 +191,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
+  const [sellTaxRecords, setSellTaxRecords] = useState<SellTaxRecord[]>([]);
   const [mounted, setMounted] = useState(false);
   const [dbSynced, setDbSynced] = useState(false);
 
@@ -306,10 +311,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .select('*')
         .eq('user_id', userId);
 
+      // Busca registros de IR em vendas
+      const { data: taxRows } = await supabase
+        .from('sell_tax_records')
+        .select('*')
+        .eq('user_id', userId)
+        .order('sell_date', { ascending: false });
+
       const appCategories = (catRows ?? []).map(dbCategoryToApp);
       const appAssets = (assetRows ?? []).map(dbAssetToApp);
       const appTransactions = (txRows ?? []).map(dbTransactionToApp);
       const appSnapshots = (snapRows ?? []).map(dbSnapshotToApp);
+      const appTaxRecords: SellTaxRecord[] = (taxRows ?? []).map((r: any) => ({
+        id: r.id,
+        assetId: r.asset_id,
+        assetTicker: r.asset_ticker,
+        sellValue: Number(r.sell_value),
+        costBasis: Number(r.cost_basis),
+        profitLoss: Number(r.profit_loss),
+        assetType: r.asset_type,
+        taxRate: Number(r.tax_rate),
+        taxDue: Number(r.tax_due),
+        isExempt: r.is_exempt,
+        exemptReason: r.exempt_reason ?? undefined,
+        isLoss: r.is_loss,
+        lossUsedForCompensation: Number(r.loss_used_for_compensation),
+        taxPaid: r.tax_paid,
+        taxPaidAt: r.tax_paid_at ?? undefined,
+        darfPeriod: r.darf_period ?? undefined,
+        notes: r.notes ?? undefined,
+        sellDate: r.sell_date,
+        createdAt: r.created_at,
+      }));
 
       if ((strRows ?? []).length > 0) {
         // Usuário tem dados no banco — usa eles como fonte de verdade
@@ -328,6 +361,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setAssets(appAssets);
         setTransactions(appTransactions);
         setSnapshots(appSnapshots);
+        setSellTaxRecords(appTaxRecords);
         setHasCompletedOnboarding(true);
         saveToStorage('investmap_onboarding', true);
       } else {
@@ -750,6 +784,50 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   // ============================================
+  // SellTaxRecord CRUD
+  // ============================================
+  const addSellTaxRecord = useCallback((data: Omit<SellTaxRecord, 'id' | 'createdAt'>) => {
+    if (!user) return;
+    const now = new Date().toISOString();
+    const newRec: SellTaxRecord = { ...data, id: crypto.randomUUID(), createdAt: now };
+    setSellTaxRecords(prev => [...prev, newRec]);
+    supabase.from('sell_tax_records').insert({
+      id: newRec.id,
+      user_id: user.id,
+      asset_id: newRec.assetId,
+      asset_ticker: newRec.assetTicker,
+      sell_value: newRec.sellValue,
+      cost_basis: newRec.costBasis,
+      profit_loss: newRec.profitLoss,
+      asset_type: newRec.assetType,
+      tax_rate: newRec.taxRate,
+      tax_due: newRec.taxDue,
+      is_exempt: newRec.isExempt,
+      exempt_reason: newRec.exemptReason ?? null,
+      is_loss: newRec.isLoss,
+      loss_used_for_compensation: newRec.lossUsedForCompensation,
+      tax_paid: newRec.taxPaid,
+      tax_paid_at: newRec.taxPaidAt ?? null,
+      darf_period: newRec.darfPeriod ?? null,
+      notes: newRec.notes ?? null,
+      sell_date: newRec.sellDate,
+    }).then(({ error }) => { if (error) console.error('sell_tax_records insert', error); });
+  }, [user]);
+
+  const updateSellTaxRecord = useCallback((id: string, data: Partial<SellTaxRecord>) => {
+    setSellTaxRecords(prev => prev.map(r => r.id === id ? { ...r, ...data } : r));
+    const payload: Record<string, unknown> = {};
+    if (data.taxPaid !== undefined)   payload.tax_paid = data.taxPaid;
+    if (data.taxPaidAt !== undefined) payload.tax_paid_at = data.taxPaidAt;
+    if (data.notes !== undefined)     payload.notes = data.notes;
+    if (data.lossUsedForCompensation !== undefined) payload.loss_used_for_compensation = data.lossUsedForCompensation;
+    if (Object.keys(payload).length > 0 && user) {
+      supabase.from('sell_tax_records').update(payload).eq('id', id)
+        .then(({ error }) => { if (error) console.error('sell_tax_records update', error); });
+    }
+  }, [user]);
+
+  // ============================================
   // Import
   // ============================================
   const importData = useCallback((
@@ -790,6 +868,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     activeAssets,
     transactions,
     snapshots,
+    sellTaxRecords,
     dbSynced,
     createStrategy,
     updateStrategy,
@@ -805,6 +884,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     deleteTransaction,
     updateTransaction,
     saveSnapshot,
+    addSellTaxRecord,
+    updateSellTaxRecord,
     importData,
   }), [
     hasCompletedOnboarding,
@@ -816,6 +897,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     activeAssets,
     transactions,
     snapshots,
+    sellTaxRecords,
     dbSynced,
     createStrategy,
     updateStrategy,
@@ -831,6 +913,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     deleteTransaction,
     updateTransaction,
     saveSnapshot,
+    addSellTaxRecord,
+    updateSellTaxRecord,
     importData,
   ]);
 
