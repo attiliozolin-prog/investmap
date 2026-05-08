@@ -119,6 +119,7 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+  overflow-x: hidden; /* impede scroll horizontal na página */
 }
 
 /* --- Typography --- */
@@ -139,6 +140,7 @@ p  { color: var(--color-text-2); }
   max-width: 1280px;
   margin: 0 auto;
   padding: 0 var(--space-4);
+  min-width: 0; /* permite que flex/grid children encolham abaixo do content-size */
 }
 
 @media (max-width: 640px) {

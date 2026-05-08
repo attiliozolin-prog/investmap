@@ -5,6 +5,8 @@
   gap: 1.5rem;
   padding-bottom: 3rem;
   animation: fadeIn 0.3s ease;
+  min-width: 0; /* evita overflow horizontal */
+  overflow-x: hidden;
 }
 
 @keyframes fadeIn {
@@ -209,12 +211,14 @@
   grid-template-columns: 1.4fr 1fr;
   gap: 1.25rem;
   align-items: start;
+  min-width: 0;
 }
 
 .colLeft, .colRight {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  min-width: 0; /* permite que os filhos encolham */
 }
 
 /* ── Section ── */
