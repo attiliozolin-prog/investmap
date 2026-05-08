@@ -3,13 +3,15 @@
 import { PortfolioSummary } from '@/types';
 import { formatCurrency, formatPercent } from '@/lib/calculations';
 import styles from './SummaryCards.module.css';
-import { TrendingUp, TrendingDown, Target, Zap } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Zap, RefreshCw } from 'lucide-react';
 
 interface Props {
   summary: PortfolioSummary;
+  isSyncingPrices?: boolean;
+  lastPriceSyncAt?: Date | null;
 }
 
-export default function SummaryCards({ summary }: Props) {
+export default function SummaryCards({ summary, isSyncingPrices, lastPriceSyncAt }: Props) {
   const {
     totalInvested,
     totalValue,
@@ -21,6 +23,12 @@ export default function SummaryCards({ summary }: Props) {
 
   const isProfit = profitLoss >= 0;
 
+  const syncLabel = isSyncingPrices
+    ? 'Atualizando cotações...'
+    : lastPriceSyncAt
+    ? `Atualizado às ${lastPriceSyncAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+    : null;
+
   return (
     <div className={styles.grid}>
       {/* Total Atual */}
@@ -30,6 +38,12 @@ export default function SummaryCards({ summary }: Props) {
         <div className={styles.cardSub}>
           Investido: {formatCurrency(totalInvested)}
         </div>
+        {syncLabel && (
+          <div className={styles.syncLabel}>
+            <RefreshCw size={9} className={isSyncingPrices ? styles.spin : ''} />
+            {syncLabel}
+          </div>
+        )}
       </div>
 
       {/* Lucro/Prejuízo */}

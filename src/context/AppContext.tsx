@@ -75,6 +75,10 @@ interface AppContextType {
   addSellTaxRecord: (record: Omit<SellTaxRecord, 'id' | 'createdAt'>) => void;
   updateSellTaxRecord: (id: string, data: Partial<SellTaxRecord>) => void;
 
+  syncPrices: () => Promise<void>;
+  isSyncingPrices: boolean;
+  lastPriceSyncAt: Date | null;
+
   importData: (strategies: Strategy[], assets: Asset[], transactions?: Transaction[], snapshots?: PortfolioSnapshot[]) => void;
 }
 
@@ -149,6 +153,7 @@ function dbAssetToApp(row: any): Asset {
     quantity: row.quantity != null ? Number(row.quantity) : undefined,
     avgPrice: row.avg_price != null ? Number(row.avg_price) : undefined,
     customPrice: row.custom_price != null ? Number(row.custom_price) : undefined,
+    priceMode: (row.price_mode as 'auto' | 'manual') ?? 'auto',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -197,6 +202,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sellTaxRecords, setSellTaxRecords] = useState<SellTaxRecord[]>([]);
   const [mounted, setMounted] = useState(false);
   const [dbSynced, setDbSynced] = useState(false);
+  const [isSyncingPrices, setIsSyncingPrices] = useState(false);
+  const [lastPriceSyncAt, setLastPriceSyncAt] = useState<Date | null>(null);
 
   // ============================================
   // Monitora mudança de usuário (LogOut ou Switch)
@@ -638,6 +645,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         quantity: newAsset.quantity ?? null,
         avg_price: newAsset.avgPrice ?? null,
         custom_price: newAsset.customPrice ?? null,
+        price_mode: newAsset.priceMode ?? 'auto',
         created_at: now,
         updated_at: now,
       }).then(({ error }) => { if (error) console.error(error); });
@@ -668,6 +676,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         quantity: data.quantity !== undefined ? (data.quantity ?? null) : undefined,
         avg_price: data.avgPrice !== undefined ? (data.avgPrice ?? null) : undefined,
         custom_price: data.customPrice !== undefined ? (data.customPrice ?? null) : undefined,
+        price_mode: data.priceMode !== undefined ? data.priceMode : undefined,
         updated_at: now,
       }).eq('id', id).eq('user_id', user.id)
         .then(({ error }) => { if (error) console.error(error); });
@@ -869,6 +878,65 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // ============================================
+  // Sync de Preços — Brapi batch
+  // ============================================
+  const syncPrices = useCallback(async () => {
+    if (isSyncingPrices) return;
+
+    // Filtra ativos elegíveis: modo 'auto' (ou sem definição = auto por padrão)
+    const eligible = assets.filter(
+      a => (a.priceMode ?? 'auto') === 'auto'
+    );
+    if (eligible.length === 0) return;
+
+    setIsSyncingPrices(true);
+    try {
+      const { fetchAssetPrices } = await import('@/lib/brapi');
+      const tickers = eligible.map(a => a.ticker);
+      const prices = await fetchAssetPrices(tickers);
+
+      const updates: Array<() => void> = [];
+      for (const asset of eligible) {
+        const cleanTicker = asset.ticker.toUpperCase().replace(/F$/, '');
+        const price = prices.get(cleanTicker);
+        if (price == null) continue;
+
+        // Calcula novo currentValue: qty × price, ou mantém o anterior se não tiver qty
+        const newCurrentValue = (asset.quantity && asset.quantity > 0)
+          ? asset.quantity * price
+          : asset.currentValue; // sem qty: guarda o preço mas não altera o valor total
+
+        updates.push(() => {
+          // Atualiza estado local imediatamente
+          setAssets(prev => prev.map(a =>
+            a.id === asset.id
+              ? { ...a, customPrice: price, currentValue: newCurrentValue, updatedAt: new Date().toISOString() }
+              : a
+          ));
+          // Persiste no banco
+          if (user) {
+            supabase.from('assets').update({
+              custom_price: price,
+              current_value: newCurrentValue,
+              updated_at: new Date().toISOString(),
+            }).eq('id', asset.id).eq('user_id', user.id)
+              .then(({ error }) => { if (error) console.error('syncPrices update error:', error); });
+          }
+        });
+      }
+
+      // Aplica todas as atualizações
+      updates.forEach(fn => fn());
+      setLastPriceSyncAt(new Date());
+    } catch (err) {
+      console.error('syncPrices error:', err);
+    } finally {
+      setIsSyncingPrices(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assets, isSyncingPrices, user]);
+
   const contextValue = useMemo(() => ({
     hasCompletedOnboarding,
     completeOnboarding,
@@ -897,6 +965,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     saveSnapshot,
     addSellTaxRecord,
     updateSellTaxRecord,
+    syncPrices,
+    isSyncingPrices,
+    lastPriceSyncAt,
     importData,
   }), [
     hasCompletedOnboarding,
@@ -926,6 +997,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     saveSnapshot,
     addSellTaxRecord,
     updateSellTaxRecord,
+    syncPrices,
+    isSyncingPrices,
+    lastPriceSyncAt,
     importData,
   ]);
 

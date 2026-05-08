@@ -9,6 +9,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import TransactionModal from './TransactionModal';
 import AssetHistoryDrawer from './AssetHistoryDrawer';
+import { useApp } from '@/context/AppContext';
 
 interface Props {
   assets: AssetWithCalcs[];
@@ -66,6 +67,7 @@ function getDeviationColor(current: number, target: number): string {
 }
 
 export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue, onArchiveToggle }: Props) {
+  const { syncPrices, isSyncingPrices, lastPriceSyncAt } = useApp();
   const [editingValueId, setEditingValueId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -315,6 +317,25 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue, o
       )}
 
       <div className={styles.tableWrapper}>
+        {/* Barra de controle da tabela */}
+        <div className={styles.tableToolbar}>
+          <div className={styles.tableToolbarLeft}>
+            {lastPriceSyncAt && !isSyncingPrices && (
+              <span className={styles.lastSync}>
+                Cotações: {lastPriceSyncAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
+          <button
+            className={`btn btn-ghost btn-sm ${styles.syncBtn}`}
+            onClick={() => syncPrices()}
+            disabled={isSyncingPrices}
+            title="Atualizar cotações dos ativos em modo Auto"
+          >
+            <RefreshCw size={13} className={isSyncingPrices ? styles.spin : ''} />
+            {isSyncingPrices ? 'Atualizando...' : 'Atualizar preços'}
+          </button>
+        </div>
         <table>
           <thead>
             <tr>
@@ -433,7 +454,12 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue, o
                     {/* Ativo */}
                     <td>
                       <div className={styles.tickerCell}>
-                        <span className={styles.ticker}>{asset.ticker}</span>
+                        <span className={styles.ticker}>
+                          {asset.ticker}
+                          {asset.priceMode === 'manual' && (
+                            <span className={styles.manualBadge} title="Preço inserido manualmente">Manual</span>
+                          )}
+                        </span>
                         {asset.info && (
                           <span className={styles.info}>
                             {asset.info.length > 35 ? (

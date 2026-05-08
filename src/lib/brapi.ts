@@ -1,6 +1,10 @@
 const BRAPI_TOKEN = process.env.NEXT_PUBLIC_BRAPI_TOKEN ?? '';
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
+const CHUNK_SIZE = 10; // Conservador para o plano gratuito
 
+// -----------------------------------------------
+// Cache local
+// -----------------------------------------------
 function getCached(ticker: string): number | null {
   if (typeof localStorage === 'undefined') return null;
   try {
@@ -19,12 +23,24 @@ function setCache(ticker: string, price: number): void {
   } catch { /* ignore */ }
 }
 
+// -----------------------------------------------
+// Heurística: detecta se o ticker é elegível para
+// busca automática (ações B3, FIIs, ETFs, BDRs, Cripto)
+// -----------------------------------------------
+export function detectPriceMode(ticker: string): 'auto' | 'manual' {
+  const clean = ticker.trim().toUpperCase();
+  // B3: 3-6 letras + 0-2 dígitos (PETR4, HGLG11, IVVB11, AAPL34)
+  // Cripto: 2-5 letras sem dígitos (BTC, ETH, SOL)
+  return /^[A-Z]{2,6}[0-9]{0,2}$/.test(clean) ? 'auto' : 'manual';
+}
+
+// -----------------------------------------------
+// Busca preço de UM ativo (uso no modal - botão Auto)
+// -----------------------------------------------
 export async function fetchAssetPrice(ticker: string): Promise<number | null> {
   if (!ticker) return null;
-  // Limpa o ticker (remove F de fracionário se houver)
   const cleanTicker = ticker.toUpperCase().replace(/F$/, '');
 
-  // Verifica cache antes de chamar a API
   const cached = getCached(cleanTicker);
   if (cached !== null) return cached;
 
@@ -41,4 +57,60 @@ export async function fetchAssetPrice(ticker: string): Promise<number | null> {
     console.error('Erro ao buscar preço na Brapi:', error);
     return null;
   }
+}
+
+// -----------------------------------------------
+// Busca preços de MÚLTIPLOS ativos em batch
+// Retorna Map<ticker, price>
+// -----------------------------------------------
+export async function fetchAssetPrices(tickers: string[]): Promise<Map<string, number>> {
+  const result = new Map<string, number>();
+  if (!tickers.length) return result;
+
+  // Deduplica e limpa tickers
+  const cleanTickers = Array.from(new Set(tickers.map(t => t.toUpperCase().replace(/F$/, ''))));
+
+  // Divide em chunks de CHUNK_SIZE
+  const chunks: string[][] = [];
+  for (let i = 0; i < cleanTickers.length; i += CHUNK_SIZE) {
+    chunks.push(cleanTickers.slice(i, i + CHUNK_SIZE));
+  }
+
+  const tokenParam = BRAPI_TOKEN ? `?token=${BRAPI_TOKEN}` : '';
+
+  for (const chunk of chunks) {
+    // Verifica cache antes de chamar a API
+    const uncached: string[] = [];
+    for (const ticker of chunk) {
+      const cached = getCached(ticker);
+      if (cached !== null) {
+        result.set(ticker, cached);
+      } else {
+        uncached.push(ticker);
+      }
+    }
+
+    if (uncached.length === 0) continue;
+
+    try {
+      const tickerParam = uncached.join(',');
+      const res = await fetch(
+        `https://brapi.dev/api/quote/${tickerParam}${tokenParam}`
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+
+      for (const item of data.results ?? []) {
+        const price: number = item.regularMarketPrice;
+        if (price != null && !isNaN(price)) {
+          result.set(item.symbol as string, price);
+          setCache(item.symbol as string, price);
+        }
+      }
+    } catch (e) {
+      console.error('Brapi batch fetch error:', e);
+    }
+  }
+
+  return result;
 }

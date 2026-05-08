@@ -33,6 +33,7 @@ export interface Asset {
   quantity?: number;           // Quantidade de cotas/ações (opcional)
   avgPrice?: number;           // Preço Médio de Aquisição — PME (custo histórico por ação)
   customPrice?: number;        // Preço de mercado atual (para botão "Auto" e cálculo de currentValue)
+  priceMode?: 'auto' | 'manual'; // 'auto' = Brapi sincroniza; 'manual' = usuário insere
   createdAt?: string;          // ISO Date
   updatedAt: string;
 }
