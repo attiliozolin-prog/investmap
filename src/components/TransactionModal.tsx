@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
-import { X } from 'lucide-react';
+import { X, Info } from 'lucide-react';
 import styles from './AssetModal.module.css';
 import TaxModal from './TaxModal';
 import { calculateTax, detectAssetType } from '@/lib/taxCalculator';
@@ -23,6 +23,10 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
   });
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
+
+  // Para ativos sem quantity/avgPrice (crypto manual, renda fixa), o usuário
+  // pode informar o custo de aquisição manualmente ao registrar uma venda.
+  const [manualCost, setManualCost] = useState('');
 
   // Estado do TaxModal
   const [pendingTaxCalc, setPendingTaxCalc] = useState<TaxCalculation | null>(null);
@@ -51,34 +55,71 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
     return detectAssetType('', '', asset.ticker);
   })();
 
-  // Total de vendas do mesmo tipo no mesmo mês (para limite de isenção de ações)
+  // Ativos sem quantidade definida usam custo manual na venda
+  const hasQuantity = !!asset.quantity && asset.quantity > 0;
+
+  // Para crypto e renda fixa sem qty, mostramos o campo de custo manual
+  const needsManualCost = type === 'sell' && !hasQuantity;
+
+  // Total de vendas do mesmo tipo no mesmo mês
+  // (para isenção de R$ 20k em ações e R$ 35k em crypto)
   const monthlySalesOfSameType = useMemo(() => {
-    if (assetType !== 'acao') return 0;
+    const typesToCheck: AssetType[] = assetType === 'crypto'
+      ? ['crypto']
+      : assetType === 'acao'
+      ? ['acao']
+      : [];
+
+    if (typesToCheck.length === 0) return 0;
+
     const [year, month] = date.split('-').map(Number);
     return sellTaxRecords
       .filter(r => {
         const [ry, rm] = r.sellDate.split('-').map(Number);
-        return r.assetType === 'acao' && ry === year && rm === month;
+        return typesToCheck.includes(r.assetType) && ry === year && rm === month;
       })
       .reduce((sum, r) => sum + r.sellValue, 0);
   }, [assetType, date, sellTaxRecords]);
+
+  const handleNumberInput = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    let raw = e.target.value.replace(/\D/g, '');
+    if (!raw) { setter(''); return; }
+    const num = parseInt(raw, 10) / 100;
+    setter(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    setError('');
+  };
+
+  const parseValue = (v: string) => parseFloat(v.replace(/\./g, '').replace(',', '.'));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!value) { setError('Insira o valor da transação'); return; }
 
-    const numValue = parseFloat(value.replace(/\./g, '').replace(',', '.'));
+    const numValue = parseValue(value);
     if (isNaN(numValue) || numValue <= 0) { setError('Valor inválido'); return; }
 
-    if (type === 'sell' && numValue > asset.currentValue) {
-      setError('O valor de venda não pode ser maior que o valor atual do ativo');
-      return;
-    }
-
     if (type === 'sell') {
-      // Custo proporcional = proporção da venda × valor investido
-      const proportion = asset.currentValue > 0 ? numValue / asset.currentValue : 1;
-      const costBasis = asset.investedValue * proportion;
+      if (numValue > asset.currentValue + 0.01) {
+        setError('O valor de venda não pode ser maior que o valor atual do ativo');
+        return;
+      }
+
+      // Custo proporcional: usa PME se tiver qty, senão usa custo manual informado
+      let costBasis: number;
+
+      if (hasQuantity && asset.investedValue > 0) {
+        // PME automático: proporção da venda × custo total
+        const proportion = asset.currentValue > 0 ? numValue / asset.currentValue : 1;
+        costBasis = asset.investedValue * proportion;
+      } else {
+        // Custo manual (obrigatório para crypto/RF sem qty)
+        const manualNum = manualCost ? parseValue(manualCost) : 0;
+        if (!manualCost || isNaN(manualNum) || manualNum < 0) {
+          setError('Informe o custo de aquisição (valor pago originalmente)');
+          return;
+        }
+        costBasis = manualNum;
+      }
 
       const calc = calculateTax(
         assetType,
@@ -91,7 +132,7 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
 
       setPendingNumValue(numValue);
       setPendingTaxCalc(calc);
-      return; // aguarda confirmação no TaxModal
+      return;
     }
 
     executeSave(numValue);
@@ -115,8 +156,18 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
       newCurrent += numValue;
     } else {
       newCurrent -= numValue;
-      const proportionSold = numValue / asset.currentValue;
-      newInvested -= asset.investedValue * proportionSold;
+      if (hasQuantity && asset.currentValue > 0) {
+        const proportionSold = numValue / asset.currentValue;
+        newInvested -= asset.investedValue * proportionSold;
+      } else {
+        // Para ativos sem qty, zera o custo proporcionalmente ao que foi vendido
+        if (newCurrent <= 0.01) {
+          newInvested = 0;
+        } else {
+          const proportionRemaining = newCurrent / asset.currentValue;
+          newInvested = asset.investedValue * proportionRemaining;
+        }
+      }
       if (newInvested < 0 || newCurrent <= 0.01) { newInvested = 0; newCurrent = 0; }
     }
 
@@ -128,7 +179,6 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
     if (!pendingTaxCalc) return;
     const calc = pendingTaxCalc;
 
-    // Salva o registro de IR
     addSellTaxRecord({
       assetId: asset.id,
       assetTicker: asset.ticker,
@@ -152,13 +202,13 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
     executeSave(pendingNumValue);
   };
 
-  const handleNumberInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let raw = e.target.value.replace(/\D/g, '');
-    if (!raw) { setValue(''); return; }
-    const num = parseInt(raw, 10) / 100;
-    setValue(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-    setError('');
+  // Label do tipo de ativo para contexto
+  const assetTypeHints: Partial<Record<AssetType, string>> = {
+    crypto:     '🪙 Criptoativo — isenção de IR se vendas totais no mês ≤ R$ 35.000',
+    renda_fixa: '🏦 Renda Fixa — IR retido na fonte pelo banco/corretora',
+    lci_lca:    '✅ LCI/LCA — Isento de IR para Pessoa Física',
   };
+  const assetHint = assetTypeHints[assetType];
 
   if (pendingTaxCalc) {
     return (
@@ -175,7 +225,7 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <div className={styles.header}>
-          <h2>Nova Transação em {asset.ticker}</h2>
+          <h2>Nova Transação — {asset.ticker}</h2>
           <button type="button" className={`btn btn-ghost btn-sm`} onClick={onClose}>
             <X size={16} />
           </button>
@@ -184,6 +234,14 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
         <p style={{ color: 'var(--color-text-2)', fontSize: '0.85rem', marginBottom: 'var(--space-4)', marginTop: '-8px' }}>
           Saldo atual: R$ {asset.currentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
         </p>
+
+        {/* Hint do tipo tributário */}
+        {assetHint && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: '8px', padding: '8px 12px', fontSize: '0.8rem', color: '#60A5FA', marginBottom: '16px' }}>
+            <Info size={13} style={{ marginTop: '1px', flexShrink: 0 }} />
+            <span>{assetHint}</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -198,20 +256,47 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
                 style={{ flex: 1, backgroundColor: type === 'sell' ? 'var(--color-danger)' : undefined, color: type === 'sell' ? 'white' : undefined }}
                 onClick={() => setType('sell')}
               >
-                Venda (-)
+                Venda (−)
               </button>
             </div>
           </div>
 
           <div className="form-group">
-            <label className="label" htmlFor="transactionValue">Valor Financeiro (R$) *</label>
-            <input type="text" id="transactionValue" className="input" value={value} onChange={handleNumberInput} required placeholder="0,00" autoComplete="off" />
+            <label className="label" htmlFor="transactionValue">Valor da {type === 'buy' ? 'Compra' : 'Venda'} (R$) *</label>
+            <input type="text" id="transactionValue" className="input" value={value} onChange={handleNumberInput(setValue)} required placeholder="0,00" autoComplete="off" />
           </div>
+
+          {/* Campo de custo de aquisição — apenas para ativos sem qty na venda */}
+          {needsManualCost && (
+            <div className="form-group">
+              <label className="label" htmlFor="manualCost">
+                Custo de Aquisição (R$) *
+                <span style={{ fontWeight: 400, fontSize: '0.72rem', color: 'var(--color-text-3)', marginLeft: '6px' }}>
+                  quanto você pagou originalmente
+                </span>
+              </label>
+              <input
+                type="text"
+                id="manualCost"
+                className="input"
+                value={manualCost}
+                onChange={handleNumberInput(setManualCost)}
+                placeholder="0,00"
+                autoComplete="off"
+              />
+            </div>
+          )}
 
           <div className="form-group">
             <label className="label" htmlFor="transactionDate">Data da transação</label>
-            <input type="date" id="transactionDate" className="input" value={date} onChange={(e) => setDate(e.target.value)}
-              max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`} />
+            <input
+              type="date"
+              id="transactionDate"
+              className="input"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`}
+            />
           </div>
 
           <div className="form-group">
