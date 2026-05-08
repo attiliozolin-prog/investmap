@@ -32,7 +32,9 @@ function enrichTransactions(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
 
-  let runningInvested = 0;
+  // totalShares rastreia a quantidade de cotas/ações virtuais para PME
+  // Como nem sempre temos quantidade, trabalhamos com "unidades de valor investido"
+  let runningInvested = 0; // custo total da posição (PME acumulado)
 
   return sorted.map((tx, idx) => {
     let realizedProfit: number | undefined;
@@ -40,11 +42,20 @@ function enrichTransactions(
     if (tx.type === 'buy') {
       runningInvested += tx.value;
     } else {
-      // Calcula o lucro realizado: quanto do investido corresponde ao valor vendido
-      const proportionSold = runningInvested > 0 ? tx.value / (runningInvested + tx.value) : 0;
-      const costBasis = runningInvested * proportionSold;
-      realizedProfit = tx.value - costBasis;
-      runningInvested = Math.max(0, runningInvested - costBasis);
+      // Preço Médio Ponderado (PME) real da B3:
+      // O custo da posição vendida é proporcional ao quanto do portfólio foi liquidado.
+      // Proporção = valor recebido / custo total da posição ANTES da venda
+      // Isso garante que lucro = receita - custo_proporcional (e não sobrestima o lucro).
+      if (runningInvested > 0) {
+        // Se vender mais do que o custo registrado (caso de dados incompletos), cap em 100%
+        const fractionSold = Math.min(tx.value / runningInvested, 1);
+        const costBasis = runningInvested * fractionSold;
+        realizedProfit = tx.value - costBasis;
+        runningInvested = Math.max(0, runningInvested - costBasis);
+      } else {
+        realizedProfit = tx.value; // sem custo registrado: tudo é lucro
+        runningInvested = 0;
+      }
     }
 
     return {
@@ -55,6 +66,7 @@ function enrichTransactions(
     };
   });
 }
+
 
 // ============================================
 // Tooltip customizado do gráfico
