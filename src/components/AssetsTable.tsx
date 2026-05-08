@@ -359,10 +359,10 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue, o
                 onClick={() => handleSort('profitLoss')}
                 title="Ordenar por lucro/prejuízo"
               >
-                <span>Lucro/Prejuízo</span><SortIcon field="profitLoss" />
+                <span>Lucro/Prej.</span><SortIcon field="profitLoss" />
               </th>
               <th className={styles.right}>% Alvo</th>
-              <th className={styles.right}>% Carteira</th>
+              <th className={styles.right}>% Cart.</th>
               <th
                 className={`${styles.right} ${styles.sortableHeader}`}
                 onClick={() => handleSort('rebalanceAmount')}
@@ -371,7 +371,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue, o
                 <span>Rebalancear</span><SortIcon field="rebalanceAmount" />
               </th>
               <th>Status</th>
-              <th className={styles.center}>Ações</th>
+              <th className={styles.center} title="Ações"></th>
             </tr>
           </thead>
           <tbody>
