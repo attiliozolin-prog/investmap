@@ -171,6 +171,23 @@ export default function Profile() {
         </div>
       </div>
 
+      {user?.email?.toLowerCase().includes('attilio') && (
+        <div className={styles.card}>
+          <div className={styles.formSection}>
+            <h3>Modo Desenvolvedor</h3>
+            <p className={styles.helpText} style={{ marginBottom: '1.5rem', display: 'block' }}>
+              Simule interfaces do aplicativo. Seus dados e configurações ativas não serão alterados ao usar esta opção.
+            </p>
+            <div className={styles.buttonGroup}>
+              <button className={styles.secondaryBtn} onClick={() => window.location.href = '/?test_onboarding=1'}>
+                <AlertTriangle size={18} />
+                <span>Testar Tela de Onboarding</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className={styles.card}>
         <div className={styles.formSection}>
           <h3>Segurança</h3>
