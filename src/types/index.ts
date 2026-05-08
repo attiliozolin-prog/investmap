@@ -28,10 +28,11 @@ export interface Asset {
   categoryId: string;
   ticker: string;              // Ex: "IVVB11"
   info: string;                // Ex: "BlackRock"
-  investedValue: number;       // Valor aplicado atual (já abatendo vendas)
-  currentValue: number;        // Valor atual na cotação
+  investedValue: number;       // Custo total de aquisição (qty × avgPrice, ou manual)
+  currentValue: number;        // Valor atual na cotação (qty × customPrice, ou manual)
   quantity?: number;           // Quantidade de cotas/ações (opcional)
-  customPrice?: number;        // Preço atual (para cálculo quando não houver API)
+  avgPrice?: number;           // Preço Médio de Aquisição — PME (custo histórico por ação)
+  customPrice?: number;        // Preço de mercado atual (para botão "Auto" e cálculo de currentValue)
   createdAt?: string;          // ISO Date
   updatedAt: string;
 }

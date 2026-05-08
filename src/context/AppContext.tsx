@@ -147,6 +147,7 @@ function dbAssetToApp(row: any): Asset {
     investedValue: Number(row.invested_value),
     currentValue: Number(row.current_value),
     quantity: row.quantity != null ? Number(row.quantity) : undefined,
+    avgPrice: row.avg_price != null ? Number(row.avg_price) : undefined,
     customPrice: row.custom_price != null ? Number(row.custom_price) : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -635,6 +636,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         invested_value: newAsset.investedValue,
         current_value: newAsset.currentValue,
         quantity: newAsset.quantity ?? null,
+        avg_price: newAsset.avgPrice ?? null,
         custom_price: newAsset.customPrice ?? null,
         created_at: now,
         updated_at: now,
@@ -664,6 +666,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         invested_value: data.investedValue,
         current_value: data.currentValue,
         quantity: data.quantity !== undefined ? (data.quantity ?? null) : undefined,
+        avg_price: data.avgPrice !== undefined ? (data.avgPrice ?? null) : undefined,
         custom_price: data.customPrice !== undefined ? (data.customPrice ?? null) : undefined,
         updated_at: now,
       }).eq('id', id).eq('user_id', user.id)
