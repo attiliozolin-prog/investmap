@@ -3,8 +3,10 @@
 .nowrap { white-space: nowrap !important; }
 
 .tableWrapper {
-  overflow: visible;
+  overflow-x: auto;
+  overflow-y: visible;
   position: relative;
+  /* Garante que a tabela role internamente ao invés de vazar o layout */
 }
 
 .tableWrapper table {

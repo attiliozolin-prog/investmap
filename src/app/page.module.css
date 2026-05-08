@@ -2,13 +2,16 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
 }
 
 .main {
   flex: 1;
   padding: var(--space-8) 0;
+  min-width: 0;
 }
 
 .content {
   animation: fadeIn 0.25s ease;
+  min-width: 0;
 }
