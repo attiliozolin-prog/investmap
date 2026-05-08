@@ -28,10 +28,12 @@ export default function Assets() {
     }
   }, [activeStrategy, activeAssets]);
 
-  // Classes únicas para os chips de filtro
+  // Classes únicas para os chips de filtro — excluindo ativos encerrados
   const classNames = useMemo(() => {
     const set = new Set<string>();
-    assetsWithCalcs.forEach(a => set.add(a.category.className));
+    assetsWithCalcs
+      .filter(a => !a.isArchived)  // encerrados não geram chip de filtro
+      .forEach(a => set.add(a.category.className));
     return Array.from(set).sort();
   }, [assetsWithCalcs]);
 
@@ -96,7 +98,7 @@ export default function Assets() {
       <div className={styles.header}>
         <div>
           <h2>Ativos</h2>
-          <p style={{ marginTop: 4 }}>{activeAssets.length} ativo{activeAssets.length !== 1 ? 's' : ''} nesta carteira</p>
+          <p style={{ marginTop: 4 }}>{activeAssets.filter(a => !a.info?.includes('[[ARCHIVED]]')).length} ativo{activeAssets.filter(a => !a.info?.includes('[[ARCHIVED]]')).length !== 1 ? 's' : ''} nesta carteira</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
