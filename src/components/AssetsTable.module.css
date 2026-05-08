@@ -39,6 +39,10 @@
   border-spacing: 0;
   width: 100%;
 }
+.tableWrapper table thead {
+  /* Linha de separação mais evidente abaixo do cabeçalho */
+  border-bottom: 2px solid var(--color-border);
+}
 
 .tableWrapper table th {
   white-space: nowrap;
@@ -47,7 +51,7 @@
   background: var(--color-surface);
   z-index: 40;
   box-shadow: 0 2px 0 var(--color-border);
-  padding: 13px 8px; /* compacto horizontal, mas com espaçamento vertical adequado */
+  padding: 14px 6px;
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.05em;
@@ -61,9 +65,9 @@
   text-align: left;
 }
 
-/* Padding compacto nos tds */
+/* Padding nos tds */
 .tableWrapper table td {
-  padding: 10px 8px;
+  padding: 12px 6px;
   vertical-align: middle;
 }
 
@@ -121,10 +125,16 @@
    ────────────────────────────────────────── */
 .groupHeader {
   background: var(--color-surface-2);
-  border-top: 2px solid rgba(255, 255, 255, 0.05);
   cursor: grab;
   transition: background 0.2s;
 }
+
+/* Garante respiro vertical na linha de grupo */
+.groupHeader td {
+  padding-top: 14px !important;
+  padding-bottom: 14px !important;
+}
+
 
 .groupHeader:active {
   cursor: grabbing;
