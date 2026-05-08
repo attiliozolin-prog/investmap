@@ -37,23 +37,35 @@ export function calculatePortfolio(
   strategy: Strategy,
   assets: Asset[],
 ): PortfolioSummary {
-  const totalInvested = assets.reduce((sum, a) => sum + a.investedValue, 0);
-  const totalValue = assets.reduce((sum, a) => sum + a.currentValue, 0);
+  // ── Separa ativos encerrados dos ativos ativos ──────────────────────────────
+  // Ativos encerrados (archived) NÃO entram no patrimônio total nem nos % de carteira.
+  // Seus registros de venda continuam no histórico (sell_tax_records) independentemente.
+  const isAssetArchived = (a: Asset) => a.info?.includes('[[ARCHIVED]]') ?? false;
+
+  const activeAssets   = assets.filter(a => !isAssetArchived(a));
+  const archivedAssets = assets.filter(a =>  isAssetArchived(a));
+
+  // Totais calculados apenas sobre ativos ATIVOS
+  const totalInvested = activeAssets.reduce((sum, a) => sum + a.investedValue, 0);
+  const totalValue    = activeAssets.reduce((sum, a) => sum + a.currentValue,  0);
 
   const profitLoss = totalValue - totalInvested;
   const totalProfitLossPercent =
     totalInvested > 0 ? (profitLoss / totalInvested) * 100 : 0;
 
+  // ── Cálculo por ativo ───────────────────────────────────────────────────────
   const assetsWithCalcs: AssetWithCalcs[] = assets
     .map((asset) => {
+      const isArchived = isAssetArchived(asset);
+
       let category = strategy.categories.find(
         (c) => c.id === asset.categoryId,
       );
       
-      // Ativo sem categoria válida (ex: categoria deletada, ou onboarding alterado)
+      // Ativo sem categoria válida
       if (!category) {
         category = {
-          id: asset.categoryId, // manter o id para grouping, mas mostrar como órfão
+          id: asset.categoryId,
           strategyId: strategy.id,
           className: 'Não Categorizado',
           subclassName: 'Sem Categoria Correspondente',
@@ -61,18 +73,20 @@ export function calculatePortfolio(
         };
       }
 
-      const isArchived = asset.info?.includes('[[ARCHIVED]]') ?? false;
-
       const profitLoss = asset.currentValue - asset.investedValue;
       const profitLossPercent =
         asset.investedValue > 0
           ? (profitLoss / asset.investedValue) * 100
           : 0;
+
+      // % da carteira: encerrados não afetam o totalValue nem mostram % real
       const currentPortfolioPercent =
-        totalValue > 0 ? (asset.currentValue / totalValue) * 100 : 0;
+        isArchived ? 0 : (totalValue > 0 ? (asset.currentValue / totalValue) * 100 : 0);
+
       const targetPercent = category.targetPercent;
       
-      const siblingCount = assets.filter(a => a.categoryId === asset.categoryId && !a.info?.includes('[[ARCHIVED]]')).length;
+      // Irmãos ATIVOS na mesma subcategoria (encerrados excluídos)
+      const siblingCount = activeAssets.filter(a => a.categoryId === asset.categoryId).length;
       
       let assetTargetPercent = 0;
       if (!isArchived) {
@@ -81,8 +95,9 @@ export function calculatePortfolio(
       
       const diffPercent = currentPortfolioPercent - assetTargetPercent;
 
-      const targetValue = (totalValue * assetTargetPercent) / 100;
-      const rebalanceAmount = targetValue - asset.currentValue;
+      // Encerrados: rebalancear = 0 (não há alvo nem ação)
+      const targetValue      = isArchived ? 0 : (totalValue * assetTargetPercent) / 100;
+      const rebalanceAmount  = isArchived ? 0 : (targetValue - asset.currentValue);
 
       let action: 'buy' | 'sell' | 'ok' = 'ok';
       if (!isArchived) {
@@ -109,10 +124,11 @@ export function calculatePortfolio(
     .filter((a): a is AssetWithCalcs => a !== null);
 
 
-  // Group by category
+  // ── Sumário por categoria (apenas ativos ATIVOS) ───────────────────────────
   const categorySummaries: CategorySummary[] = strategy.categories.map((cat) => {
+    // Considera apenas ativos não-encerrados para o sumário de categoria
     const catAssets = assetsWithCalcs.filter(
-      (a) => a.categoryId === cat.id,
+      (a) => a.categoryId === cat.id && !a.isArchived,
     );
     const currentValue = catAssets.reduce((s, a) => s + a.currentValue, 0);
     const currentPercent =
@@ -136,7 +152,7 @@ export function calculatePortfolio(
     };
   });
 
-  // Health Score: 100 - average absolute deviation from targets
+  // Health Score
   const totalTargetPercent = strategy.categories.reduce(
     (s, c) => s + c.targetPercent,
     0,
@@ -150,7 +166,7 @@ export function calculatePortfolio(
       : 0;
   const healthScore = Math.max(0, Math.min(100, 100 - avgDeviation * 2));
 
-  const needsRebalancing = assetsWithCalcs.some((a) => a.action !== 'ok');
+  const needsRebalancing = assetsWithCalcs.some((a) => !a.isArchived && a.action !== 'ok');
 
   return {
     totalInvested,
