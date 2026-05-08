@@ -50,8 +50,8 @@
   top: 64px;
   background: var(--color-surface);
   z-index: 40;
-  box-shadow: 0 2px 0 var(--color-border);
-  padding: 14px 6px;
+  box-shadow: 0 3px 0 var(--color-border);
+  padding: 16px 8px 20px; /* top=16 | h=8 | bottom=20 — gap generoso abaixo do cabeçalho */
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.05em;
@@ -65,9 +65,9 @@
   text-align: left;
 }
 
-/* Padding nos tds */
+/* Padding padrão nas células — altura confortável para leitura */
 .tableWrapper table td {
-  padding: 12px 6px;
+  padding: 16px 8px;
   vertical-align: middle;
 }
 
@@ -129,10 +129,10 @@
   transition: background 0.2s;
 }
 
-/* Garante respiro vertical na linha de grupo */
+/* Linha de grupo — mais respiro vertical para destacar como separador de seção */
 .groupHeader td {
-  padding-top: 14px !important;
-  padding-bottom: 14px !important;
+  padding-top: 18px !important;
+  padding-bottom: 18px !important;
 }
 
 
