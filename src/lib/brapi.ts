@@ -1,24 +1,44 @@
+const BRAPI_TOKEN = process.env.NEXT_PUBLIC_BRAPI_TOKEN ?? '';
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
+
+function getCached(ticker: string): number | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(`brapi_price_${ticker}`);
+    if (!raw) return null;
+    const { price, ts } = JSON.parse(raw) as { price: number; ts: number };
+    if (Date.now() - ts < CACHE_TTL_MS) return price;
+  } catch { /* ignore */ }
+  return null;
+}
+
+function setCache(ticker: string, price: number): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(`brapi_price_${ticker}`, JSON.stringify({ price, ts: Date.now() }));
+  } catch { /* ignore */ }
+}
+
 export async function fetchAssetPrice(ticker: string): Promise<number | null> {
   if (!ticker) return null;
   // Limpa o ticker (remove F de fracionário se houver)
   const cleanTicker = ticker.toUpperCase().replace(/F$/, '');
-  
+
+  // Verifica cache antes de chamar a API
+  const cached = getCached(cleanTicker);
+  if (cached !== null) return cached;
+
+  const tokenParam = BRAPI_TOKEN ? `?token=${BRAPI_TOKEN}` : '';
+
   try {
-    const res = await fetch(`https://brapi.dev/api/quote/${cleanTicker}?token=COLOQUE_SEU_TOKEN_AQUI`);
-    // Nota: A Brapi requer um token gratuito agora, mas para algumas chamadas funciona sem.
-    // Para contornar limites sem token, podemos usar a rota gratuita básica ou o token se o usuário adicionar.
-    // Vamos tentar sem token primeiro. (A URL base costuma ser apenas https://brapi.dev/api/quote/PETR4)
-    if (!res.ok) {
-      // Tenta de novo sem token caso o endpoint mude
-      const res2 = await fetch(`https://brapi.dev/api/quote/${cleanTicker}`);
-      if (!res2.ok) return null;
-      const data = await res2.json();
-      return data.results?.[0]?.regularMarketPrice || null;
-    }
+    const res = await fetch(`https://brapi.dev/api/quote/${cleanTicker}${tokenParam}`);
+    if (!res.ok) return null;
     const data = await res.json();
-    return data.results?.[0]?.regularMarketPrice || null;
+    const price: number | null = data.results?.[0]?.regularMarketPrice ?? null;
+    if (price !== null) setCache(cleanTicker, price);
+    return price;
   } catch (error) {
-    console.error("Erro ao buscar preço na Brapi:", error);
+    console.error('Erro ao buscar preço na Brapi:', error);
     return null;
   }
 }

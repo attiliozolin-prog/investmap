@@ -146,6 +146,8 @@ function dbAssetToApp(row: any): Asset {
     info: row.info ?? '',
     investedValue: Number(row.invested_value),
     currentValue: Number(row.current_value),
+    quantity: row.quantity != null ? Number(row.quantity) : undefined,
+    customPrice: row.custom_price != null ? Number(row.custom_price) : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -632,6 +634,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         info: newAsset.info ?? '',
         invested_value: newAsset.investedValue,
         current_value: newAsset.currentValue,
+        quantity: newAsset.quantity ?? null,
+        custom_price: newAsset.customPrice ?? null,
         created_at: now,
         updated_at: now,
       }).then(({ error }) => { if (error) console.error(error); });
@@ -659,6 +663,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         category_id: data.categoryId,
         invested_value: data.investedValue,
         current_value: data.currentValue,
+        quantity: data.quantity !== undefined ? (data.quantity ?? null) : undefined,
+        custom_price: data.customPrice !== undefined ? (data.customPrice ?? null) : undefined,
         updated_at: now,
       }).eq('id', id).eq('user_id', user.id)
         .then(({ error }) => { if (error) console.error(error); });
@@ -714,11 +720,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (tx.type === 'buy') {
           newInvested += tx.value;
         } else {
-          // Proporcional: reduz o investido na proporção que foi vendida
-          // Usamos o investido acumulado antes desta venda
-          // Para simplificar: reduz proporcionalmente
-          const proportionSold = newInvested > 0 ? Math.min(tx.value / (newInvested + tx.value), 1) : 0;
-          newInvested -= newInvested * proportionSold;
+          // PME correto: fração vendida = valor recebido / custo total ANTES da venda
+          if (newInvested > 0) {
+            const fractionSold = Math.min(tx.value / newInvested, 1);
+            newInvested -= newInvested * fractionSold;
+          } else {
+            newInvested = 0;
+          }
         }
       }
       newInvested = Math.max(0, newInvested);
