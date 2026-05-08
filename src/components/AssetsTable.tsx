@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { AssetWithCalcs } from '@/types';
 import { formatCurrency, formatPercent, formatPercentAbs } from '@/lib/calculations';
 import styles from './AssetsTable.module.css';
-import { Pencil, Trash2, ArrowUp, ArrowDown, Minus, RefreshCw, AlertCircle, PlusCircle, GripVertical, Info, History, ChevronDown, ChevronRight, TrendingUp, ChevronsUpDown, Archive } from 'lucide-react';
+import { Pencil, Trash2, ArrowUp, ArrowDown, Minus, RefreshCw, AlertCircle, PlusCircle, GripVertical, Info, History, ChevronDown, ChevronRight, TrendingUp, ChevronsUpDown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import TransactionModal from './TransactionModal';
@@ -16,7 +16,6 @@ interface Props {
   onEdit: (asset: AssetWithCalcs) => void;
   onDelete: (id: string) => void;
   onUpdateValue: (id: string, currentValue: number) => void;
-  onArchiveToggle?: (asset: AssetWithCalcs) => void;
 }
 
 function ActionBadge({ action }: { action: 'buy' | 'sell' | 'ok' }) {
@@ -66,7 +65,7 @@ function getDeviationColor(current: number, target: number): string {
   return 'var(--color-danger)';
 }
 
-export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue, onArchiveToggle }: Props) {
+export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }: Props) {
   const { syncPrices, isSyncingPrices, lastPriceSyncAt } = useApp();
   const [editingValueId, setEditingValueId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
@@ -454,7 +453,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue, o
 
                 {/* Ativos dentro do Grupo — apenas se não estiver colapsado */}
                 {!collapsedGroups.has(group.className) && group.assets.map((asset) => (
-                  <tr key={asset.id} className={`${styles.row} ${styles[`row_${asset.action}`]} ${asset.isArchived ? styles.archivedRow : ''}`}>
+                  <tr key={asset.id} className={`${styles.row} ${styles[`row_${asset.action}`]}`}>
                     {/* Ativo */}
                     <td>
                       <div className={styles.tickerCell}>
@@ -585,15 +584,6 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue, o
                         >
                           <Pencil size={13} />
                         </button>
-                        {onArchiveToggle && (
-                          <button
-                            className={`btn btn-ghost btn-sm ${styles.actionBtn}`}
-                            onClick={() => onArchiveToggle(asset)}
-                            title={asset.isArchived ? "Desarquivar (reativar) ativo" : "Encerrar ativo (Arquivar)"}
-                          >
-                            <Archive size={13} style={{ opacity: asset.isArchived ? 0.5 : 1 }} />
-                          </button>
-                        )}
                         <button
                           className={`btn btn-ghost btn-sm ${styles.actionBtn} ${styles.actionBtnTransaction}`}
                           onClick={() => setTransactionAssetId(asset.id)}

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Asset, StrategyCategory } from '@/types';
 import styles from './AssetModal.module.css';
-import { X, RefreshCw, Calculator, Landmark, TrendingUp } from 'lucide-react';
+import { X, RefreshCw, Calculator, Landmark, TrendingUp, Archive } from 'lucide-react';
 import TickerSearch from './TickerSearch';
 import { fetchAssetPrice, detectPriceMode } from '@/lib/brapi';
 
@@ -13,6 +13,7 @@ interface Props {
   asset?: Asset | null;
   onSave: (data: Omit<Asset, 'id' | 'updatedAt'>) => void;
   onClose: () => void;
+  onArchive?: (id: string) => void; // Encerrar ativo definitivamente
 }
 
 const parseNum = (v: string) => parseFloat(v.replace(',', '.'));
@@ -21,7 +22,7 @@ const fmtNum = (v: number) => v.toFixed(2).replace('.', ',');
 const fmtCurrency = (n: number) =>
   n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-export default function AssetModal({ categories, strategyId, asset, onSave, onClose }: Props) {
+export default function AssetModal({ categories, strategyId, asset, onSave, onClose, onArchive }: Props) {
   const [ticker, setTicker] = useState('');
   const [info, setInfo] = useState('');
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '');
@@ -412,6 +413,29 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
           {error && <div className={styles.error}>{error}</div>}
 
           <div className={styles.footer}>
+            {/* Botão Encerrar Ativo — só aparece ao editar um ativo existente */}
+            {asset && onArchive && (
+              <button
+                type="button"
+                className={`btn ${styles.archiveBtn}`}
+                onClick={() => {
+                  if (confirm(
+                    `Encerrar "${asset.ticker}"?\n\n` +
+                    '• O ativo será removido da estratégia e dos cálculos\n' +
+                    '• O histórico de transações e impostos será preservado\n' +
+                    '• Essa ação pode ser desfeita pelo suporte'
+                  )) {
+                    onArchive(asset.id);
+                    onClose();
+                  }
+                }}
+                title="Encerrar ativo definitivamente"
+              >
+                <Archive size={14} />
+                Encerrar Ativo
+              </button>
+            )}
+            <div style={{ flex: 1 }} />
             <button type="button" id="cancel-asset-modal" className="btn btn-ghost" onClick={onClose}>
               Cancelar
             </button>

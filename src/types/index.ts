@@ -34,6 +34,7 @@ export interface Asset {
   avgPrice?: number;           // Preço Médio de Aquisição — PME (custo histórico por ação)
   customPrice?: number;        // Preço de mercado atual (para botão "Auto" e cálculo de currentValue)
   priceMode?: 'auto' | 'manual'; // 'auto' = Brapi sincroniza; 'manual' = usuário insere
+  isArchived?: boolean;        // Ativo encerrado — excluído da carteira ativa, preservado no histórico
   createdAt?: string;          // ISO Date
   updatedAt: string;
 }
