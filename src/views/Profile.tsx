@@ -179,7 +179,13 @@ export default function Profile() {
               Simule interfaces do aplicativo. Seus dados e configurações ativas não serão alterados ao usar esta opção.
             </p>
             <div className={styles.buttonGroup}>
-              <button className={styles.secondaryBtn} onClick={() => window.location.href = '/?test_onboarding=1'}>
+              <button 
+                className={styles.secondaryBtn} 
+                onClick={() => {
+                  localStorage.setItem('investmap_test_onboarding', '1');
+                  window.location.href = '/';
+                }}
+              >
                 <AlertTriangle size={18} />
                 <span>Testar Tela de Onboarding</span>
               </button>

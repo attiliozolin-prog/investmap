@@ -54,11 +54,18 @@ export default function OnboardingFlow({ onFinish }: OnboardingFlowProps) {
   const handlePrev = () => setStep(step - 1);
   
   const handleComplete = (action: 'add-asset' | 'dashboard') => {
-    let profile = PROFILES.find(p => p.id === selectedProfile);
-    if (!profile) {
-      profile = PROFILES[1]; // Default fallback
+    const isTestMode = typeof window !== 'undefined' && localStorage.getItem('investmap_test_onboarding') === '1';
+    
+    if (!isTestMode) {
+      let profile = PROFILES.find(p => p.id === selectedProfile);
+      if (!profile) {
+        profile = PROFILES[1]; // Default fallback
+      }
+      completeOnboarding(profile.categories);
+    } else {
+      localStorage.removeItem('investmap_test_onboarding');
     }
-    completeOnboarding(profile.categories);
+
     if (onFinish) {
       onFinish(action);
     }
