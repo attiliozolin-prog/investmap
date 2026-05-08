@@ -375,6 +375,10 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue, o
             </tr>
           </thead>
           <tbody>
+            {/* Espaçador invisível entre cabeçalho e primeira linha — cria gap consistente */}
+            <tr aria-hidden="true">
+              <td colSpan={9} style={{ height: '8px', padding: 0, border: 'none', background: 'transparent' }} />
+            </tr>
             {sortedGroups.map((group) => (
               <React.Fragment key={group.className}>
                 {/* Cabeçalho do Grupo (Classe) — com métricas agregadas */}
