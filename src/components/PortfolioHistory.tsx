@@ -58,7 +58,13 @@ export default function PortfolioHistory({ onClose }: Props) {
   const totalRealizedLoss   = sells.filter(r => r.isLoss).reduce((s, r) => s + Math.abs(r.profitLoss), 0);
   const availableForComp    = sellsWithLoss.reduce((s, r) => s + (Math.abs(r.profitLoss) - r.lossUsedForCompensation), 0);
 
-  const totalBought = transactions.filter(t => t.type === 'buy').reduce((s, t) => s + t.value, 0);
+  // Total Aportado: soma o investedValue de TODOS os ativos (ativos + encerrados)
+  // + valor das vendas já realizadas (que saíram do investedValue)
+  // Isso garante contabilidade completa independente de transações registradas.
+  const totalInvestedAllAssets = assets.reduce((s, a) => s + a.investedValue, 0);
+  const totalSellCostBasis = sells.reduce((s, r) => s + r.costBasis, 0);
+  const totalBought = totalInvestedAllAssets + totalSellCostBasis;
+
   const totalSold   = transactions.filter(t => t.type === 'sell').reduce((s, t) => s + t.value, 0);
 
   // ── Marcar IR como pago ─────────────────────────────────────────────────────
