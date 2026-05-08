@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppProvider, useApp } from '@/context/AppContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -23,6 +23,12 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [showLanding, setShowLanding] = useState<boolean>(!hasCompletedOnboarding);
 
+  const [isTestOnboarding, setIsTestOnboarding] = useState(false);
+  
+  useEffect(() => {
+    setIsTestOnboarding(localStorage.getItem('investmap_test_onboarding') === '1');
+  }, []);
+
   // Aguarda verificação de sessão e DB
   if (authLoading || (user && !dbSynced)) {
     return (
@@ -37,14 +43,18 @@ function AppContent() {
     return <AuthPage />;
   }
 
-  if (!hasCompletedOnboarding && showLanding) {
+  if (!hasCompletedOnboarding && showLanding && !isTestOnboarding) {
     return <LandingPage onStart={() => setShowLanding(false)} />;
   }
 
-  if (!hasCompletedOnboarding && !showLanding) {
+  if ((!hasCompletedOnboarding && !showLanding) || isTestOnboarding) {
     return (
       <OnboardingFlow 
         onFinish={(action) => {
+          if (isTestOnboarding) {
+            window.location.href = '/';
+            return;
+          }
           if (action === 'add-asset') {
             setActiveTab('assets');
             // Aguarda o render da tela de ativos para clicar no botão
