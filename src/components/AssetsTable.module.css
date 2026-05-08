@@ -532,3 +532,51 @@
   margin: 0 2px;
   flex-shrink: 0;
 }
+
+/* ──────────────────────────────────────────
+   Toolbar de Atualização de Preços
+   ────────────────────────────────────────── */
+.tableToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px 10px;
+}
+
+.tableToolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lastSync {
+  font-size: 0.7rem;
+  color: var(--color-text-3);
+}
+
+.syncBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem !important;
+}
+
+/* Badge "Manual" para ativos fora do auto-price */
+.manualBadge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--color-text-3);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }

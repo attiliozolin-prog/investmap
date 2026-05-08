@@ -23,7 +23,7 @@ const AllocationChart = dynamic(() => import('@/components/AllocationChart'), {
 });
 
 export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void }) {
-  const { activeStrategy, activeAssets, saveSnapshot, snapshots } = useApp();
+  const { activeStrategy, activeAssets, saveSnapshot, snapshots, dbSynced, syncPrices, isSyncingPrices, lastPriceSyncAt } = useApp();
 
   const summary = useMemo(() => {
     if (!activeStrategy || activeAssets.length === 0) return null;
@@ -56,6 +56,14 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
       });
     }
   }, [summary, activeStrategy, saveSnapshot, snapshots]);
+
+  // Sincroniza preços automáticos uma vez que o banco carregou
+  useEffect(() => {
+    if (dbSynced) {
+      syncPrices();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dbSynced]);
 
   if (!activeStrategy) {
     return (
@@ -118,7 +126,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
       )}
 
       {/* Summary Cards */}
-      <SummaryCards summary={summary} />
+      <SummaryCards summary={summary} isSyncingPrices={isSyncingPrices} lastPriceSyncAt={lastPriceSyncAt} />
 
       {/* Chart + Category Table */}
       <div className={styles.middleRow}>

@@ -5,7 +5,7 @@ import { Asset, StrategyCategory } from '@/types';
 import styles from './AssetModal.module.css';
 import { X, RefreshCw, Calculator } from 'lucide-react';
 import TickerSearch from './TickerSearch';
-import { fetchAssetPrice } from '@/lib/brapi';
+import { fetchAssetPrice, detectPriceMode } from '@/lib/brapi';
 
 interface Props {
   categories: StrategyCategory[];
@@ -28,6 +28,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
   const [quantity, setQuantity] = useState('');
   const [avgPrice, setAvgPrice] = useState('');     // PME — custo histórico por ação
   const [currentPrice, setCurrentPrice] = useState(''); // preço de mercado atual
+  const [priceMode, setPriceMode] = useState<'auto' | 'manual'>('auto');
 
   // Totais: derivados automaticamente se qty+preço presentes, senão manuais
   const [manualInvested, setManualInvested] = useState('');
@@ -69,6 +70,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
       if (asset.quantity) setQuantity(asset.quantity.toString().replace('.', ','));
       if (asset.avgPrice) setAvgPrice(fmtNum(asset.avgPrice));
       if (asset.customPrice) setCurrentPrice(fmtNum(asset.customPrice));
+      setPriceMode(asset.priceMode ?? detectPriceMode(asset.ticker));
 
       // Só preenche manuais se não tiver quantidade+PME definidos
       if (!asset.avgPrice || !asset.quantity) {
@@ -85,6 +87,13 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asset, categories]);
+
+  // Quando o ticker muda em modo de criação, reavalia o priceMode
+  useEffect(() => {
+    if (!asset && ticker) {
+      setPriceMode(detectPriceMode(ticker));
+    }
+  }, [ticker, asset]);
 
   const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newClass = e.target.value;
@@ -140,6 +149,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
       quantity: qty !== undefined && !isNaN(qty) ? qty : undefined,
       avgPrice: avg !== undefined && !isNaN(avg) ? avg : undefined,
       customPrice: mkt !== undefined && !isNaN(mkt) ? mkt : undefined,
+      priceMode,
     });
     onClose();
   };
@@ -283,22 +293,43 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
             <div className="form-group">
               <label className={`label ${styles.labelWithHint}`} htmlFor="asset-price">
                 <span>Preço de Mercado</span>
-                <button
-                  type="button"
-                  onClick={handleFetchPrice}
-                  disabled={isFetchingPrice || !ticker}
-                  className={styles.autoBtn}
-                >
-                  <RefreshCw size={11} className={isFetchingPrice ? styles.spin : ''} />
-                  Auto
-                </button>
+                <div className={styles.priceModeRow}>
+                  <button
+                    type="button"
+                    className={`${styles.modeBtn} ${priceMode === 'auto' ? styles.modeBtnActive : ''}`}
+                    onClick={() => setPriceMode('auto')}
+                    title="Preço atualizado automaticamente pela Brapi"
+                  >
+                    Auto
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.modeBtn} ${priceMode === 'manual' ? styles.modeBtnActive : ''}`}
+                    onClick={() => setPriceMode('manual')}
+                    title="Preço inserido manualmente"
+                  >
+                    Manual
+                  </button>
+                  {priceMode === 'auto' && (
+                    <button
+                      type="button"
+                      onClick={handleFetchPrice}
+                      disabled={isFetchingPrice || !ticker}
+                      className={styles.autoBtn}
+                    >
+                      <RefreshCw size={11} className={isFetchingPrice ? styles.spin : ''} />
+                    </button>
+                  )}
+                </div>
               </label>
               <input
                 id="asset-price"
                 className="input"
-                placeholder="0,00"
+                placeholder={priceMode === 'auto' ? 'Atualizado automaticamente' : '0,00'}
                 value={currentPrice}
-                onChange={e => setCurrentPrice(e.target.value)}
+                onChange={e => { if (priceMode === 'manual') setCurrentPrice(e.target.value); }}
+                readOnly={priceMode === 'auto'}
+                style={priceMode === 'auto' ? { cursor: 'default', opacity: 0.7 } : {}}
                 autoComplete="off"
                 inputMode="decimal"
               />
