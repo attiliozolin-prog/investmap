@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Asset, StrategyCategory } from '@/types';
 import styles from './AssetModal.module.css';
-import { X, RefreshCw, Calculator } from 'lucide-react';
+import { X, RefreshCw, Calculator, Landmark, TrendingUp } from 'lucide-react';
 import TickerSearch from './TickerSearch';
 import { fetchAssetPrice, detectPriceMode } from '@/lib/brapi';
 
@@ -18,19 +18,20 @@ interface Props {
 const parseNum = (v: string) => parseFloat(v.replace(',', '.'));
 const fmtNum = (v: number) => v.toFixed(2).replace('.', ',');
 
+const fmtCurrency = (n: number) =>
+  n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
 export default function AssetModal({ categories, strategyId, asset, onSave, onClose }: Props) {
   const [ticker, setTicker] = useState('');
   const [info, setInfo] = useState('');
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '');
   const [selectedClass, setSelectedClass] = useState('');
 
-  // Campos de quantidade e preços
   const [quantity, setQuantity] = useState('');
-  const [avgPrice, setAvgPrice] = useState('');     // PME — custo histórico por ação
-  const [currentPrice, setCurrentPrice] = useState(''); // preço de mercado atual
+  const [avgPrice, setAvgPrice] = useState('');
+  const [currentPrice, setCurrentPrice] = useState('');
   const [priceMode, setPriceMode] = useState<'auto' | 'manual'>('auto');
 
-  // Totais: derivados automaticamente se qty+preço presentes, senão manuais
   const [manualInvested, setManualInvested] = useState('');
   const [manualCurrent, setManualCurrent] = useState('');
 
@@ -39,26 +40,28 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
 
   const uniqueClasses = Array.from(new Set(categories.map(c => c.className)));
 
-  // ---------------------------------------------------------------
-  // Valores derivados: qty × avgPrice = custo; qty × currentPrice = valor atual
-  // ---------------------------------------------------------------
+  // ── Modo Renda Fixa ──────────────────────────────────────────────
+  const isRendaFixa = selectedClass === 'Renda Fixa';
+
+  // ── Derivados ────────────────────────────────────────────────────
   const qtyNum = parseNum(quantity);
   const avgNum = parseNum(avgPrice);
   const mktNum = parseNum(currentPrice);
 
-  const derivedInvested = !isNaN(qtyNum) && qtyNum > 0 && !isNaN(avgNum) && avgNum > 0
-    ? qtyNum * avgNum : null;
+  const derivedInvested =
+    !isRendaFixa && !isNaN(qtyNum) && qtyNum > 0 && !isNaN(avgNum) && avgNum > 0
+      ? qtyNum * avgNum
+      : null;
 
-  const derivedCurrent = !isNaN(qtyNum) && qtyNum > 0 && !isNaN(mktNum) && mktNum > 0
-    ? qtyNum * mktNum : null;
+  const derivedCurrent =
+    !isRendaFixa && !isNaN(qtyNum) && qtyNum > 0 && !isNaN(mktNum) && mktNum > 0
+      ? qtyNum * mktNum
+      : null;
 
-  // Custo e valor final (derivado tem prioridade; manual como fallback)
   const effectiveInvested = derivedInvested ?? parseNum(manualInvested);
   const effectiveCurrent = derivedCurrent ?? parseNum(manualCurrent);
 
-  // ---------------------------------------------------------------
-  // Preenche campos ao editar ativo existente
-  // ---------------------------------------------------------------
+  // ── Preenche campos ao editar ─────────────────────────────────────
   useEffect(() => {
     if (asset) {
       setTicker(asset.ticker);
@@ -72,27 +75,19 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
       if (asset.customPrice) setCurrentPrice(fmtNum(asset.customPrice));
       setPriceMode(asset.priceMode ?? detectPriceMode(asset.ticker));
 
-      // Só preenche manuais se não tiver quantidade+PME definidos
-      if (!asset.avgPrice || !asset.quantity) {
-        setManualInvested(fmtNum(asset.investedValue));
-      }
-      if (!asset.customPrice || !asset.quantity) {
-        setManualCurrent(fmtNum(asset.currentValue));
-      }
+      if (!asset.avgPrice || !asset.quantity) setManualInvested(fmtNum(asset.investedValue));
+      if (!asset.customPrice || !asset.quantity) setManualCurrent(fmtNum(asset.currentValue));
     } else if (categories.length > 0) {
       const initialClass = uniqueClasses[0] ?? '';
       setSelectedClass(initialClass);
-      const initialSubclasses = categories.filter(c => c.className === initialClass);
-      if (initialSubclasses.length > 0) setCategoryId(initialSubclasses[0].id);
+      const initialSubs = categories.filter(c => c.className === initialClass);
+      if (initialSubs.length > 0) setCategoryId(initialSubs[0].id);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asset, categories]);
 
-  // Quando o ticker muda em modo de criação, reavalia o priceMode
   useEffect(() => {
-    if (!asset && ticker) {
-      setPriceMode(detectPriceMode(ticker));
-    }
+    if (!asset && ticker) setPriceMode(detectPriceMode(ticker));
   }, [ticker, asset]);
 
   const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -104,9 +99,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
 
   const filteredSubclasses = categories.filter(c => c.className === selectedClass);
 
-  // ---------------------------------------------------------------
-  // Busca cotação atual (preço de mercado)
-  // ---------------------------------------------------------------
+  // ── Busca cotação ─────────────────────────────────────────────────
   const handleFetchPrice = useCallback(async () => {
     if (!ticker) return;
     setIsFetchingPrice(true);
@@ -120,9 +113,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
     }
   }, [ticker]);
 
-  // ---------------------------------------------------------------
-  // Submit
-  // ---------------------------------------------------------------
+  // ── Submit ────────────────────────────────────────────────────────
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -136,8 +127,8 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
 
     if (!ticker.trim()) return setError('Informe o ticker ou nome do ativo.');
     if (!categoryId) return setError('Selecione a subclasse.');
-    if (isNaN(invested) || invested < 0) return setError('Informe o custo total ou o PME + quantidade.');
-    if (isNaN(current) || current < 0) return setError('Informe o valor atual ou o preço de mercado + quantidade.');
+    if (isNaN(invested) || invested < 0) return setError('Informe o valor investido.');
+    if (isNaN(current) || current < 0) return setError('Informe o valor atual.');
 
     onSave({
       strategyId,
@@ -149,7 +140,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
       quantity: qty !== undefined && !isNaN(qty) ? qty : undefined,
       avgPrice: avg !== undefined && !isNaN(avg) ? avg : undefined,
       customPrice: mkt !== undefined && !isNaN(mkt) ? mkt : undefined,
-      priceMode,
+      priceMode: isRendaFixa ? 'manual' : priceMode,
     });
     onClose();
   };
@@ -159,9 +150,20 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
-        {/* Header */}
+
+        {/* ── Header ── */}
         <div className={styles.header}>
-          <h2>{asset ? 'Editar Ativo' : 'Adicionar Ativo'}</h2>
+          <div className={styles.headerTitle}>
+            <div className={`${styles.headerIcon} ${isRendaFixa ? styles.headerIconRF : ''}`}>
+              {isRendaFixa ? <Landmark size={15} /> : <TrendingUp size={15} />}
+            </div>
+            <div>
+              <h2>{asset ? 'Editar Ativo' : 'Adicionar Ativo'}</h2>
+              {isRendaFixa && (
+                <span className={styles.modeBadge}>Renda Fixa</span>
+              )}
+            </div>
+          </div>
           <button id="close-asset-modal" className="btn btn-ghost btn-sm" onClick={onClose}>
             <X size={16} />
           </button>
@@ -169,31 +171,32 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
 
         <form onSubmit={handleSubmit}>
 
-          {/* Ticker */}
-          <div className="form-group">
-            <label className="label">Ticker / Nome *</label>
-            <TickerSearch
-              value={ticker}
-              onChange={(t, name) => {
-                setTicker(t);
-                if (name && !info.trim()) setInfo(name);
-              }}
-            />
+          {/* ── Identidade ── */}
+          <div className={styles.fieldRow}>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label className="label">Ticker / Nome *</label>
+              <TickerSearch
+                value={ticker}
+                onChange={(t, name) => {
+                  setTicker(t);
+                  if (name && !info.trim()) setInfo(name);
+                }}
+              />
+            </div>
           </div>
 
-          {/* Info adicional */}
           <div className="form-group">
-            <label className="label" htmlFor="asset-info">Informação adicional</label>
+            <label className="label" htmlFor="asset-info">Descrição</label>
             <input
               id="asset-info"
               className="input"
-              placeholder="Ex: BlackRock, Banco do Brasil"
+              placeholder={isRendaFixa ? 'Ex: CDB Banco XP, LCI Itaú' : 'Ex: BlackRock, Banco do Brasil'}
               value={info}
               onChange={e => setInfo(e.target.value)}
             />
           </div>
 
-          {/* Classe / Subclasse */}
+          {/* ── Classe / Subclasse ── */}
           <div className={styles.twoCol}>
             <div className="form-group">
               <label className="label" htmlFor="asset-class">Classe *</label>
@@ -219,84 +222,120 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
                 )}
                 {filteredSubclasses.map(cat => (
                   <option key={cat.id} value={cat.id}>
-                    {cat.subclassName} (Meta: {cat.targetPercent.toFixed(2)}%)
+                    {cat.subclassName} ({cat.targetPercent.toFixed(1)}%)
                   </option>
                 ))}
               </select>
             </div>
           </div>
 
-          {/* ── Seção de Preços ─────────────────────────── */}
-          <div className={styles.sectionDivider}>
-            <span>Posição</span>
-          </div>
+          {/* ══════════════════════════════════════════════
+              MODO RENDA FIXA — apenas investido + atual
+          ══════════════════════════════════════════════ */}
+          {isRendaFixa ? (
+            <>
+              <div className={styles.sectionDivider}>
+                <span>Valores</span>
+              </div>
 
-          {/* Quantidade + Preço Médio (PME) */}
-          <div className={styles.twoCol}>
-            <div className="form-group">
-              <label className="label" htmlFor="asset-qty">Quantidade</label>
-              <input
-                id="asset-qty"
-                className="input"
-                placeholder="Ex: 100"
-                value={quantity}
-                onChange={e => setQuantity(e.target.value)}
-                autoComplete="off"
-                inputMode="decimal"
-              />
-            </div>
-            <div className="form-group">
-              <label className={`label ${styles.labelWithHint}`} htmlFor="asset-avgprice">
-                <span>Preço Médio — PME</span>
-                <span className={styles.labelHint}>custo por ação</span>
-              </label>
-              <input
-                id="asset-avgprice"
-                className="input"
-                placeholder="0,00"
-                value={avgPrice}
-                onChange={e => setAvgPrice(e.target.value)}
-                autoComplete="off"
-                inputMode="decimal"
-              />
-            </div>
-          </div>
+              <div className={styles.twoCol}>
+                <div className="form-group">
+                  <label className="label" htmlFor="asset-invested-rf">Valor Investido (R$) *</label>
+                  <input
+                    id="asset-invested-rf"
+                    className="input"
+                    placeholder="0,00"
+                    value={manualInvested}
+                    onChange={e => setManualInvested(e.target.value)}
+                    autoComplete="off"
+                    inputMode="decimal"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="label" htmlFor="asset-current-rf">Valor Atual (R$) *</label>
+                  <input
+                    id="asset-current-rf"
+                    className="input"
+                    placeholder="0,00"
+                    value={manualCurrent}
+                    onChange={e => setManualCurrent(e.target.value)}
+                    autoComplete="off"
+                    inputMode="decimal"
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+          /* ══════════════════════════════════════════════
+              MODO RENDA VARIÁVEL / CRYPTO — completo
+          ══════════════════════════════════════════════ */
+            <>
+              {/* ── Seção Posição ── */}
+              <div className={styles.sectionDivider}>
+                <span>Posição</span>
+              </div>
 
-          {/* Custo Total — derivado ou manual */}
-          <div className="form-group">
-            <label className={`label ${styles.labelWithHint}`} htmlFor="asset-invested">
-              <span>Custo Total (R$) *</span>
-              {derivedInvested !== null && (
-                <span className={styles.derivedBadge}>
-                  <Calculator size={10} /> calculado automaticamente
-                </span>
+              <div className={styles.twoCol}>
+                <div className="form-group">
+                  <label className="label" htmlFor="asset-qty">Quantidade</label>
+                  <input
+                    id="asset-qty"
+                    className="input"
+                    placeholder="Ex: 100"
+                    value={quantity}
+                    onChange={e => setQuantity(e.target.value)}
+                    autoComplete="off"
+                    inputMode="decimal"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="label" htmlFor="asset-avgprice">
+                    Preço Médio
+                    <span className={styles.labelHint}>por ação</span>
+                  </label>
+                  <input
+                    id="asset-avgprice"
+                    className="input"
+                    placeholder="0,00"
+                    value={avgPrice}
+                    onChange={e => setAvgPrice(e.target.value)}
+                    autoComplete="off"
+                    inputMode="decimal"
+                  />
+                </div>
+              </div>
+
+              {/* Custo total — resultado derivado ou manual */}
+              {derivedInvested !== null ? (
+                <div className={styles.resultCard}>
+                  <span className={styles.resultLabel}>
+                    <Calculator size={11} />
+                    Custo total
+                  </span>
+                  <span className={styles.resultValue}>{fmtCurrency(derivedInvested)}</span>
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label className="label" htmlFor="asset-invested">Custo Total (R$) *</label>
+                  <input
+                    id="asset-invested"
+                    className="input"
+                    placeholder={hasQty ? 'Preenchido pelo PME acima' : '0,00'}
+                    value={manualInvested}
+                    onChange={e => setManualInvested(e.target.value)}
+                    autoComplete="off"
+                    inputMode="decimal"
+                  />
+                </div>
               )}
-            </label>
-            <input
-              id="asset-invested"
-              className={`input ${derivedInvested !== null ? styles.derivedInput : ''}`}
-              placeholder={hasQty ? 'Preenchido pelo PME acima' : '0,00'}
-              value={derivedInvested !== null ? fmtNum(derivedInvested) : manualInvested}
-              onChange={e => { if (derivedInvested === null) setManualInvested(e.target.value); }}
-              readOnly={derivedInvested !== null}
-              autoComplete="off"
-              inputMode="decimal"
-            />
-          </div>
 
-          <div className={styles.sectionDivider}>
-            <span>Cotação atual</span>
-          </div>
-
-          {/* Preço de Mercado + Valor Atual */}
-          <div className={styles.twoCol}>
-            <div className="form-group">
-              <label className={`label ${styles.labelWithHint}`} htmlFor="asset-price">
-                <span>Preço de Mercado</span>
-                <div className={styles.priceModeRow}>
+              {/* ── Seção Cotação com pill Auto/Manual ── */}
+              <div className={styles.sectionDividerWithControl}>
+                <span className={styles.sectionDividerText}>Cotação atual</span>
+                <div className={styles.modePill}>
                   <button
                     type="button"
-                    className={`${styles.modeBtn} ${priceMode === 'auto' ? styles.modeBtnActive : ''}`}
+                    className={`${styles.pillBtn} ${priceMode === 'auto' ? styles.pillBtnActive : ''}`}
                     onClick={() => setPriceMode('auto')}
                     title="Preço atualizado automaticamente pela Brapi"
                   >
@@ -304,59 +343,71 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
                   </button>
                   <button
                     type="button"
-                    className={`${styles.modeBtn} ${priceMode === 'manual' ? styles.modeBtnActive : ''}`}
+                    className={`${styles.pillBtn} ${priceMode === 'manual' ? styles.pillBtnActive : ''}`}
                     onClick={() => setPriceMode('manual')}
                     title="Preço inserido manualmente"
                   >
                     Manual
                   </button>
-                  {priceMode === 'auto' && (
-                    <button
-                      type="button"
-                      onClick={handleFetchPrice}
-                      disabled={isFetchingPrice || !ticker}
-                      className={styles.autoBtn}
-                    >
-                      <RefreshCw size={11} className={isFetchingPrice ? styles.spin : ''} />
-                    </button>
-                  )}
                 </div>
-              </label>
-              <input
-                id="asset-price"
-                className="input"
-                placeholder={priceMode === 'auto' ? 'Atualizado automaticamente' : '0,00'}
-                value={currentPrice}
-                onChange={e => { if (priceMode === 'manual') setCurrentPrice(e.target.value); }}
-                readOnly={priceMode === 'auto'}
-                style={priceMode === 'auto' ? { cursor: 'default', opacity: 0.7 } : {}}
-                autoComplete="off"
-                inputMode="decimal"
-              />
-            </div>
-            <div className="form-group">
-              <label className={`label ${styles.labelWithHint}`} htmlFor="asset-current">
-                <span>Valor Atual (R$) *</span>
-                {derivedCurrent !== null && (
-                  <span className={styles.derivedBadge}>
-                    <Calculator size={10} /> calculado
-                  </span>
-                )}
-              </label>
-              <input
-                id="asset-current"
-                className={`input ${derivedCurrent !== null ? styles.derivedInput : ''}`}
-                placeholder={hasQty ? 'Preenchido pelo preço acima' : '0,00'}
-                value={derivedCurrent !== null ? fmtNum(derivedCurrent) : manualCurrent}
-                onChange={e => { if (derivedCurrent === null) setManualCurrent(e.target.value); }}
-                readOnly={derivedCurrent !== null}
-                autoComplete="off"
-                inputMode="decimal"
-              />
-            </div>
-          </div>
+              </div>
 
-          {/* ────────────────────────────────────────────── */}
+              <div className={styles.twoCol}>
+                <div className="form-group">
+                  <label className="label" htmlFor="asset-price">
+                    Preço de Mercado
+                    {priceMode === 'auto' && (
+                      <button
+                        type="button"
+                        onClick={handleFetchPrice}
+                        disabled={isFetchingPrice || !ticker}
+                        className={styles.refreshBtn}
+                        title="Buscar cotação agora"
+                      >
+                        <RefreshCw size={11} className={isFetchingPrice ? styles.spin : ''} />
+                        {isFetchingPrice ? 'Buscando…' : 'Atualizar'}
+                      </button>
+                    )}
+                  </label>
+                  <input
+                    id="asset-price"
+                    className="input"
+                    placeholder={priceMode === 'auto' ? 'Atualizado automaticamente' : '0,00'}
+                    value={currentPrice}
+                    onChange={e => { if (priceMode === 'manual') setCurrentPrice(e.target.value); }}
+                    readOnly={priceMode === 'auto'}
+                    style={priceMode === 'auto' ? { cursor: 'default', opacity: 0.6 } : {}}
+                    autoComplete="off"
+                    inputMode="decimal"
+                  />
+                </div>
+
+                {/* Valor atual — resultado derivado ou manual */}
+                {derivedCurrent !== null ? (
+                  <div className={styles.resultCardCol}>
+                    <span className={styles.resultLabel}>
+                      <Calculator size={11} />
+                      Valor atual
+                    </span>
+                    <span className={styles.resultValue}>{fmtCurrency(derivedCurrent)}</span>
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <label className="label" htmlFor="asset-current">Valor Atual (R$) *</label>
+                    <input
+                      id="asset-current"
+                      className="input"
+                      placeholder="0,00"
+                      value={manualCurrent}
+                      onChange={e => setManualCurrent(e.target.value)}
+                      autoComplete="off"
+                      inputMode="decimal"
+                    />
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           {error && <div className={styles.error}>{error}</div>}
 
