@@ -171,7 +171,7 @@ export default function Profile() {
         </div>
       </div>
 
-      {user?.email?.toLowerCase().includes('attilio') && (
+      {user?.email === 'attiliozolin@gmail.com' && (
         <div className={styles.card}>
           <div className={styles.formSection}>
             <h3>Modo Desenvolvedor</h3>
