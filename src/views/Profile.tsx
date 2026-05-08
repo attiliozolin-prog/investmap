@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useApp } from '@/context/AppContext';
 import { Download, Upload, AlertTriangle } from 'lucide-react';
 import styles from './Profile.module.css';
+import B3ImportSection from '@/components/profile/B3ImportSection';
 
 export default function Profile() {
   const { user, updateUser, deleteAccountData } = useAuth();
@@ -168,6 +169,8 @@ export default function Profile() {
             </button>
             <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportFile} />
           </div>
+
+          <B3ImportSection />
         </div>
       </div>
 
