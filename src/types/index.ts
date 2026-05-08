@@ -167,7 +167,7 @@ export interface FinanceMonthSummary {
 // ============================================
 
 // Tipo de ativo para fins tributários
-export type AssetType = 'acao' | 'etf' | 'fii' | 'lci_lca' | 'renda_fixa';
+export type AssetType = 'acao' | 'etf' | 'fii' | 'lci_lca' | 'renda_fixa' | 'crypto';
 
 export interface SellTaxRecord {
   id: string;
