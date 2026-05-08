@@ -52,6 +52,10 @@ export default function Finances() {
   const totalAssinaturas = useMemo(() => assinaturas.reduce((s,t)=>s+t.value,0), [assinaturas]);
   const totalExtras      = useMemo(() => extras.reduce((s,t)=>s+t.value,0), [extras]);
   const totalIncome      = useMemo(() => incomes.reduce((s,t)=>s+t.value,0), [incomes]);
+
+  // Impostos — subconjunto dos boletos com categoria "Impostos" (só para conferência, não somam novamente)
+  const impostos     = useMemo(() => boletos.filter(t => (t.category||'').toLowerCase() === 'impostos'), [boletos]);
+  const totalImpostos = useMemo(() => impostos.reduce((s,t)=>s+t.value,0), [impostos]);
   // Assinaturas não entram no cálculo de despesas pois já vêm cobradas na fatura do cartão (boleto)
   const totalExp         = totalBoletos + totalExtras;
   const balance          = totalIncome - totalExp;
@@ -217,6 +221,42 @@ export default function Finances() {
                 </table>
               </Section>
 
+              {/* ── Total de Impostos — somente conferência, sem duplicar no total ── */}
+              {impostos.length > 0 && (
+                <Section title="Total de Impostos" total={totalImpostos} accent="#F59E0B">
+                  <p style={{ fontSize: '0.72rem', color: 'var(--color-text-3)', padding: '0 0.85rem 0.65rem', fontStyle: 'italic' }}>
+                    ℹ️ Estes valores já estão incluídos em Controle de Boletos — listados aqui apenas para monitoramento.
+                  </p>
+                  <table className={styles.table}>
+                    <thead><tr><th>Descrição</th><th>Vcto</th><th>Valor</th><th>Status</th></tr></thead>
+                    <tbody>
+                      {impostos.map(tx => (
+                        <tr key={tx.id}>
+                          <td className={styles.descCell}>{tx.description}</td>
+                          <td className={styles.centerCell}>{tx.dueDay ? `Dia ${tx.dueDay}` : '—'}</td>
+                          <td className={styles.valueCell}>{fmt(tx.value)}</td>
+                          <td>
+                            <button
+                              className={`${styles.statusBtn} ${STATUS_CSS[tx.paymentStatus||'pending']}`}
+                              onClick={() => toggleStatus(tx)}
+                            >
+                              {STATUS_LABELS[tx.paymentStatus||'pending']}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan={2} className={styles.totalLabel}>TOTAL DE IMPOSTOS</td>
+                        <td className={styles.totalValue}>{fmt(totalImpostos)}</td>
+                        <td />
+                      </tr>
+                    </tfoot>
+                  </table>
+                </Section>
+              )}
+
               <Section title="Entrada e Saída" total={null} accent="#10B981" onAdd={()=>setAddSection('income')}>
                 <table className={styles.table}>
                   <thead><tr><th>Descrição</th><th>Valor</th><th></th></tr></thead>
@@ -312,14 +352,14 @@ export default function Finances() {
 }
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
-function Section({title,total,accent,onAdd,children}:{title:string;total:number|null;accent:string;onAdd:()=>void;children:React.ReactNode}) {
+function Section({title,total,accent,onAdd,children}:{title:string;total:number|null;accent:string;onAdd?:()=>void;children:React.ReactNode}) {
   return (
     <div className={styles.section} style={{'--s-accent':accent} as React.CSSProperties}>
       <div className={styles.sectionHeader}>
         <div className={styles.sectionTitle}>{title}</div>
         <div className={styles.sectionHeaderRight}>
           {total!==null&&<span className={styles.sectionTotal}>{fmt(total)}</span>}
-          <button className={styles.addBtn} onClick={onAdd}><Plus size={15}/></button>
+          {onAdd && <button className={styles.addBtn} onClick={onAdd}><Plus size={15}/></button>}
         </div>
       </div>
       <div className={styles.tableWrap}>{children}</div>
