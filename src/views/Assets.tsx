@@ -7,7 +7,7 @@ import AssetsTable from '@/components/AssetsTable';
 import AssetModal from '@/components/AssetModal';
 import { AssetWithCalcs, Asset } from '@/types';
 import styles from './Assets.module.css';
-import { Plus, Search, X, BookOpen } from 'lucide-react';
+import { Plus, Search, X, BookOpen, Archive } from 'lucide-react';
 import PortfolioHistory from '@/components/PortfolioHistory';
 
 export default function Assets() {
@@ -18,6 +18,7 @@ export default function Assets() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterClass, setFilterClass] = useState<string | null>(null);
   const [filterAction, setFilterAction] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false); // toggle para encerrados
 
   const assetsWithCalcs = useMemo<AssetWithCalcs[]>(() => {
     if (!activeStrategy || activeAssets.length === 0) return [];
@@ -28,18 +29,20 @@ export default function Assets() {
     }
   }, [activeStrategy, activeAssets]);
 
-  // Classes únicas para os chips de filtro — excluindo ativos encerrados
+  // Separa ativos ativos dos encerrados
+  const activeAssetsWithCalcs   = useMemo(() => assetsWithCalcs.filter(a => !a.isArchived), [assetsWithCalcs]);
+  const archivedAssetsWithCalcs = useMemo(() => assetsWithCalcs.filter(a =>  a.isArchived), [assetsWithCalcs]);
+
+  // Classes únicas para os chips de filtro — apenas ativos ativos
   const classNames = useMemo(() => {
     const set = new Set<string>();
-    assetsWithCalcs
-      .filter(a => !a.isArchived)  // encerrados não geram chip de filtro
-      .forEach(a => set.add(a.category.className));
+    activeAssetsWithCalcs.forEach(a => set.add(a.category.className));
     return Array.from(set).sort();
-  }, [assetsWithCalcs]);
+  }, [activeAssetsWithCalcs]);
 
-  // Aplica filtros de busca, classe e ação
+  // Aplica filtros de busca, classe e ação — apenas sobre ativos ativos
   const filteredAssets = useMemo(() => {
-    let result = assetsWithCalcs;
+    let result = activeAssetsWithCalcs;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(a =>
@@ -54,7 +57,7 @@ export default function Assets() {
       result = result.filter(a => a.action === filterAction);
     }
     return result;
-  }, [assetsWithCalcs, searchQuery, filterClass, filterAction]);
+  }, [activeAssetsWithCalcs, searchQuery, filterClass, filterAction]);
 
   const isFiltering = !!(searchQuery.trim() || filterClass || filterAction);
 
@@ -98,9 +101,27 @@ export default function Assets() {
       <div className={styles.header}>
         <div>
           <h2>Ativos</h2>
-          <p style={{ marginTop: 4 }}>{activeAssets.filter(a => !a.info?.includes('[[ARCHIVED]]')).length} ativo{activeAssets.filter(a => !a.info?.includes('[[ARCHIVED]]')).length !== 1 ? 's' : ''} nesta carteira</p>
+          <p style={{ marginTop: 4 }}>
+            {activeAssetsWithCalcs.length} ativo{activeAssetsWithCalcs.length !== 1 ? 's' : ''} nesta carteira
+            {archivedAssetsWithCalcs.length > 0 && (
+              <span style={{ color: 'var(--color-text-3)', marginLeft: 8, fontSize: '0.85em' }}>
+                · {archivedAssetsWithCalcs.length} encerrado{archivedAssetsWithCalcs.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {archivedAssetsWithCalcs.length > 0 && (
+            <button
+              className={`btn btn-ghost ${showArchived ? styles.chipActive : ''}`}
+              onClick={() => setShowArchived(prev => !prev)}
+              title={showArchived ? 'Ocultar ativos encerrados' : 'Mostrar ativos encerrados'}
+              style={{ opacity: showArchived ? 1 : 0.65 }}
+            >
+              <Archive size={15} />
+              Encerrados ({archivedAssetsWithCalcs.length})
+            </button>
+          )}
           <button
             className="btn btn-ghost"
             onClick={() => setShowHistory(true)}
@@ -180,6 +201,7 @@ export default function Assets() {
         </div>
       )}
 
+      {/* Tabela principal — apenas ativos ATIVOS */}
       <AssetsTable
         assets={filteredAssets}
         onEdit={handleEdit}
@@ -187,6 +209,28 @@ export default function Assets() {
         onUpdateValue={(id, val) => updateAsset(id, { currentValue: val })}
         onArchiveToggle={handleArchiveToggle}
       />
+
+      {/* Seção de ativos encerrados — visível apenas com toggle */}
+      {showArchived && archivedAssetsWithCalcs.length > 0 && (
+        <div style={{ marginTop: '2rem', opacity: 0.7 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 0', borderTop: '1px solid var(--color-border)',
+            color: 'var(--color-text-3)', fontSize: '0.8rem', fontWeight: 600,
+            letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8
+          }}>
+            <Archive size={13} />
+            Ativos Encerrados — apenas para registro histórico, não entram nos cálculos
+          </div>
+          <AssetsTable
+            assets={archivedAssetsWithCalcs}
+            onEdit={handleEdit}
+            onDelete={deleteAsset}
+            onUpdateValue={(id, val) => updateAsset(id, { currentValue: val })}
+            onArchiveToggle={handleArchiveToggle}
+          />
+        </div>
+      )}
 
       {showModal && (
         <AssetModal
