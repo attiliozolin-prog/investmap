@@ -32,17 +32,16 @@
 .row { position: relative; }
 
 /* ──────────────────────────────────────────
-   Linhas de ativo com status: tint sutil
+   Linhas de ativo (sem tint de status —
+   evita confusão com desempenho/cotação)
    ────────────────────────────────────────── */
-.row_buy {
-  background: rgba(16, 185, 129, 0.025);
-}
+.row_buy  {}
+.row_sell {}
 
-.row_sell {
-  background: rgba(239, 68, 68, 0.025);
-}
+/* Barra lateral removida: era redundante com o badge
+   de Status (Comprar/Vender/OK) e causava confusão
+   visual ao ficar próxima das cotações. */
 
-/* Barra lateral colorida indicando ação */
 .targetCell {
   display: flex;
   align-items: center;
@@ -73,8 +72,6 @@
   opacity: 0.8;
   filter: grayscale(0%);
 }
-
-
 
 /* ──────────────────────────────────────────
    Cabeçalho de Grupo (Subclasse)
