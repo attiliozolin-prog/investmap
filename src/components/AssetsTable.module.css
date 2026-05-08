@@ -74,19 +74,7 @@
   filter: grayscale(0%);
 }
 
-.row_buy td:first-child::before,
-.row_sell td:first-child::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  border-radius: 2px;
-}
 
-.row_buy td:first-child::before  { background: var(--color-success); }
-.row_sell td:first-child::before { background: var(--color-danger); }
 
 /* ──────────────────────────────────────────
    Cabeçalho de Grupo (Subclasse)
