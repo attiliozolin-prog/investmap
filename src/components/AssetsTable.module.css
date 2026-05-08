@@ -6,7 +6,32 @@
   overflow-x: auto;
   overflow-y: visible;
   position: relative;
-  /* Garante que a tabela role internamente ao invés de vazar o layout */
+  /* Esconde a scrollbar por padrão, só aparece ao hover */
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s;
+}
+
+.tableWrapper:hover {
+  scrollbar-color: var(--color-surface-3) transparent;
+}
+
+.tableWrapper::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tableWrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tableWrapper::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 2px;
+  transition: background 0.3s;
+}
+
+.tableWrapper:hover::-webkit-scrollbar-thumb {
+  background: var(--color-surface-3);
 }
 
 .tableWrapper table {
@@ -22,8 +47,24 @@
   background: var(--color-surface);
   z-index: 40;
   box-shadow: 0 2px 0 var(--color-border);
-  padding-top: 14px;
-  padding-bottom: 14px;
+  padding: 10px 8px; /* compacto: reduz de ~14px padrão para 10px */
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-3);
+  text-align: right;
+}
+
+/* Primeira coluna (Ativo) alinhada à esquerda */
+.tableWrapper table th:first-child {
+  text-align: left;
+}
+
+/* Padding compacto nos tds */
+.tableWrapper table td {
+  padding: 10px 8px;
+  vertical-align: middle;
 }
 
 :global([data-theme='light']) .tableWrapper table th {
