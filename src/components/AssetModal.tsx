@@ -149,7 +149,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
+      <div className={`modal ${styles.modalWrap}`}>
 
         {/* ── Header ── */}
         <div className={styles.header}>
