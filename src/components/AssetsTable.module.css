@@ -50,8 +50,8 @@
   top: 64px;
   background: var(--color-surface);
   z-index: 40;
-  box-shadow: 0 3px 0 var(--color-border);
-  padding: 16px 8px 20px; /* top=16 | h=8 | bottom=20 — gap generoso abaixo do cabeçalho */
+  box-shadow: 0 2px 0 var(--color-border);
+  padding: 16px 8px; /* simétrico — mesma altura de td */
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.05em;
@@ -129,10 +129,10 @@
   transition: background 0.2s;
 }
 
-/* Linha de grupo — mais respiro vertical para destacar como separador de seção */
+/* Linha de grupo — mesma altura das demais linhas */
 .groupHeader td {
-  padding-top: 18px !important;
-  padding-bottom: 18px !important;
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
 }
 
 
