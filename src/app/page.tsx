@@ -13,9 +13,10 @@ import LandingPage from '@/components/LandingPage/LandingPage';
 import OnboardingFlow from '@/components/Onboarding/OnboardingFlow';
 import AuthPage from '@/components/Auth/AuthPage';
 import Profile from '@/views/Profile';
+import AiChat from '@/views/AiChat';
 import styles from './page.module.css';
 
-type Tab = 'dashboard' | 'finances' | 'assets' | 'strategy' | 'profile';
+type Tab = 'dashboard' | 'finances' | 'assets' | 'strategy' | 'profile' | 'ai-chat';
 
 function AppContent() {
   const { user, loading: authLoading } = useAuth();
@@ -77,6 +78,7 @@ function AppContent() {
           {activeTab === 'assets'    && <Assets />}
           {activeTab === 'strategy'  && <Strategy />}
           {activeTab === 'profile'   && <Profile />}
+          {activeTab === 'ai-chat'   && <AiChat />}
         </div>
       </main>
     </div>

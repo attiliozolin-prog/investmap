@@ -4,7 +4,7 @@ import { useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import styles from './Navbar.module.css';
-import { TrendingUp, Download, Upload, LogOut, Sun, Moon, BarChart3, ChevronDown, User, LayoutDashboard, Briefcase, Target, Settings, X, Wallet } from 'lucide-react';
+import { TrendingUp, Download, Upload, LogOut, Sun, Moon, BarChart3, ChevronDown, User, LayoutDashboard, Briefcase, Target, Settings, X, Wallet, Bot } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function Navbar({ activeTab, onTabChange }: {
@@ -42,6 +42,7 @@ export default function Navbar({ activeTab, onTabChange }: {
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'assets', label: 'Ativos' },
     { id: 'strategy', label: 'Estratégia' },
+    { id: 'ai-chat', label: 'Assistente IA', isAI: true },
   ];
 
   const handleExport = () => {
@@ -99,9 +100,10 @@ export default function Navbar({ activeTab, onTabChange }: {
                 <button
                   key={tab.id}
                   id={`nav-${tab.id}`}
-                  className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
+                  className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''} ${'isAI' in tab && tab.isAI ? styles.tabAI : ''}`}
                   onClick={() => onTabChange(tab.id)}
                 >
+                  {'isAI' in tab && tab.isAI && <Bot size={13} style={{ marginRight: 4 }} />}
                   {tab.label}
                 </button>
               ))}
@@ -245,6 +247,10 @@ export default function Navbar({ activeTab, onTabChange }: {
         <button className={`${styles.mobileTabItem} ${activeTab === 'finances' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('finances')}>
           <Wallet className={styles.tabIcon} />
           <span>Finanças</span>
+        </button>
+        <button className={`${styles.mobileTabItem} ${activeTab === 'ai-chat' ? styles.mobileTabItemActive : ''} ${styles.mobileTabAI}`} onClick={() => onTabChange('ai-chat')}>
+          <Bot className={styles.tabIcon} />
+          <span>IA</span>
         </button>
       </div>
     </>
