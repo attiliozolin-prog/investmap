@@ -1,8 +1,63 @@
+/* ──────────────────────────────────────────
+   Header
+   ────────────────────────────────────────── */
 .header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-5);
+}
+
+.headerTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.headerIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.headerIconRF {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.2);
+  color: var(--color-success);
+}
+
+.headerTitle h2 {
+  margin: 0;
+  line-height: 1.2;
+}
+
+.modeBadge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-success);
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-top: 3px;
+}
+
+/* ──────────────────────────────────────────
+   Layout helpers
+   ────────────────────────────────────────── */
+.fieldRow {
+  display: flex;
+  gap: var(--space-3);
 }
 
 .twoCol {
@@ -11,6 +66,186 @@
   gap: var(--space-4);
 }
 
+/* ──────────────────────────────────────────
+   Select custom styling
+   ────────────────────────────────────────── */
+.selectInput {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+  cursor: pointer;
+}
+
+/* ──────────────────────────────────────────
+   Divisores de seção
+   ────────────────────────────────────────── */
+.sectionDivider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 var(--space-3);
+}
+
+.sectionDivider span {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text-3);
+  white-space: nowrap;
+}
+
+.sectionDivider::before,
+.sectionDivider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+/* Divisor com controle de pill embutido */
+.sectionDividerWithControl {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 var(--space-3);
+}
+
+.sectionDividerText {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text-3);
+  white-space: nowrap;
+}
+
+.sectionDividerWithControl::before {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+/* ──────────────────────────────────────────
+   Pill toggle Auto / Manual
+   ────────────────────────────────────────── */
+.modePill {
+  display: flex;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.pillBtn {
+  background: none;
+  border: none;
+  color: var(--color-text-3);
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 4px;
+  transition: all 0.15s;
+  line-height: 1.4;
+}
+
+.pillBtn:hover:not(.pillBtnActive) {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.pillBtnActive {
+  background: rgba(139, 92, 246, 0.18) !important;
+  color: var(--color-primary) !important;
+}
+
+/* ──────────────────────────────────────────
+   Label com hint e botão refresh inline
+   ────────────────────────────────────────── */
+.labelHint {
+  font-size: 0.68rem;
+  color: var(--color-text-3);
+  font-weight: 400;
+  font-style: italic;
+  margin-left: 5px;
+}
+
+/* Botão refresh na label de Preço de Mercado */
+.refreshBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+
+.refreshBtn:hover:not(:disabled) { opacity: 1; }
+.refreshBtn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ──────────────────────────────────────────
+   Cards de resultado derivado
+   (substitui os inputs bloqueados)
+   ────────────────────────────────────────── */
+.resultCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(139, 92, 246, 0.06);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: var(--space-3);
+}
+
+/* Versão que encaixa na grid twoCol */
+.resultCardCol {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+  background: rgba(139, 92, 246, 0.06);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: var(--space-3);
+}
+
+.resultLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  opacity: 0.8;
+}
+
+.resultValue {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: -0.01em;
+}
+
+/* ──────────────────────────────────────────
+   Erro
+   ────────────────────────────────────────── */
 .error {
   background: var(--color-danger-bg);
   border: 1px solid rgba(239, 68, 68, 0.25);
@@ -21,131 +256,28 @@
   margin-bottom: var(--space-4);
 }
 
+/* ──────────────────────────────────────────
+   Footer
+   ────────────────────────────────────────── */
 .footer {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-3);
-  margin-top: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
 }
 
-/* Select custom styling */
-.selectInput {
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 36px;
-  cursor: pointer;
-}
-
-/* Divisor de seção */
-.sectionDivider {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin: var(--space-4) 0 var(--space-3);
-}
-.sectionDivider span {
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--color-text-3);
-  white-space: nowrap;
-}
-.sectionDivider::before,
-.sectionDivider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--color-border);
-}
-
-/* Label com hint à direita */
-.labelWithHint {
-  display: flex !important;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.labelHint {
-  font-size: 0.68rem;
-  color: var(--color-text-3);
-  font-weight: 400;
-  font-style: italic;
-}
-
-/* Badge "calculado automaticamente" */
-.derivedBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 0.66rem;
-  font-weight: 500;
-  color: var(--color-primary);
-  background: rgba(139, 92, 246, 0.08);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  border-radius: 4px;
-  padding: 1px 5px;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-/* Input somente-leitura quando derivado */
-.derivedInput {
-  background: rgba(139, 92, 246, 0.05) !important;
-  border-color: rgba(139, 92, 246, 0.25) !important;
-  color: var(--color-primary) !important;
-  cursor: default;
-}
-
-/* Botão Auto embutido no label */
-.autoBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  background: none;
-  border: none;
-  color: var(--color-primary);
-  cursor: pointer;
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 0;
-  opacity: 0.85;
-  transition: opacity 0.15s;
-}
-.autoBtn:hover:not(:disabled) { opacity: 1; }
-.autoBtn:disabled { opacity: 0.35; cursor: not-allowed; }
-
-/* Toggle Auto/Manual de preço */
-.priceModeRow {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.modeBtn {
-  background: none;
-  border: 1px solid var(--color-border);
-  color: var(--color-text-3);
-  cursor: pointer;
-  font-size: 0.65rem;
-  font-weight: 600;
-  padding: 2px 7px;
-  border-radius: 4px;
-  transition: all 0.15s;
-  line-height: 1.4;
-}
-.modeBtn:hover { border-color: var(--color-primary); color: var(--color-primary); }
-.modeBtnActive {
-  background: rgba(139, 92, 246, 0.15) !important;
-  border-color: var(--color-primary) !important;
-  color: var(--color-primary) !important;
-}
-
+/* ──────────────────────────────────────────
+   Animação
+   ────────────────────────────────────────── */
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { 100% { transform: rotate(360deg); } }
 
+/* ──────────────────────────────────────────
+   Responsivo
+   ────────────────────────────────────────── */
 @media (max-width: 480px) {
   .twoCol { grid-template-columns: 1fr; }
+  .resultCardCol { margin-bottom: 0; }
 }
