@@ -42,7 +42,19 @@ function AppContent() {
   }
 
   if (!hasCompletedOnboarding && !showLanding) {
-    return <OnboardingFlow />;
+    return (
+      <OnboardingFlow 
+        onFinish={(action) => {
+          if (action === 'add-asset') {
+            setActiveTab('assets');
+            // Aguarda o render da tela de ativos para clicar no botão
+            setTimeout(() => {
+              document.getElementById('add-asset-btn')?.click();
+            }, 100);
+          }
+        }} 
+      />
+    );
   }
 
   return (
