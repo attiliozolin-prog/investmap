@@ -39,11 +39,10 @@ export function calculatePortfolio(
 ): PortfolioSummary {
   // ── Separa ativos encerrados dos ativos ativos ──────────────────────────────
   // Ativos encerrados (archived) NÃO entram no patrimônio total nem nos % de carteira.
-  // Seus registros de venda continuam no histórico (sell_tax_records) independentemente.
-  const isAssetArchived = (a: Asset) => a.info?.includes('[[ARCHIVED]]') ?? false;
+  // Normalmente o AppContext já filtra encerrados, mas mantemos a verificação como segurança.
+  const isAssetArchived = (a: Asset) => a.isArchived ?? false;
 
   const activeAssets   = assets.filter(a => !isAssetArchived(a));
-  const archivedAssets = assets.filter(a =>  isAssetArchived(a));
 
   // Totais calculados apenas sobre ativos ATIVOS
   const totalInvested = activeAssets.reduce((sum, a) => sum + a.investedValue, 0);

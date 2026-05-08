@@ -154,6 +154,7 @@ function dbAssetToApp(row: any): Asset {
     avgPrice: row.avg_price != null ? Number(row.avg_price) : undefined,
     customPrice: row.custom_price != null ? Number(row.custom_price) : undefined,
     priceMode: (row.price_mode as 'auto' | 'manual') ?? 'auto',
+    isArchived: row.is_archived ?? false,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -453,8 +454,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     strategies.find((s) => s.id === activeStrategyId) ?? null,
   [strategies, activeStrategyId]);
 
+  // Ativos ativos — encerrados (isArchived) ficam no array `assets` mas NÃO aparecem na UI principal
   const activeAssets = useMemo(() => 
-    assets.filter((a) => a.strategyId === activeStrategyId),
+    assets.filter((a) => a.strategyId === activeStrategyId && !a.isArchived),
   [assets, activeStrategyId]);
 
   // ============================================
@@ -646,6 +648,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         avg_price: newAsset.avgPrice ?? null,
         custom_price: newAsset.customPrice ?? null,
         price_mode: newAsset.priceMode ?? 'auto',
+        is_archived: false,
         created_at: now,
         updated_at: now,
       }).then(({ error }) => { if (error) console.error(error); });
@@ -677,6 +680,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         avg_price: data.avgPrice !== undefined ? (data.avgPrice ?? null) : undefined,
         custom_price: data.customPrice !== undefined ? (data.customPrice ?? null) : undefined,
         price_mode: data.priceMode !== undefined ? data.priceMode : undefined,
+        is_archived: data.isArchived !== undefined ? data.isArchived : undefined,
         updated_at: now,
       }).eq('id', id).eq('user_id', user.id)
         .then(({ error }) => { if (error) console.error(error); });
