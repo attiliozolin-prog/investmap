@@ -1,11 +1,22 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import styles from './Navbar.module.css';
-import { TrendingUp, Download, Upload, LogOut, Sun, Moon, BarChart3, ChevronDown, User, LayoutDashboard, Briefcase, Target, Settings, X, Wallet } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import {
+  TrendingUp, Download, Upload, LogOut, Sun, Moon,
+  BarChart3, ChevronDown, User, LayoutDashboard,
+  Briefcase, Target, Wallet, Settings, X,
+} from 'lucide-react';
+
+// ── Tab definitions (ícones reaproveitados do mobile) ─────────────────────────
+const TABS = [
+  { id: 'dashboard', label: 'Dashboard',  Icon: LayoutDashboard },
+  { id: 'assets',    label: 'Ativos',     Icon: Briefcase },
+  { id: 'strategy',  label: 'Estratégia', Icon: Target },
+  { id: 'finances',  label: 'Finanças',   Icon: Wallet },
+];
 
 export default function Navbar({ activeTab, onTabChange }: {
   activeTab: string;
@@ -13,12 +24,18 @@ export default function Navbar({ activeTab, onTabChange }: {
 }) {
   const { strategies, assets, activeStrategyId, setActiveStrategy, importData } = useApp();
   const { signOut } = useAuth();
-  const [showStrategies, setShowStrategies] = useState(false);
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [theme, setTheme] = useState('dark');
-  const activeStrategy = strategies.find((s) => s.id === activeStrategyId);
-  const importRef = useRef<HTMLInputElement>(null);
 
+  const [showStrategies, setShowStrategies]   = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu]   = useState(false);
+  const [theme, setTheme]                     = useState('dark');
+
+  const activeStrategy  = strategies.find((s) => s.id === activeStrategyId);
+  const importRef       = useRef<HTMLInputElement>(null);
+  const profileMenuRef  = useRef<HTMLDivElement>(null);
+  const strategyMenuRef = useRef<HTMLDivElement>(null);
+
+  // ── Inicializa tema ────────────────────────────────────────────────────────
   useEffect(() => {
     const savedTheme = localStorage.getItem('investmap_theme') || 'dark';
     setTheme(savedTheme);
@@ -27,6 +44,21 @@ export default function Navbar({ activeTab, onTabChange }: {
     }
   }, []);
 
+  // ── Fecha dropdowns ao clicar fora ────────────────────────────────────────
+  useEffect(() => {
+    function handleOutsideClick(e: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setShowProfileMenu(false);
+      }
+      if (strategyMenuRef.current && !strategyMenuRef.current.contains(e.target as Node)) {
+        setShowStrategies(false);
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
@@ -38,18 +70,12 @@ export default function Navbar({ activeTab, onTabChange }: {
     }
   };
 
-  const tabs = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'assets', label: 'Ativos' },
-    { id: 'strategy', label: 'Estratégia' },
-  ];
-
   const handleExport = () => {
     const data = { strategies, assets, exportedAt: new Date().toISOString(), version: 1 };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
     a.download = `investmap-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
@@ -78,11 +104,19 @@ export default function Navbar({ activeTab, onTabChange }: {
     e.target.value = '';
   };
 
+  const handleSignOut = async () => {
+    setShowProfileMenu(false);
+    if (confirm('Tem certeza que deseja sair?')) await signOut();
+  };
+
+  const multipleStrategies = strategies.length > 1;
+
   return (
     <>
       <nav className={styles.nav}>
         <div className={`container ${styles.inner}`}>
-          {/* Logo Section */}
+
+          {/* ── Logo ──────────────────────────────────────────────────────── */}
           <div className={styles.logoGroup}>
             <div className={styles.logo}>
               <div className={styles.logoIcon}>
@@ -92,35 +126,44 @@ export default function Navbar({ activeTab, onTabChange }: {
             </div>
           </div>
 
-          {/* Center Section: Tabs (Desktop) + Strategy Switcher */}
+          {/* ── Abas de navegação (desktop) ───────────────────────────────── */}
           <div className={styles.centerGroup}>
             <div className={styles.tabs}>
-              {tabs.map((tab) => (
+              {TABS.map(({ id, label, Icon }) => (
                 <button
-                  key={tab.id}
-                  id={`nav-${tab.id}`}
-                  className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
-                  onClick={() => onTabChange(tab.id)}
+                  key={id}
+                  id={`nav-${id}`}
+                  className={`${styles.tab} ${activeTab === id ? styles.tabActive : ''}`}
+                  onClick={() => onTabChange(id)}
                 >
-                  {tab.label}
+                  <Icon size={14} className={styles.tabIcon} />
+                  {label}
                 </button>
               ))}
             </div>
+          </div>
 
-            <div className={styles.strategySwitcher}>
-              {strategies.length > 1 ? (
+          {/* ── Direita: Carteira + Perfil ────────────────────────────────── */}
+          <div className={styles.rightGroup}>
+
+            {/* Seletor / badge de carteira */}
+            <div className={styles.strategySwitcher} ref={strategyMenuRef}>
+              {multipleStrategies ? (
                 <>
                   <button
                     id="strategy-switcher-btn"
                     className={styles.strategyBtn}
                     onClick={() => setShowStrategies(!showStrategies)}
                   >
-                    <BarChart3 size={16} style={{ color: 'var(--color-primary)' }} />
+                    <BarChart3 size={15} className={styles.strategyBtnIcon} />
                     <div className={styles.strategyBtnContent}>
                       <span className={styles.strategyLabel}>Carteira</span>
                       <span className={styles.strategyName}>{activeStrategy?.name ?? 'Selecionar'}</span>
                     </div>
-                    <ChevronDown size={14} className={showStrategies ? styles.chevronUp : ''} style={{ marginLeft: 4 }} />
+                    <ChevronDown
+                      size={13}
+                      className={`${styles.strategyChevron} ${showStrategies ? styles.chevronUp : ''}`}
+                    />
                   </button>
 
                   {showStrategies && (
@@ -129,10 +172,7 @@ export default function Navbar({ activeTab, onTabChange }: {
                         <button
                           key={s.id}
                           className={`${styles.strategyItem} ${s.id === activeStrategyId ? styles.strategyItemActive : ''}`}
-                          onClick={() => {
-                            setActiveStrategy(s.id);
-                            setShowStrategies(false);
-                          }}
+                          onClick={() => { setActiveStrategy(s.id); setShowStrategies(false); }}
                         >
                           {s.name}
                         </button>
@@ -141,8 +181,9 @@ export default function Navbar({ activeTab, onTabChange }: {
                   )}
                 </>
               ) : (
-                <div className={styles.strategyBtn} style={{ cursor: 'default' }}>
-                  <BarChart3 size={16} style={{ color: 'var(--color-primary)' }} />
+                /* Badge informativo — não é clicável */
+                <div className={styles.strategyBadge}>
+                  <BarChart3 size={14} className={styles.strategyBtnIcon} />
                   <div className={styles.strategyBtnContent}>
                     <span className={styles.strategyLabel}>Carteira</span>
                     <span className={styles.strategyName}>{activeStrategy?.name ?? 'Minha Carteira'}</span>
@@ -151,42 +192,67 @@ export default function Navbar({ activeTab, onTabChange }: {
               )}
             </div>
 
-            <div className={styles.tabDivider} />
-
-            <button
-              id="nav-finances"
-              className={`${styles.tab} ${styles.financeTab} ${activeTab === 'finances' ? styles.financeTabActive : ''}`}
-              onClick={() => onTabChange('finances')}
-            >
-              <Wallet size={16} style={{ marginRight: 6 }} /> Finanças
-            </button>
-          </div>
-
-          {/* Right Section: Actions + Mobile Menu Toggle */}
-          <div className={styles.rightGroup}>
-            <div className={styles.dataActions}>
-              <button className={styles.iconBtn} onClick={toggleTheme}>
-                {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-                <span className={styles.iconBtnLabel}>Tema</span>
-              </button>
-              <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportFile} />
-              <button className={`${styles.iconBtn} ${activeTab === 'profile' ? styles.iconBtnActive : ''}`} onClick={() => onTabChange?.('profile')}>
+            {/* Dropdown de Perfil */}
+            <div className={styles.profileWrapper} ref={profileMenuRef}>
+              <button
+                id="nav-profile-btn"
+                className={`${styles.profileBtn} ${(activeTab === 'profile' || showProfileMenu) ? styles.profileBtnActive : ''}`}
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                title="Perfil e configurações"
+              >
                 <User size={15} />
-                <span className={styles.iconBtnLabel}>Perfil</span>
+                <span className={styles.profileBtnLabel}>Perfil</span>
+                <ChevronDown size={12} className={`${styles.profileChevron} ${showProfileMenu ? styles.chevronUp : ''}`} />
               </button>
-              <button className={styles.iconBtn} onClick={async () => { if(confirm('Sair da conta?')) await signOut(); }}>
-                <LogOut size={15} />
-                <span className={styles.iconBtnLabel}>Sair</span>
-              </button>
+
+              {showProfileMenu && (
+                <div className={styles.profileDropdown}>
+                  <button
+                    className={styles.profileItem}
+                    onClick={() => { onTabChange('profile'); setShowProfileMenu(false); }}
+                  >
+                    <User size={15} />
+                    <span>Meu Perfil</span>
+                  </button>
+
+                  <div className={styles.profileDivider} />
+
+                  <button className={styles.profileItem} onClick={() => { toggleTheme(); setShowProfileMenu(false); }}>
+                    {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+                    <span>Tema {theme === 'dark' ? 'Claro' : 'Escuro'}</span>
+                  </button>
+
+                  <button className={styles.profileItem} onClick={() => { handleExport(); setShowProfileMenu(false); }}>
+                    <Download size={15} />
+                    <span>Exportar Backup</span>
+                  </button>
+
+                  <button className={styles.profileItem} onClick={() => { importRef.current?.click(); setShowProfileMenu(false); }}>
+                    <Upload size={15} />
+                    <span>Importar Backup</span>
+                  </button>
+
+                  <div className={styles.profileDivider} />
+
+                  <button className={`${styles.profileItem} ${styles.profileItemDanger}`} onClick={handleSignOut}>
+                    <LogOut size={15} />
+                    <span>Sair da Conta</span>
+                  </button>
+                </div>
+              )}
             </div>
 
+            {/* Input oculto de importação */}
+            <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportFile} />
+
+            {/* Botão de menu mobile */}
             <button className={styles.mobileActionBtn} onClick={() => setShowMobileMenu(!showMobileMenu)}>
               {showMobileMenu ? <X size={20} /> : <Settings size={20} />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Menu Dropdown */}
+        {/* ── Mobile Menu Dropdown ─────────────────────────────────────────── */}
         {showMobileMenu && (
           <div className={styles.mobileMenuOverlay} onClick={() => setShowMobileMenu(false)}>
             <div className={styles.mobileMenu} onClick={(e) => e.stopPropagation()}>
@@ -217,7 +283,7 @@ export default function Navbar({ activeTab, onTabChange }: {
               </button>
               <div className={styles.menuDivider} />
               <button className={styles.strategyItem} style={{ color: '#ff4444' }} onClick={async () => {
-                if(confirm('Tem certeza que deseja sair?')) { await signOut(); setShowMobileMenu(false); }
+                if (confirm('Tem certeza que deseja sair?')) { await signOut(); setShowMobileMenu(false); }
               }}>
                 <div className={styles.menuItemInner}>
                   <LogOut size={18} />
@@ -229,21 +295,22 @@ export default function Navbar({ activeTab, onTabChange }: {
         )}
       </nav>
 
+      {/* ── Bottom Nav Mobile ───────────────────────────────────────────────── */}
       <div className={styles.mobileTabNav}>
         <button className={`${styles.mobileTabItem} ${activeTab === 'dashboard' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('dashboard')}>
-          <LayoutDashboard className={styles.tabIcon} />
-          <span>Visão</span>
+          <LayoutDashboard className={styles.mobileTabIcon} />
+          <span>Dashboard</span>
         </button>
         <button className={`${styles.mobileTabItem} ${activeTab === 'assets' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('assets')}>
-          <Briefcase className={styles.tabIcon} />
+          <Briefcase className={styles.mobileTabIcon} />
           <span>Ativos</span>
         </button>
         <button className={`${styles.mobileTabItem} ${activeTab === 'strategy' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('strategy')}>
-          <Target className={styles.tabIcon} />
-          <span>Metas</span>
+          <Target className={styles.mobileTabIcon} />
+          <span>Estratégia</span>
         </button>
         <button className={`${styles.mobileTabItem} ${activeTab === 'finances' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('finances')}>
-          <Wallet className={styles.tabIcon} />
+          <Wallet className={styles.mobileTabIcon} />
           <span>Finanças</span>
         </button>
       </div>
