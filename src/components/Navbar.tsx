@@ -42,7 +42,7 @@ export default function Navbar({ activeTab, onTabChange }: {
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'assets', label: 'Ativos' },
     { id: 'strategy', label: 'Estratégia' },
-    { id: 'ai-chat', label: 'Assistente IA', isAI: true },
+    // { id: 'ai-chat', label: 'Assistente IA', isAI: true }, // DESATIVADO — retomar em versão futura
   ];
 
   const handleExport = () => {
@@ -248,10 +248,12 @@ export default function Navbar({ activeTab, onTabChange }: {
           <Wallet className={styles.tabIcon} />
           <span>Finanças</span>
         </button>
+        {/* Aba IA desativada temporariamente — descomentar para reativar
         <button className={`${styles.mobileTabItem} ${activeTab === 'ai-chat' ? styles.mobileTabItemActive : ''} ${styles.mobileTabAI}`} onClick={() => onTabChange('ai-chat')}>
           <Bot className={styles.tabIcon} />
           <span>IA</span>
         </button>
+        */}
       </div>
     </>
   );
