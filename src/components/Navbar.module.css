@@ -125,33 +125,6 @@
   box-shadow: 0 0 10px rgba(255, 20, 147, 0.1);
 }
 
-/* IA tab */
-.tabAI {
-  display: inline-flex;
-  align-items: center;
-  background: rgba(139, 92, 246, 0.07);
-  color: var(--color-primary-light);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-}
-
-.tabAI:hover {
-  background: rgba(139, 92, 246, 0.13) !important;
-  color: var(--color-primary-light) !important;
-  border-color: rgba(139, 92, 246, 0.35) !important;
-}
-
-.tabAI.tabActive {
-  background: rgba(139, 92, 246, 0.18) !important;
-  color: var(--color-primary-light) !important;
-  border-color: rgba(139, 92, 246, 0.4) !important;
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.15);
-}
-
-/* IA tab no mobile */
-.mobileTabAI {
-  color: var(--color-primary) !important;
-}
-
 /* Strategy switcher */
 .strategySwitcher {
   position: relative;
