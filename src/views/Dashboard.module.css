@@ -160,3 +160,21 @@
 @media (max-width: 1024px) {
   .middleRow { grid-template-columns: 1fr; }
 }
+
+@media (max-width: 640px) {
+  .alert {
+    padding: var(--space-3) var(--space-4);
+    font-size: 0.82rem;
+    overflow: hidden;
+  }
+  .alertBadges {
+    gap: 6px;
+  }
+  .alertTickerBuy, .alertTickerSell {
+    font-size: 0.7rem;
+    padding: 2px 7px;
+  }
+  .catName { font-size: 0.82rem; }
+  .catValue { font-size: 0.875rem; }
+  .catPercents { font-size: 0.7rem; }
+}
