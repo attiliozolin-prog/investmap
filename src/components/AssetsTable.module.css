@@ -4,9 +4,8 @@
 
 .tableWrapper {
   overflow-x: auto;
-  overflow-y: visible;
   position: relative;
-  /* Esconde a scrollbar por padrão, só aparece ao hover */
+  /* Scrollbar fina e discreta */
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
   transition: scrollbar-color 0.3s;
@@ -47,11 +46,16 @@
 .tableWrapper table th {
   white-space: nowrap;
   position: sticky;
-  top: 64px;
+  /*
+    top = altura da navbar (64px) + altura da toolbar (45px).
+    A toolbar é sticky no mesmo nível, então o thead precisa ficar
+    abaixo dela ao rolar a página.
+  */
+  top: 109px;
   background: var(--color-surface);
   z-index: 40;
   box-shadow: 0 2px 0 var(--color-border);
-  padding: 16px 8px; /* simétrico — mesma altura de td */
+  padding: 16px 8px;
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.05em;
@@ -579,6 +583,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 4px 10px;
+  /* Sticky para grudar abaixo da navbar ao rolar */
+  position: sticky;
+  top: 64px;
+  background: var(--color-surface);
+  z-index: 41; /* Acima do thead (z-index 40) */
+  /* Linha separadora sutil na parte inferior */
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 0;
 }
 
 .tableToolbarLeft {
