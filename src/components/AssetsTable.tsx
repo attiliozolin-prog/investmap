@@ -38,7 +38,6 @@ function ActionBadge({ action }: { action: 'buy' | 'sell' | 'ok' }) {
   );
 }
 
-// Calcula quantos dias se passaram desde a última atualização
 function daysSince(isoDate: string): number {
   const diff = Date.now() - new Date(isoDate).getTime();
   return Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -73,14 +72,9 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
   const [transactionAssetId, setTransactionAssetId] = useState<string | null>(null);
   const [historyAssetId, setHistoryAssetId] = useState<string | null>(null);
 
-  // Ordenação por coluna
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-
-  // Collapse de grupos
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-
-  // Group and reorder logic
   const [classOrder, setClassOrder] = useState<string[]>([]);
   const [draggedClass, setDraggedClass] = useState<string | null>(null);
 
@@ -110,7 +104,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
     assets.forEach((a) => {
       let cls = a.category.className;
       let subclassTarget = a.category.targetPercent;
-      
+
       if (a.isArchived) {
         cls = 'Ativos Encerrados';
         subclassTarget = 0;
@@ -138,9 +132,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
     });
 
     map.forEach((g) => {
-      // Ordena os ativos dentro do grupo por Ticker (alfabético)
       g.assets.sort((a, b) => a.ticker.localeCompare(b.ticker));
-
       if (g.totalRebalance > 10) g.groupAction = 'buy';
       else if (g.totalRebalance < -10) g.groupAction = 'sell';
       else g.groupAction = 'ok';
@@ -149,10 +141,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
     return Array.from(map.values()).map(g => {
       let totalTargetPercent = 0;
       g.subclassTargets.forEach(val => totalTargetPercent += val);
-      return {
-        ...g,
-        targetPercent: totalTargetPercent,
-      }
+      return { ...g, targetPercent: totalTargetPercent };
     });
   }, [assets]);
 
@@ -170,7 +159,6 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
     });
   }, [groupedAssets, classOrder]);
 
-  // Aplica ordenação por coluna dentro de cada grupo
   const sortedGroups = useMemo(() => {
     if (!sortField) return orderedGroups;
     return orderedGroups.map(group => ({
@@ -179,10 +167,10 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
         let valA: number | string = 0;
         let valB: number | string = 0;
         switch (sortField) {
-          case 'ticker':         valA = a.ticker;           valB = b.ticker;           break;
-          case 'currentValue':   valA = a.currentValue;     valB = b.currentValue;     break;
-          case 'profitLoss':     valA = a.profitLoss;       valB = b.profitLoss;       break;
-          case 'rebalanceAmount':valA = a.rebalanceAmount;  valB = b.rebalanceAmount;  break;
+          case 'ticker':          valA = a.ticker;           valB = b.ticker;           break;
+          case 'currentValue':    valA = a.currentValue;     valB = b.currentValue;     break;
+          case 'profitLoss':      valA = a.profitLoss;       valB = b.profitLoss;       break;
+          case 'rebalanceAmount': valA = a.rebalanceAmount;  valB = b.rebalanceAmount;  break;
         }
         if (typeof valA === 'string' && typeof valB === 'string') {
           return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
@@ -201,7 +189,6 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
       : <ArrowDown size={12} className={styles.sortIconActive} />;
   };
 
-  // Drag and Drop Handlers
   const handleDragStart = (e: React.DragEvent, className: string) => {
     setDraggedClass(className);
     e.dataTransfer.effectAllowed = 'move';
@@ -219,19 +206,14 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
       setDraggedClass(null);
       return;
     }
-
     const currentOrder = classOrder.length > 0 ? classOrder : groupedAssets.map(g => g.className);
     const newOrder = [...currentOrder];
-
     if (!newOrder.includes(draggedClass)) newOrder.push(draggedClass);
     if (!newOrder.includes(targetClassName)) newOrder.push(targetClassName);
-
     const oldIndex = newOrder.indexOf(draggedClass);
     newOrder.splice(oldIndex, 1);
-
     const newIndex = newOrder.indexOf(targetClassName);
     newOrder.splice(newIndex, 0, draggedClass);
-
     setClassOrder(newOrder);
     localStorage.setItem('investmap_class_order', JSON.stringify(newOrder));
     setDraggedClass(null);
@@ -315,26 +297,32 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
         </div>
       )}
 
-      <div className={styles.tableWrapper}>
-        {/* Barra de controle da tabela */}
-        <div className={styles.tableToolbar}>
-          <div className={styles.tableToolbarLeft}>
-            {lastPriceSyncAt && !isSyncingPrices && (
-              <span className={styles.lastSync}>
-                Cotações: {lastPriceSyncAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            )}
-          </div>
-          <button
-            className={`btn btn-ghost btn-sm ${styles.syncBtn}`}
-            onClick={() => syncPrices()}
-            disabled={isSyncingPrices}
-            title="Atualizar cotações dos ativos em modo Auto"
-          >
-            <RefreshCw size={13} className={isSyncingPrices ? styles.spin : ''} />
-            {isSyncingPrices ? 'Atualizando...' : 'Atualizar preços'}
-          </button>
+      {/*
+        Toolbar FORA do tableWrapper:
+        O tableWrapper tem overflow-x:auto para scroll horizontal em telas pequenas.
+        Se a toolbar ficasse dentro dele, o overflow criaria um novo contexto de scroll
+        que impediria o position:sticky do thead de funcionar no scroll VERTICAL da página.
+      */}
+      <div className={styles.tableToolbar}>
+        <div className={styles.tableToolbarLeft}>
+          {lastPriceSyncAt && !isSyncingPrices && (
+            <span className={styles.lastSync}>
+              Cotações: {lastPriceSyncAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
         </div>
+        <button
+          className={`btn btn-ghost btn-sm ${styles.syncBtn}`}
+          onClick={() => syncPrices()}
+          disabled={isSyncingPrices}
+          title="Atualizar cotações dos ativos em modo Auto"
+        >
+          <RefreshCw size={13} className={isSyncingPrices ? styles.spin : ''} />
+          {isSyncingPrices ? 'Atualizando...' : 'Atualizar preços'}
+        </button>
+      </div>
+
+      <div className={styles.tableWrapper}>
         <table>
           <thead>
             <tr>
@@ -374,7 +362,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
             </tr>
           </thead>
           <tbody>
-            {/* Espaçador invisível entre cabeçalho e primeira linha — cria gap consistente */}
+            {/* Espaçador invisível entre cabeçalho e primeira linha */}
             <tr aria-hidden="true">
               <td colSpan={9} style={{ height: '8px', padding: 0, border: 'none', background: 'transparent' }} />
             </tr>
@@ -389,7 +377,6 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                   onDrop={(e) => handleDrop(e, group.className)}
                   onDragEnd={() => setDraggedClass(null)}
                 >
-                  {/* Nome do grupo — colspan 2 (Ativo + Investido) */}
                   <td colSpan={2}>
                     <div className={styles.groupHeaderContent}>
                       <button
@@ -413,7 +400,6 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                     </div>
                   </td>
 
-                  {/* Valor atual total do grupo */}
                   <td className={`${styles.right} ${styles.groupMeta}`}>
                     <div className={styles.groupTotal}>
                       <span className={styles.groupLabel}>Patrimônio: </span>
@@ -421,15 +407,12 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                     </div>
                   </td>
 
-                  {/* Lucro/Prejuízo — vazio no grupo */}
                   <td />
 
-                  {/* % Alvo do grupo */}
                   <td className={`${styles.right} ${styles.groupTarget}`}>
                     {formatPercentAbs(group.targetPercent)}
                   </td>
 
-                  {/* % Carteira atual do grupo */}
                   <td className={`${styles.right} ${styles.groupMeta}`}>
                     <div className={styles.groupTotal}>
                       <span className={styles.groupLabel}>Atual: </span>
@@ -437,24 +420,20 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                     </div>
                   </td>
 
-                  {/* Rebalancear total do grupo */}
                   <td className={`${styles.right} ${styles.groupMeta} ${group.totalRebalance > 0 ? styles.profit : group.totalRebalance < 0 ? styles.loss : styles.muted}`}>
                     {group.totalRebalance >= 0 ? '+' : ''}{formatCurrency(group.totalRebalance)}
                   </td>
 
-                  {/* Status do grupo */}
                   <td>
                     <ActionBadge action={group.groupAction} />
                   </td>
 
-                  {/* Ações — vazio no cabeçalho */}
                   <td />
                 </tr>
 
-                {/* Ativos dentro do Grupo — apenas se não estiver colapsado */}
+                {/* Ativos dentro do Grupo */}
                 {!collapsedGroups.has(group.className) && group.assets.map((asset) => (
                   <tr key={asset.id} className={`${styles.row} ${styles[`row_${asset.action}`]}`}>
-                    {/* Ativo */}
                     <td>
                       <div className={styles.tickerCell}>
                         <span className={styles.ticker}>
@@ -467,7 +446,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                           <span className={styles.info}>
                             {asset.info.length > 35 ? (
                               <span title={asset.info} className={styles.truncatedInfo}>
-                                {asset.info.slice(0, 32).trim()}... 
+                                {asset.info.slice(0, 32).trim()}...{' '}
                                 <Info size={11} className={styles.infoIcon} />
                               </span>
                             ) : (
@@ -484,10 +463,8 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                       </div>
                     </td>
 
-                    {/* Investido */}
                     <td className={styles.right}>{formatCurrency(asset.investedValue)}</td>
 
-                    {/* Atual (editável inline) */}
                     <td className={styles.right}>
                       {editingValueId === asset.id ? (
                         <div className={styles.inlineEdit}>
@@ -520,7 +497,6 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                       )}
                     </td>
 
-                    {/* Lucro/Prejuízo */}
                     <td className={styles.right}>
                       <div className={`${styles.profitLoss} ${asset.profitLoss >= 0 ? styles.profit : styles.loss}`}>
                         <span>{formatCurrency(asset.profitLoss)}</span>
@@ -528,14 +504,12 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                       </div>
                     </td>
 
-                    {/* % Alvo do Ativo */}
                     <td className={styles.center} title={`Meta total da subclasse: ${asset.targetPercent}%`}>
                       <div className={styles.targetCell} style={{ justifyContent: 'center' }}>
                         <span className={styles.muted}>{asset.assetTargetPercent.toFixed(2)}%</span>
                       </div>
                     </td>
 
-                    {/* % Carteira com mini progress bar */}
                     <td className={styles.right}>
                       <div className={styles.percentCell}>
                         <span>{formatPercentAbs(asset.currentPortfolioPercent)}</span>
@@ -553,19 +527,16 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                       </div>
                     </td>
 
-                    {/* Rebalancear */}
                     <td className={`${styles.right} ${styles.rebalance}`}>
                       <span className={asset.rebalanceAmount > 0 ? styles.profit : asset.rebalanceAmount < 0 ? styles.loss : styles.muted}>
                         {asset.rebalanceAmount >= 0 ? '+' : ''}{formatCurrency(asset.rebalanceAmount)}
                       </span>
                     </td>
 
-                    {/* Status */}
                     <td>
                       <ActionBadge action={asset.action} />
                     </td>
 
-                    {/* Ações — hierarquia: Histórico → Editar → Aporte | Excluir */}
                     <td className={`${styles.center} ${styles.actionsCell}`}>
                       <div className={styles.actions}>
                         <button
@@ -591,7 +562,6 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                         >
                           <PlusCircle size={14} />
                         </button>
-                        {/* Separador visual antes do delete */}
                         <span className={styles.actionDivider} />
                         <button
                           id={`delete-asset-${asset.id}`}
@@ -611,7 +581,6 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
         </table>
       </div>
 
-      {/* Modal de Transação */}
       {transactionAssetId && (
         <TransactionModal
           assetId={transactionAssetId}
@@ -619,7 +588,6 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
         />
       )}
 
-      {/* Drawer de Histórico */}
       {historyAssetId && (
         <AssetHistoryDrawer
           assetId={historyAssetId}
