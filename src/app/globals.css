@@ -145,7 +145,8 @@ p  { color: var(--color-text-2); }
 
 @media (max-width: 640px) {
   body {
-    padding-bottom: 80px; /* Espaço para a Tab Bar inferior não cobrir o conteúdo */
+    /* 72px base (bottom nav) + safe area dinâmico para iPhones com gesture bar */
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 8px));
   }
 }
 
