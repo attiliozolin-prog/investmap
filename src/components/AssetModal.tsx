@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Asset, StrategyCategory } from '@/types';
 import styles from './AssetModal.module.css';
 import { X, RefreshCw, Calculator, Landmark, TrendingUp, Archive } from 'lucide-react';
@@ -90,6 +90,20 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
   useEffect(() => {
     if (!asset && ticker) setPriceMode(detectPriceMode(ticker));
   }, [ticker, asset]);
+
+  // ── Auto-foco no campo Valor Atual ao abrir para edição ──────────────
+  const currentInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!asset) return; // só em modo edição
+    // Delay para aguardar o estado do formulário ser preenchido e o modal renderizado
+    const timer = setTimeout(() => {
+      if (currentInputRef.current) {
+        currentInputRef.current.focus();
+        currentInputRef.current.select();
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [asset]);
 
   const handleClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newClass = e.target.value;
@@ -255,6 +269,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
                 <div className="form-group">
                   <label className="label" htmlFor="asset-current-rf">Valor Atual (R$) *</label>
                   <input
+                    ref={currentInputRef}
                     id="asset-current-rf"
                     className="input"
                     placeholder="0,00"
@@ -396,6 +411,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
                   <div className="form-group">
                     <label className="label" htmlFor="asset-current">Valor Atual (R$) *</label>
                     <input
+                      ref={currentInputRef}
                       id="asset-current"
                       className="input"
                       placeholder="0,00"
