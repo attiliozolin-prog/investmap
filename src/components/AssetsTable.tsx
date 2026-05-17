@@ -54,6 +54,19 @@ function StaleValueBadge({ updatedAt }: { updatedAt: string }) {
   );
 }
 
+/** Indicador de preço sincronizado automaticamente com a API (Brapi) */
+function LivePriceBadge() {
+  return (
+    <span
+      className={styles.liveBadge}
+      title="Preço atualizado automaticamente via API da B3"
+      aria-label="Preço em tempo real"
+    >
+      <span className={styles.liveDot} />
+    </span>
+  );
+}
+
 type SortField = 'ticker' | 'currentValue' | 'profitLoss' | 'rebalanceAmount' | null;
 
 function getDeviationColor(current: number, target: number): string {
@@ -536,13 +549,16 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                           <button
                             className={styles.valueBtn}
                             onClick={() => startEditValue(asset)}
-                            title="Clique para atualizar o valor atual"
+                            title={asset.priceMode === 'auto' ? 'Preço auto — clique para sobrescrever manualmente' : 'Clique para atualizar o valor atual'}
                             id={`current-value-${asset.id}`}
                           >
                             {formatCurrency(asset.currentValue)}
                             <RefreshCw size={12} className={styles.editIcon} />
                           </button>
-                          <StaleValueBadge updatedAt={asset.updatedAt} />
+                          {asset.priceMode === 'auto'
+                            ? <LivePriceBadge />
+                            : <StaleValueBadge updatedAt={asset.updatedAt} />
+                          }
                         </div>
                       )}
                     </td>
