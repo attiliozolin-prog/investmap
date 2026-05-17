@@ -3,34 +3,17 @@
 .nowrap { white-space: nowrap !important; }
 
 .tableWrapper {
-  overflow-x: auto;
+  /*
+    CORREÇÃO CRÍTICA: overflow-x: clip não cria um scroll container independente,
+    ao contrário de overflow-x: auto. Isso permite que os th com position:sticky
+    funcionem em relação ao viewport (não ao tableWrapper).
+    
+    Em desktop a tabela cabe na tela — nenhum scroll horizontal necessário.
+    Em mobile (< 768px) voltamos para auto + removemos o sticky dos th.
+  */
+  overflow-x: clip;
   position: relative;
-  /* Scrollbar fina e discreta */
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-  transition: scrollbar-color 0.3s;
-}
-
-.tableWrapper:hover {
-  scrollbar-color: var(--color-surface-3) transparent;
-}
-
-.tableWrapper::-webkit-scrollbar {
-  height: 4px;
-}
-
-.tableWrapper::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.tableWrapper::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-radius: 2px;
-  transition: background 0.3s;
-}
-
-.tableWrapper:hover::-webkit-scrollbar-thumb {
-  background: var(--color-surface-3);
+  /* Sem scrollbar customizada aqui — usada apenas no modo auto (mobile) */
 }
 
 .tableWrapper table {
@@ -47,8 +30,8 @@
   white-space: nowrap;
   position: sticky;
   /*
-    top = navbar + filterBar + toolbar (todas definidas em globals.css).
-    Usando a variável --thead-top para evitar valores hardcoded.
+    Com overflow-x: clip no tableWrapper, o scroll container dos th é
+    o viewport (body). --thead-top = navbar + toolbar (ambos medidos via ResizeObserver).
   */
   top: var(--thead-top);
   background: var(--color-surface);
@@ -592,22 +575,51 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 4px 10px;
-  /* Sticky logo abaixo da navbar + filterBar */
+  /* Sticky logo abaixo da navbar */
   position: sticky;
-  top: calc(var(--navbar-height) + var(--filter-bar-height));
+  top: var(--navbar-height);
   background: var(--color-surface);
   z-index: 41; /* Acima do thead (z-index 40) */
-  /* Linha separadora sutil na parte inferior */
   border-bottom: 1px solid var(--color-border);
   margin-bottom: 0;
-  /* Backdrop para não transparente sobre o conteúdo */
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
 
-/* Tema claro: ajusta background da toolbar */
+/* Tema claro */
 :global([data-theme='light']) .tableToolbar {
   background: rgba(255, 255, 255, 0.92);
+}
+
+/* ──────────────────────────────────────────
+   Mobile: overflow-x auto + sem sticky thead
+   ────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .tableWrapper {
+    /* Em mobile, permite scroll horizontal */
+    overflow-x: auto;
+    /* Scrollbar fina e discreta */
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.3s;
+  }
+  .tableWrapper:hover {
+    scrollbar-color: var(--color-surface-3) transparent;
+  }
+  .tableWrapper::-webkit-scrollbar { height: 4px; }
+  .tableWrapper::-webkit-scrollbar-track { background: transparent; }
+  .tableWrapper::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 2px;
+  }
+  .tableWrapper:hover::-webkit-scrollbar-thumb {
+    background: var(--color-surface-3);
+  }
+  /* Remove sticky dos th em mobile — overflow-x:auto quebraria o sticky */
+  .tableWrapper table th {
+    position: static !important;
+    box-shadow: none;
+  }
 }
 
 .tableToolbarLeft {
