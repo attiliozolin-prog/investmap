@@ -134,7 +134,17 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
-  overflow-x: hidden; /* impede scroll horizontal na página */
+  /*
+    overflow-x: clip em vez de hidden.
+    
+    'hidden' força overflow-y a mudar de 'visible' → 'auto' (spec CSS),
+    transformando html/body num scroll container independente e quebrando
+    position:sticky dos elementos filhos (th, toolbar, etc).
+    
+    'clip' recorta o conteúdo horizontalmente SEM criar scroll container,
+    preservando o comportamento de sticky corretamente.
+  */
+  overflow-x: clip;
 }
 
 /* --- Typography --- */
