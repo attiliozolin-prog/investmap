@@ -29,10 +29,22 @@ function setCache(ticker: string, price: number): void {
 // -----------------------------------------------
 export function detectPriceMode(ticker: string): 'auto' | 'manual' {
   const clean = ticker.trim().toUpperCase();
-  // B3: 3-6 letras + 0-2 dígitos (PETR4, HGLG11, IVVB11, AAPL34)
-  // Cripto: 2-5 letras sem dígitos (BTC, ETH, SOL)
-  return /^[A-Z]{2,6}[0-9]{0,2}$/.test(clean) ? 'auto' : 'manual';
+  /*
+    Tickers B3 SEMPRE terminam com pelo menos 1 dígito:
+      Ações:  PETR4, VALE3, ITUB4
+      FIIs:   HGLG11, MXRF11
+      ETFs:   BOVA11, IVVB11
+      BDRs:   AAPL34, AMZO34
+
+    Criptomoedas são letras puras, SEM dígito final:
+      BTC, ETH, SOL, DOT, ADA → manual
+
+    A regex antiga usava [0-9]{0,2} (0 a 2 dígitos), classificando
+    criptos incorretamente como 'auto'.
+  */
+  return /^[A-Z]{2,6}\d{1,2}$/.test(clean) ? 'auto' : 'manual';
 }
+
 
 // -----------------------------------------------
 // Busca preço de UM ativo (uso no modal - botão Auto)

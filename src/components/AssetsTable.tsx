@@ -555,7 +555,8 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                             {formatCurrency(asset.currentValue)}
                             <RefreshCw size={12} className={styles.editIcon} />
                           </button>
-                          {asset.priceMode === 'auto'
+                          {/* LivePriceBadge: só para ativos com sync automático real (B3 com dígito final) */}
+                          {asset.priceMode === 'auto' && /^[A-Za-z]{2,6}\d{1,2}$/.test(asset.ticker)
                             ? <LivePriceBadge />
                             : <StaleValueBadge updatedAt={asset.updatedAt} />
                           }
