@@ -1,16 +1,16 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useApp } from '@/context/AppContext';
+import { useFinance } from '@/context/FinanceContext';
 import { calculatePortfolio } from '@/lib/calculations';
 import SummaryCards from '@/components/SummaryCards';
 import AiAnalysisCard from '@/components/AiAnalysisCard';
 import EvolutionChart from '@/components/EvolutionChart';
 import styles from './Dashboard.module.css';
-import { AlertTriangle, TrendingUp } from 'lucide-react';
+import { AlertTriangle, TrendingUp, CalendarClock } from 'lucide-react';
 import { formatCurrency } from '@/lib/calculations';
-import { useEffect } from 'react';
 
 // Recharts usa window/ResizeObserver — deve renderizar SOMENTE no cliente
 const AllocationChart = dynamic(() => import('@/components/AllocationChart'), {
@@ -24,6 +24,7 @@ const AllocationChart = dynamic(() => import('@/components/AllocationChart'), {
 
 export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void }) {
   const { activeStrategy, activeAssets, saveSnapshot, snapshots, dbSynced, syncPrices, isSyncingPrices, lastPriceSyncAt } = useApp();
+  const { transactions, months, activeMonthId } = useFinance();
 
   const summary = useMemo(() => {
     if (!activeStrategy || activeAssets.length === 0) return null;
@@ -95,6 +96,44 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
   const buyAssets  = assetsWithCalcs.filter((a) => a.action === 'buy');
   const sellAssets = assetsWithCalcs.filter((a) => a.action === 'sell');
 
+  // ── Boletos próximos do vencimento (≤ 7 dias) ─────────────────────────────
+  const upcomingBoletos = useMemo(() => {
+    const today = new Date();
+    const todayDay = today.getDate();
+    const todayMonth = today.getMonth(); // 0-indexed
+    const todayYear = today.getFullYear();
+
+    // Mês ativo do controle financeiro
+    const activeMonth = months.find(m => m.id === activeMonthId);
+    if (!activeMonth) return [];
+
+    // Verifica se o mês ativo do controle financeiro é o mês atual
+    const [mYear, mMonth] = activeMonth.month.split('-').map(Number);
+    const isCurrentMonth = mYear === todayYear && (mMonth - 1) === todayMonth;
+
+    // Se o mês ativo for futuro, mostra os que vencem nos próximos 7 dias a partir do dia 1
+    // Se for o mês atual, mostra os que vencem entre hoje e hoje+7
+    const monthTxs = transactions.filter(t => t.monthId === activeMonthId && t.section === 'boleto');
+    const unpaid = monthTxs.filter(t =>
+      (t.paymentStatus === 'pending' || t.paymentStatus === 'scheduled') &&
+      t.dueDay != null
+    );
+
+    return unpaid.filter(t => {
+      const dueDay = t.dueDay!;
+      if (isCurrentMonth) {
+        // dueDay está entre hoje e hoje+7 (inclusive)
+        return dueDay >= todayDay && dueDay <= todayDay + 7;
+      } else {
+        // Para mês diferente do atual, mostra todos pendentes com dueDay nos próximos 7 dias do mês
+        const dueDate = new Date(mYear, mMonth - 1, dueDay);
+        const diffMs = dueDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        return diffDays >= 0 && diffDays <= 7;
+      }
+    }).sort((a, b) => (a.dueDay ?? 0) - (b.dueDay ?? 0));
+  }, [transactions, activeMonthId, months]);
+
   return (
     <div className={styles.wrapper}>
       {/* Rebalancing alert */}
@@ -120,6 +159,27 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Boletos próximos do vencimento */}
+      {upcomingBoletos.length > 0 && (
+        <div className={styles.alertDanger}>
+          <CalendarClock size={16} className={styles.alertIcon} />
+          <div className={styles.alertContent}>
+            <strong>Boletos próximos do vencimento</strong>
+            <div className={styles.alertBadges}>
+              {upcomingBoletos.map((t) => (
+                <div key={t.id} className={styles.alertBoletoItem}>
+                  <span className={styles.alertBoletoDay}>Dia {t.dueDay}</span>
+                  <span className={styles.alertBoletoDesc}>{t.description}</span>
+                  <span className={styles.alertBoletoValue}>
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.value)}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
