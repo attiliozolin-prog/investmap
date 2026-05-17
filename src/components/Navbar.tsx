@@ -34,6 +34,20 @@ export default function Navbar({ activeTab, onTabChange }: {
   const importRef       = useRef<HTMLInputElement>(null);
   const profileMenuRef  = useRef<HTMLDivElement>(null);
   const strategyMenuRef = useRef<HTMLDivElement>(null);
+  const navRef          = useRef<HTMLElement>(null);
+
+  // Mede a altura real da navbar e atualiza a variável CSS para os sticky abaixo
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+    const update = () => {
+      document.documentElement.style.setProperty('--navbar-height', `${el.offsetHeight}px`);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // ── Inicializa tema ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -113,7 +127,7 @@ export default function Navbar({ activeTab, onTabChange }: {
 
   return (
     <>
-      <nav className={styles.nav}>
+      <nav ref={navRef} className={styles.nav}>
         <div className={`container ${styles.inner}`}>
 
           {/* ── Logo ──────────────────────────────────────────────────────── */}

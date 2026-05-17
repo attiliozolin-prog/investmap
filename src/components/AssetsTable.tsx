@@ -80,6 +80,20 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Mede a altura real da toolbar e atualiza a variável CSS para o thead abaixo
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = toolbarRef.current;
+    if (!el) return;
+    const update = () => {
+      document.documentElement.style.setProperty('--table-toolbar-height', `${el.offsetHeight}px`);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     const saved = localStorage.getItem('investmap_class_order');
     if (saved) {
@@ -339,7 +353,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
         Se a toolbar ficasse dentro dele, o overflow criaria um novo contexto de scroll
         que impediria o position:sticky do thead de funcionar no scroll VERTICAL da página.
       */}
-      <div className={styles.tableToolbar}>
+      <div ref={toolbarRef} className={styles.tableToolbar}>
         <div className={styles.tableToolbarLeft}>
           {lastPriceSyncAt && !isSyncingPrices && (
             <span className={styles.lastSync}>

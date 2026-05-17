@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { calculatePortfolio } from '@/lib/calculations';
 import AssetsTable from '@/components/AssetsTable';
@@ -18,6 +18,20 @@ export default function Assets() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterClass, setFilterClass] = useState<string | null>(null);
   const [filterAction, setFilterAction] = useState<string | null>(null);
+
+  // Mede a altura real do filterBar e atualiza a variável CSS para os sticky abaixo
+  const filterBarRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = filterBarRef.current;
+    if (!el) return;
+    const update = () => {
+      document.documentElement.style.setProperty('--filter-bar-height', `${el.offsetHeight}px`);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // activeAssets do AppContext já exclui ativos encerrados (isArchived)
   const assetsWithCalcs = useMemo<AssetWithCalcs[]>(() => {
@@ -116,7 +130,7 @@ export default function Assets() {
       </div>
 
       {/* Barra de busca e filtros */}
-      <div className={styles.filterBar}>
+      <div ref={filterBarRef} className={styles.filterBar}>
         <div className={styles.searchWrapper}>
           <Search size={15} className={styles.searchIcon} />
           <input
