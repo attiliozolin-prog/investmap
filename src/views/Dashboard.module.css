@@ -68,6 +68,54 @@
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
+/* Alerta de boletos próximos do vencimento */
+.alertDanger {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: var(--radius-lg);
+  color: var(--color-danger);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.alertBoletoItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.alertBoletoDay {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.alertBoletoDesc {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-danger);
+}
+
+.alertBoletoValue {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-danger);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
 .middleRow {
   display: grid;
   grid-template-columns: 1fr minmax(300px, 380px);
@@ -167,12 +215,24 @@
     font-size: 0.82rem;
     overflow: hidden;
   }
+  .alertDanger {
+    padding: var(--space-3) var(--space-4);
+    font-size: 0.82rem;
+  }
   .alertBadges {
     gap: 6px;
   }
   .alertTickerBuy, .alertTickerSell {
     font-size: 0.7rem;
     padding: 2px 7px;
+  }
+  .alertBoletoItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .alertBoletoValue {
+    margin-left: 0;
   }
   .catName { font-size: 0.82rem; }
   .catValue { font-size: 0.875rem; }
