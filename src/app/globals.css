@@ -39,6 +39,13 @@
   --color-text-2: #A0A0B8;
   --color-text-3: #606078;
 
+  /* Sticky layout heights — usadas em múltiplos componentes */
+  --navbar-height: 64px;
+  --filter-bar-height: 52px;   /* filterBar na página de Ativos */
+  --table-toolbar-height: 45px; /* toolbar de cotações/preços */
+  /* top para o thead = navbar + filterBar + toolbar */
+  --thead-top: calc(var(--navbar-height) + var(--filter-bar-height) + var(--table-toolbar-height));
+
   /* Spacing */
   --space-1: 4px;
   --space-2: 8px;
@@ -110,6 +117,15 @@
   --shadow-primary: 0 4px 14px var(--color-primary-glow);
 }
 
+html {
+  /*
+    scroll-padding-top garante que ao usar scrollIntoView, âncoras ou
+    navegação pelo teclado, o browser compense a soma de todos os
+    headers fixos (navbar + filterBar + toolbar + thead).
+  */
+  scroll-padding-top: var(--thead-top);
+}
+
 html, body {
   background-color: var(--color-bg);
   color: var(--color-text);
@@ -144,6 +160,10 @@ p  { color: var(--color-text-2); }
 }
 
 @media (max-width: 640px) {
+  :root {
+    --navbar-height: 60px; /* navbar mobile tem height: 60px */
+  }
+
   body {
     /* 72px base (bottom nav) + safe area dinâmico para iPhones com gesture bar */
     padding-bottom: calc(72px + env(safe-area-inset-bottom, 8px));
