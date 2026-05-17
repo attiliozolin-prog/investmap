@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AssetWithCalcs } from '@/types';
 import { formatCurrency, formatPercent, formatPercentAbs } from '@/lib/calculations';
 import styles from './AssetsTable.module.css';
@@ -77,6 +77,8 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [classOrder, setClassOrder] = useState<string[]>([]);
   const [draggedClass, setDraggedClass] = useState<string | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('investmap_class_order');
@@ -87,6 +89,40 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
         console.error('Failed to parse saved class order', e);
       }
     }
+  }, []);
+
+  // Scroll + highlight ao navegar pelo alerta do dashboard
+  useEffect(() => {
+    const targetId = sessionStorage.getItem('highlight_asset_id');
+    if (!targetId) return;
+    sessionStorage.removeItem('highlight_asset_id');
+
+    // Garante que o grupo do ativo está expandido
+    const targetAsset = assets.find(a => a.id === targetId);
+    if (targetAsset) {
+      const groupName = targetAsset.isArchived ? 'Ativos Encerrados' : targetAsset.category.className;
+      setCollapsedGroups(prev => {
+        const next = new Set(prev);
+        next.delete(groupName);
+        return next;
+      });
+    }
+
+    // Aguarda o render e faz scroll
+    const timer = setTimeout(() => {
+      const row = document.getElementById(`asset-row-${targetId}`);
+      if (row) {
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setHighlightId(targetId);
+        highlightTimerRef.current = setTimeout(() => setHighlightId(null), 2000);
+      }
+    }, 120);
+
+    return () => {
+      clearTimeout(timer);
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const groupedAssets = useMemo(() => {
@@ -433,7 +469,11 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
 
                 {/* Ativos dentro do Grupo */}
                 {!collapsedGroups.has(group.className) && group.assets.map((asset) => (
-                  <tr key={asset.id} className={`${styles.row} ${styles[`row_${asset.action}`]}`}>
+                  <tr
+                    key={asset.id}
+                    id={`asset-row-${asset.id}`}
+                    className={`${styles.row} ${styles[`row_${asset.action}`]} ${highlightId === asset.id ? styles.rowHighlight : ''}`}
+                  >
                     <td>
                       <div className={styles.tickerCell}>
                         <span className={styles.ticker}>

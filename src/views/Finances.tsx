@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFinance } from '@/context/FinanceContext';
 import { useApp } from '@/context/AppContext';
@@ -38,6 +38,8 @@ export default function Finances() {
   const [addSection, setAddSection] = useState<FinanceSection | null>(null);
   const [editTx, setEditTx] = useState<FinanceTransaction | null>(null);
   const [monthToDelete, setMonthToDelete] = useState<string | null>(null);
+  const [highlightTxId, setHighlightTxId] = useState<string | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sortedMonths = useMemo(() => [...months].sort((a,b) => b.month.localeCompare(a.month)), [months]);
   const activeMonth = useMemo(() => months.find(m => m.id === activeMonthId), [months, activeMonthId]);
@@ -92,6 +94,28 @@ export default function Finances() {
     }
     setIsMonthModalOpen(false);
   };
+
+  // Scroll + highlight ao navegar pelo alerta do dashboard
+  useEffect(() => {
+    const targetId = sessionStorage.getItem('highlight_tx_id');
+    if (!targetId) return;
+    sessionStorage.removeItem('highlight_tx_id');
+
+    const timer = setTimeout(() => {
+      const row = document.getElementById(`tx-row-${targetId}`);
+      if (row) {
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setHighlightTxId(targetId);
+        highlightTimerRef.current = setTimeout(() => setHighlightTxId(null), 2000);
+      }
+    }, 120);
+
+    return () => {
+      clearTimeout(timer);
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMonthId]);
 
   return (
     <div className={styles.container}>
@@ -158,7 +182,7 @@ export default function Finances() {
                   <tbody>
                     {boletos.length===0 && <tr><td colSpan={7} className={styles.emptyRow}>Nenhum boleto.</td></tr>}
                     {boletos.map(tx=>(
-                      <tr key={tx.id}>
+                      <tr key={tx.id} id={`tx-row-${tx.id}`} className={highlightTxId === tx.id ? styles.rowHighlight : ''}>
                         <td className={styles.descCell}>{tx.description}</td>
                         <td className={styles.centerCell}>{tx.dueDay?`Dia ${tx.dueDay}`:'–'}</td>
                         <td>{tx.category||'–'}</td>
