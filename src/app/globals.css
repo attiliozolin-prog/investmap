@@ -39,12 +39,11 @@
   --color-text-2: #A0A0B8;
   --color-text-3: #606078;
 
-  /* Sticky layout heights — usadas em múltiplos componentes */
+  /* Sticky layout heights — definidas via JS (ResizeObserver), valores aqui são fallback */
   --navbar-height: 64px;
-  --filter-bar-height: 52px;   /* filterBar na página de Ativos */
-  --table-toolbar-height: 45px; /* toolbar de cotações/preços */
-  /* top para o thead = navbar + filterBar + toolbar */
-  --thead-top: calc(var(--navbar-height) + var(--filter-bar-height) + var(--table-toolbar-height));
+  --table-toolbar-height: 45px;
+  /* thead fica logo abaixo da navbar + toolbar */
+  --thead-top: calc(var(--navbar-height) + var(--table-toolbar-height));
 
   /* Spacing */
   --space-1: 4px;
