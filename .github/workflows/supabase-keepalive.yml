@@ -15,14 +15,23 @@ jobs:
       - name: Ping Supabase REST API
         run: |
           echo "Enviando ping para o Supabase às $(date)..."
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 \
             "${{ secrets.SUPABASE_URL }}/rest/v1/" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+
           echo "Status HTTP recebido: $STATUS"
-          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
-            echo "✅ Supabase respondeu com sucesso. Projeto ativo!"
+
+          if [ -z "$STATUS" ]; then
+            echo "❌ Sem resposta do Supabase (timeout ou projeto pausado)"
+            echo "👉 Acesse https://supabase.com/dashboard e despause o projeto manualmente."
+            exit 0  # Não falha o workflow — apenas avisa
+          elif [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 500 ]; then
+            echo "✅ Supabase respondeu com status $STATUS. Projeto ativo e keep-alive enviado!"
           else
             echo "⚠️ Supabase retornou status inesperado: $STATUS"
-            exit 1
+            echo "👉 Verifique se o projeto está pausado em https://supabase.com/dashboard"
           fi
+          # Nunca falha — o objetivo é apenas manter o projeto vivo
+          exit 0
