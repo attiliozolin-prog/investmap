@@ -15,6 +15,19 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  /* Sticky logo abaixo da navbar */
+  position: sticky;
+  top: var(--navbar-height);
+  z-index: 50;
+  background: var(--color-bg);
+  /* Sombra sutil para separar visualmente do conteúdo ao rolar */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  /* Padding vertical para respirar e compor altura com a variável */
+  padding: 10px 0;
+  margin: 0 0 0;
+  /* Garante que o elemento cobre conteúdo atrás dele ao rolar */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .searchWrapper {
@@ -142,5 +155,20 @@
   .header { flex-direction: column; }
   .header .btn { width: 100%; justify-content: center; }
   .searchWrapper { max-width: 100%; flex: 1 1 100%; }
-  .filterBar { gap: 8px; }
+  .filterBar {
+    gap: 8px;
+    /* Em mobile o sticky do filterBar conflita com a bottom tab nav;
+       mantém a posição natural sem sticky */
+    position: static;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: transparent;
+    padding: 0;
+  }
+}
+
+/* Tema claro: ajusta o fundo do filterBar sticky */
+:global([data-theme='light']) .filterBar {
+  background: rgba(243, 244, 246, 0.92);
 }

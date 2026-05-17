@@ -47,14 +47,14 @@
   white-space: nowrap;
   position: sticky;
   /*
-    top = altura da navbar (64px) + altura da toolbar (45px).
-    A toolbar é sticky no mesmo nível, então o thead precisa ficar
-    abaixo dela ao rolar a página.
+    top = navbar + filterBar + toolbar (todas definidas em globals.css).
+    Usando a variável --thead-top para evitar valores hardcoded.
   */
-  top: 109px;
+  top: var(--thead-top);
   background: var(--color-surface);
   z-index: 40;
-  box-shadow: 0 2px 0 var(--color-border);
+  /* Sombra pronunciada para feedback visual de que o header está grudado */
+  box-shadow: 0 3px 0 var(--color-border), 0 4px 12px rgba(0, 0, 0, 0.3);
   padding: 16px 8px;
   font-size: 0.72rem;
   font-weight: 600;
@@ -77,10 +77,17 @@
 
 :global([data-theme='light']) .tableWrapper table th {
   background: #ffffff;
-  box-shadow: 0 2px 0 var(--color-border);
+  box-shadow: 0 3px 0 var(--color-border), 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
-.row { position: relative; }
+.row {
+  position: relative;
+  /*
+    scroll-margin-top garante que ao navegar via scrollIntoView (alerta do
+    dashboard), o browser posicione a linha abaixo de todos os headers fixos.
+  */
+  scroll-margin-top: calc(var(--thead-top) + 60px);
+}
 
 /* ──────────────────────────────────────────
    Linhas de ativo (sem tint de status —
@@ -131,6 +138,8 @@
   background: var(--color-surface-2);
   cursor: grab;
   transition: background 0.2s;
+  /* Mesma margem de scroll para que grupos também fiquem visíveis ao navegar */
+  scroll-margin-top: calc(var(--thead-top) + 20px);
 }
 
 /* Linha de grupo — mesma altura das demais linhas */
@@ -583,14 +592,22 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 4px 10px;
-  /* Sticky para grudar abaixo da navbar ao rolar */
+  /* Sticky logo abaixo da navbar + filterBar */
   position: sticky;
-  top: 64px;
+  top: calc(var(--navbar-height) + var(--filter-bar-height));
   background: var(--color-surface);
   z-index: 41; /* Acima do thead (z-index 40) */
   /* Linha separadora sutil na parte inferior */
   border-bottom: 1px solid var(--color-border);
   margin-bottom: 0;
+  /* Backdrop para não transparente sobre o conteúdo */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Tema claro: ajusta background da toolbar */
+:global([data-theme='light']) .tableToolbar {
+  background: rgba(255, 255, 255, 0.92);
 }
 
 .tableToolbarLeft {

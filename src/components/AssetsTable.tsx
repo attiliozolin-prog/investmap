@@ -112,7 +112,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
     const timer = setTimeout(() => {
       const row = document.getElementById(`asset-row-${targetId}`);
       if (row) {
-        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        row.scrollIntoView({ behavior: 'smooth', block: 'start' });
         setHighlightId(targetId);
         highlightTimerRef.current = setTimeout(() => setHighlightId(null), 2000);
       }
@@ -398,10 +398,6 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
             </tr>
           </thead>
           <tbody>
-            {/* Espaçador invisível entre cabeçalho e primeira linha */}
-            <tr aria-hidden="true">
-              <td colSpan={9} style={{ height: '8px', padding: 0, border: 'none', background: 'transparent' }} />
-            </tr>
             {sortedGroups.map((group) => (
               <React.Fragment key={group.className}>
                 {/* Cabeçalho do Grupo (Classe) — com métricas agregadas */}
