@@ -708,3 +708,16 @@
   /* Form e modal */
   .formRow { grid-template-columns: 1fr; }
 }
+
+/* ──────────────────────────────────────────
+   Highlight de linha ao navegar pelo alerta
+   ────────────────────────────────────────── */
+@keyframes rowPulse {
+  0%   { background: rgba(239, 68, 68, 0.22) !important; }
+  50%  { background: rgba(239, 68, 68, 0.10) !important; }
+  100% { background: transparent !important; }
+}
+
+.rowHighlight td {
+  animation: rowPulse 1.8s ease-out forwards !important;
+}

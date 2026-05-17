@@ -68,6 +68,17 @@
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
+/* Ticker clicavel */
+.alertTickerBtn {
+  cursor: pointer;
+  transition: transform 0.15s, filter 0.15s;
+  font-family: inherit;
+}
+.alertTickerBtn:hover {
+  filter: brightness(1.2);
+  transform: scale(1.07);
+}
+
 /* Alerta de boletos próximos do vencimento */
 .alertDanger {
   display: flex;
@@ -91,6 +102,13 @@
   border: 1px solid rgba(239, 68, 68, 0.2);
   border-radius: 8px;
   flex-wrap: wrap;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, transform 0.15s;
+}
+.alertBoletoItem:hover {
+  background: rgba(239, 68, 68, 0.18);
+  transform: translateY(-1px);
 }
 
 .alertBoletoDay {

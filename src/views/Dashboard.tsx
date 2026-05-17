@@ -134,6 +134,16 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
     }).sort((a, b) => (a.dueDay ?? 0) - (b.dueDay ?? 0));
   }, [transactions, activeMonthId, months]);
 
+  const handleAssetAlertClick = (assetId: string) => {
+    sessionStorage.setItem('highlight_asset_id', assetId);
+    onNavigate('assets');
+  };
+
+  const handleBoletoAlertClick = (txId: string) => {
+    sessionStorage.setItem('highlight_tx_id', txId);
+    onNavigate('finances');
+  };
+
   return (
     <div className={styles.wrapper}>
       {/* Rebalancing alert */}
@@ -147,7 +157,14 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                 <div className={styles.alertGroup}>
                   <span className={styles.alertGroupLabel}>↑ Comprar</span>
                   {buyAssets.map((a) => (
-                    <span key={a.id} className={styles.alertTickerBuy}>{a.ticker}</span>
+                    <button
+                      key={a.id}
+                      className={`${styles.alertTickerBuy} ${styles.alertTickerBtn}`}
+                      onClick={() => handleAssetAlertClick(a.id)}
+                      title={`Ver ${a.ticker} na aba Ativos`}
+                    >
+                      {a.ticker}
+                    </button>
                   ))}
                 </div>
               )}
@@ -155,7 +172,14 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                 <div className={styles.alertGroup}>
                   <span className={styles.alertGroupLabel}>↓ Reduzir</span>
                   {sellAssets.map((a) => (
-                    <span key={a.id} className={styles.alertTickerSell}>{a.ticker}</span>
+                    <button
+                      key={a.id}
+                      className={`${styles.alertTickerSell} ${styles.alertTickerBtn}`}
+                      onClick={() => handleAssetAlertClick(a.id)}
+                      title={`Ver ${a.ticker} na aba Ativos`}
+                    >
+                      {a.ticker}
+                    </button>
                   ))}
                 </div>
               )}
@@ -172,13 +196,18 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
             <strong>Boletos próximos do vencimento</strong>
             <div className={styles.alertBadges}>
               {upcomingBoletos.map((t) => (
-                <div key={t.id} className={styles.alertBoletoItem}>
+                <button
+                  key={t.id}
+                  className={styles.alertBoletoItem}
+                  onClick={() => handleBoletoAlertClick(t.id)}
+                  title={`Ver ${t.description} no Controle Financeiro`}
+                >
                   <span className={styles.alertBoletoDay}>Dia {t.dueDay}</span>
                   <span className={styles.alertBoletoDesc}>{t.description}</span>
                   <span className={styles.alertBoletoValue}>
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.value)}
                   </span>
-                </div>
+                </button>
               ))}
             </div>
           </div>
