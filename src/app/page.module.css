@@ -2,7 +2,13 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow-x: hidden;
+  /*
+    overflow-x: clip em vez de hidden.
+    'hidden' força overflow-y: auto → .app vira scroll container →
+    position:sticky não funciona relativo ao viewport.
+    'clip' recorta sem criar scroll container → sticky funciona.
+  */
+  overflow-x: clip;
 }
 
 .main {
