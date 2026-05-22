@@ -1,6 +1,8 @@
 /* ── GoalWidget.module.css ────────────────────────────────────────────── */
 
-/* ── Estado vazio ─────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   ESTADO VAZIO
+══════════════════════════════════════════════════════════════ */
 
 .emptyCard {
   cursor: pointer;
@@ -26,7 +28,6 @@
 .emptyInner {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: var(--space-4);
 }
 
@@ -41,15 +42,15 @@
   justify-content: center;
 }
 
-.emptyIcon {
-  color: var(--color-primary);
-}
+.emptyIcon { color: var(--color-primary); }
+
+.emptyText { flex: 1; }
 
 .emptyTitle {
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--color-text);
-  margin-bottom: var(--space-1);
+  margin: 0 0 var(--space-2) 0;
 }
 
 .emptySubtitle {
@@ -59,11 +60,11 @@
   margin: 0;
 }
 
-.emptyBtn {
-  margin-top: var(--space-2);
-}
+.emptyBtn { align-self: flex-start; }
 
-/* ── Estado: Meta alcançada ───────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   META ALCANÇADA
+══════════════════════════════════════════════════════════════ */
 
 .achievedCard {
   position: relative;
@@ -106,7 +107,7 @@
 
 @keyframes pulse {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.08); }
+  50%       { transform: scale(1.08); }
 }
 
 .achievedTitle {
@@ -117,6 +118,7 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
   letter-spacing: -0.02em;
+  margin: 0;
 }
 
 .achievedGoal {
@@ -128,8 +130,6 @@
   font-weight: 500;
   margin: 0;
 }
-
-.achievedEmoji { font-size: 1.2rem; }
 
 .achievedDate {
   font-size: 0.8rem;
@@ -145,7 +145,9 @@
   margin-top: var(--space-2);
 }
 
-/* ── Widget principal (meta ativa) ───────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   META ATIVA — WIDGET PRINCIPAL
+══════════════════════════════════════════════════════════════ */
 
 .widget {
   display: flex;
@@ -153,7 +155,8 @@
   gap: var(--space-5);
 }
 
-/* Header */
+/* ── Cabeçalho ─────────────────────────────────────────────────────────── */
+
 .widgetHeader {
   display: flex;
   align-items: flex-start;
@@ -171,10 +174,11 @@
 .widgetEmoji {
   font-size: 1.75rem;
   flex-shrink: 0;
+  line-height: 1;
 }
 
 .widgetTitle {
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--color-text);
   white-space: nowrap;
@@ -231,7 +235,6 @@
   font-weight: 700;
   cursor: pointer;
   font-family: var(--font);
-  border: none;
   transition: all var(--transition);
 }
 
@@ -249,7 +252,8 @@
 }
 .deleteNo:hover { background: var(--color-surface-3); }
 
-/* Progress */
+/* ── Barra de progresso ─────────────────────────────────────────────────── */
+
 .progressSection {
   display: flex;
   flex-direction: column;
@@ -271,8 +275,8 @@
 }
 
 .progressPct {
-  font-size: 0.875rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 800;
   color: var(--color-primary);
 }
 
@@ -289,7 +293,6 @@
   background: linear-gradient(90deg, var(--color-primary-dark), var(--color-primary-light));
   border-radius: var(--radius-full);
   transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-  position: relative;
 }
 
 .progressThumb {
@@ -303,6 +306,7 @@
   border: 2px solid var(--color-surface);
   box-shadow: 0 0 8px var(--color-primary-glow);
   transition: left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
 }
 
 .progressValues {
@@ -312,28 +316,34 @@
   color: var(--color-text-3);
 }
 
-/* Resultado principal */
-.mainResult {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
-}
+/* ── Card resultado principal ────────────────────────────────────────────── */
 
 .mainResultCard {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.04));
   border: 1px solid rgba(139, 92, 246, 0.2);
   border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-5);
+  overflow: hidden;
+}
+
+.mainResultLeft {
+  flex: 1;
+  padding: var(--space-5) var(--space-6);
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 
 .mainResultLabel {
-  font-size: 0.72rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: var(--color-text-3);
 }
 
@@ -345,7 +355,7 @@
 }
 
 .mainResultValue span {
-  font-size: 1.75rem;
+  font-size: 2rem;
   font-weight: 800;
   color: var(--color-primary);
   letter-spacing: -0.04em;
@@ -353,39 +363,92 @@
 }
 
 .mainResultValue small {
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 500;
+  color: var(--color-text-2);
+  margin-left: 2px;
+}
+
+.mainResultRight {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-left: 1px solid rgba(139, 92, 246, 0.15);
+  background: rgba(0, 0, 0, 0.1);
+  min-width: 150px;
+}
+
+.mainResultStat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mainResultStatLabel {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--color-text-3);
 }
 
-/* Cenários */
-.scenarios {
+.mainResultStatValue {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+/* ── Seção de cenários ──────────────────────────────────────────────────── */
+
+.scenariosSection {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
+}
+
+.scenariosSectionTitle {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.scenariosGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
 }
 
 .scenarioCard {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
   transition: all var(--transition);
 }
 
 .scenarioCard:hover {
-  border-color: var(--color-border-hover);
-  background: var(--color-surface-3);
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.03);
 }
 
-.scenarioIcon {
-  width: 28px;
-  height: 28px;
+.scenarioHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.scenarioIconWrap {
+  width: 24px;
+  height: 24px;
   border-radius: var(--radius-sm);
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(16, 185, 129, 0.12);
   border: 1px solid rgba(16, 185, 129, 0.2);
   display: flex;
   align-items: center;
@@ -394,19 +457,58 @@
   flex-shrink: 0;
 }
 
-.scenarioLabel {
+.scenarioIf {
   font-size: 0.72rem;
   color: var(--color-text-3);
   font-weight: 500;
+  line-height: 1.3;
 }
 
-.scenarioValue {
+.scenarioChange {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+}
+
+.scenarioResult {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
+.scenarioResultLabel {
+  font-size: 0.68rem;
+  color: var(--color-text-3);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.scenarioResultTime {
   font-size: 0.875rem;
   font-weight: 700;
-  color: var(--color-success);
+  color: var(--color-text);
 }
 
-/* Warning */
+.scenarioSaved {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-success);
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: var(--radius-full);
+  padding: 2px 8px;
+  margin-top: var(--space-1);
+  width: fit-content;
+}
+
+/* ── Warning: meta inalcançável ──────────────────────────────────────────── */
+
 .infinityWarning {
   padding: var(--space-4);
   background: rgba(245, 158, 11, 0.08);
@@ -417,14 +519,15 @@
   line-height: 1.5;
 }
 
-/* Mensagem motivacional */
+/* ── Mensagem motivacional ───────────────────────────────────────────────── */
+
 .motivational {
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
   padding: var(--space-4);
   border-radius: var(--radius-md);
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   line-height: 1.5;
   animation: fadeSlideIn 0.3s ease;
 }
@@ -434,11 +537,7 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.motivationalIcon {
-  font-size: 1rem;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
+.motivationalIcon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
 
 .motivational_highlight {
   background: rgba(139, 92, 246, 0.08);
@@ -464,45 +563,70 @@
   color: var(--color-text-2);
 }
 
-/* Footer */
+/* ── Rodapé ──────────────────────────────────────────────────────────────── */
+
 .footer {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-2);
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
 }
 
-.footerItem {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.72rem;
+.footerLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--color-text-3);
 }
 
-.footerItem svg {
-  flex-shrink: 0;
-  opacity: 0.6;
+.footerTags {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
-.footerItem strong {
-  color: var(--color-text-2);
-  font-weight: 600;
+.footerTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: var(--color-text-3);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 3px 10px;
 }
 
-/* ── Mobile ──────────────────────────────────────────────────────────────── */
+.footerTag svg { opacity: 0.6; flex-shrink: 0; }
+.footerTag strong { color: var(--color-text-2); font-weight: 600; }
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVO
+══════════════════════════════════════════════════════════════ */
 
 @media (max-width: 640px) {
-  .mainResult {
+  .mainResultCard {
+    flex-direction: column;
+  }
+
+  .mainResultRight {
+    border-left: none;
+    border-top: 1px solid rgba(139, 92, 246, 0.15);
+    flex-direction: row;
+    gap: var(--space-5);
+  }
+
+  .scenariosGrid {
     grid-template-columns: 1fr;
   }
 
   .mainResultValue span {
-    font-size: 1.4rem;
+    font-size: 1.6rem;
   }
 
-  .achievedTitle {
-    font-size: 1.1rem;
+  .footerTags {
+    flex-direction: column;
   }
 }
