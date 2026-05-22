@@ -77,6 +77,10 @@ export default function GoalModal({
   autoAnnualReturn,
   existingGoal,
 }: Props) {
+  // Se o rendimento auto-detectado for negativo (ex: crypto em perda),
+  // o campo manual inicia com 10% a.a. como sugestão razoável
+  const safeInitialReturn = autoAnnualReturn < 0 ? 10 : autoAnnualReturn * 100;
+
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormState>({
     emoji: existingGoal?.emoji ?? '🎯',
@@ -89,8 +93,20 @@ export default function GoalModal({
     useAutoReturn: existingGoal?.monthlyReturnRate == null,
     annualReturn: existingGoal?.monthlyReturnRate != null
       ? formatInput(existingGoal.monthlyReturnRate * 12 * 100)
-      : formatInput(autoAnnualReturn * 100),
+      : formatInput(safeInitialReturn),
   });
+
+  // Ao alternar para manual, se taxa auto for negativa, sugere 10%
+  const handleToggleReturn = () => {
+    setForm(prev => ({
+      ...prev,
+      useAutoReturn: !prev.useAutoReturn,
+      // Se estava em auto com taxa negativa e vai para manual, sugere 10%
+      annualReturn: prev.useAutoReturn && autoAnnualReturn < 0
+        ? formatInput(10)
+        : prev.annualReturn,
+    }));
+  };
 
   const [customGoal, setCustomGoal] = useState(
     existingGoal != null && !PRESET_GOALS.find(p => p.title === existingGoal.title)
@@ -312,13 +328,22 @@ export default function GoalModal({
                 </div>
                 <button
                   className={`${styles.toggleBtn} ${form.useAutoReturn ? styles.toggleBtnActive : ''}`}
-                  onClick={() => setForm(prev => ({ ...prev, useAutoReturn: !prev.useAutoReturn }))}
+                  onClick={handleToggleReturn}
                 >
                   {form.useAutoReturn ? '🔄 Auto' : '✏️ Manual'}
                 </button>
               </div>
               {form.useAutoReturn ? (
-                <div className={styles.autoValue}>{(autoAnnualReturn * 100).toFixed(1)}<span>% a.a.</span></div>
+                <>
+                  <div className={`${styles.autoValue} ${autoAnnualReturn < 0 ? styles.autoValueNegative : ''}`}>
+                    {(autoAnnualReturn * 100).toFixed(1)}<span>% a.a.</span>
+                  </div>
+                  {autoAnnualReturn < 0 && (
+                    <div className={styles.negativeReturnWarning}>
+                      ⚠️ Seu portfólio teve desempenho negativo no histórico recente (provavelmente por perdas em criptoativos). Clique em <strong>Manual</strong> para simular com a taxa que você espera no futuro.
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className={styles.inputWithPrefix}>
                   <input

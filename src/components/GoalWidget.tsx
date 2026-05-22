@@ -265,7 +265,21 @@ export default function GoalWidget({ currentValue, strategyId }: Props) {
         {/* ── Resultado + cenários ───────────────────────────────────────── */}
         {baseIsInfinity ? (
           <div className={styles.infinityWarning}>
-            ⚠️ Com os parâmetros atuais a meta não é atingível. Aumente seus aportes ou o rendimento esperado.
+            {(activeGoal.monthlyReturnRate ?? autoMonthlyReturn) < 0 ? (
+              <>
+                <strong>⚠️ Rendimento histórico negativo detectado</strong>
+                <p>
+                  Seu portfólio teve desempenho negativo no período recente (possivelmente por perdas em criptoativos),
+                  o que torna a meta inalcançável com os dados atuais.
+                </p>
+                <p>
+                  Clique em <strong>✏️ Editar</strong> e ajuste o rendimento manualmente para simular
+                  a taxa que você espera no futuro (ex: 10–12% a.a.).
+                </p>
+              </>
+            ) : (
+              <>⚠️ Com os parâmetros atuais a meta não é atingível. Aumente seus aportes ou o rendimento esperado.</>
+            )}
           </div>
         ) : (
           <>
