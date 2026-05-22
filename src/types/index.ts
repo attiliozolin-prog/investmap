@@ -193,6 +193,42 @@ export interface SellTaxRecord {
   createdAt: string;
 }
 
+// ============================================
+// Types — Financial Goals
+// ============================================
+
+export interface FinancialGoal {
+  id: string;
+  strategyId: string;
+  title: string;
+  emoji: string;
+  targetValue: number;             // Valor da meta em BRL
+  monthlyContribution?: number;    // Aporte mensal (undefined = auto-detectado)
+  monthlyReturnRate?: number;      // Rendimento mensal % (undefined = auto-detectado)
+  isAchieved: boolean;
+  achievedAt?: string;             // ISO Date quando alcançou a meta
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Resultado do cálculo de projeção de meta
+export interface GoalProjectionResult {
+  monthsToGoal: number;
+  yearsToGoal: number;
+  monthsFraction: number;          // meses restantes após os anos inteiros
+  progressPercent: number;         // % do valor atual em relação à meta
+  projectionData: Array<{ month: number; value: number }>; // Para mini-gráfico
+  scenarios: {
+    baseCase: { months: number; years: number; monthsFraction: number };
+    increasedContribution: { months: number; years: number; monthsFraction: number; extraAmount: number };
+    increasedReturn: { months: number; years: number; monthsFraction: number; extraRate: number };
+  };
+  autoDetected: {
+    monthlyContribution: number;
+    annualReturnRate: number;
+  };
+}
+
 // Resultado do cálculo de IR para exibição
 export interface TaxCalculation {
   assetType: AssetType;

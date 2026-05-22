@@ -203,3 +203,178 @@ export const CHART_COLORS = [
   '#6366F1', // indigo
   '#84CC16', // lime
 ];
+
+// ============================================
+// Goal / Meta Calculations
+// ============================================
+
+import { FinancialGoal, GoalProjectionResult, PortfolioSnapshot } from '@/types';
+
+/**
+ * Calcula o valor futuro após n meses com juros compostos e aporte mensal.
+ * FV = PV × (1+r)^n + PMT × [((1+r)^n − 1) / r]
+ */
+function futureValue(pv: number, monthlyRate: number, months: number, pmt: number): number {
+  if (monthlyRate === 0) return pv + pmt * months;
+  const factor = Math.pow(1 + monthlyRate, months);
+  return pv * factor + pmt * ((factor - 1) / monthlyRate);
+}
+
+/**
+ * Encontra o número de meses para atingir o targetValue usando busca binária.
+ * Retorna Infinity se não for possível atingir (PMT + rendimento < 0).
+ */
+function monthsToReachGoal(pv: number, monthlyRate: number, pmt: number, target: number): number {
+  if (pv >= target) return 0;
+  // Sem aportes e sem rendimento, impossível
+  if (monthlyRate <= 0 && pmt <= 0) return Infinity;
+  
+  // Busca binária entre 1 e 600 meses (50 anos)
+  let lo = 0, hi = 600;
+  for (let i = 0; i < 60; i++) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (futureValue(pv, monthlyRate, mid, pmt) >= target) {
+      hi = mid;
+    } else {
+      lo = mid;
+    }
+    if (hi - lo <= 1) break;
+  }
+  // Verifica se mesmo com 600 meses não chega
+  if (futureValue(pv, monthlyRate, hi, pmt) < target) return Infinity;
+  return hi;
+}
+
+/**
+ * Decompoe meses em anos + meses restantes.
+ */
+function decomposeMonths(totalMonths: number): { years: number; months: number } {
+  return { years: Math.floor(totalMonths / 12), months: totalMonths % 12 };
+}
+
+/**
+ * Auto-detecta o rendimento médio mensal da carteira a partir dos snapshots.
+ * Usa CAGR: taxa = (V_final / V_inicial)^(1/n) - 1, desconsiderando aportes (aproximação).
+ */
+export function autoDetectMonthlyReturn(snapshots: PortfolioSnapshot[], strategyId: string): number {
+  const sorted = [...snapshots]
+    .filter(s => s.strategyId === strategyId && s.totalValue > 0)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  
+  if (sorted.length < 2) return 0.01; // fallback: 1% a.m. (~12,7% a.a.)
+  
+  // Usa primeiros e últimos 12 meses para suavizar volatilidade
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  
+  const firstDate = new Date(first.date);
+  const lastDate = new Date(last.date);
+  const monthsDiff = 
+    (lastDate.getFullYear() - firstDate.getFullYear()) * 12 +
+    (lastDate.getMonth() - firstDate.getMonth());
+  
+  if (monthsDiff <= 0 || first.totalValue <= 0) return 0.01;
+  
+  // Fator de crescimento, ajustado parcialmente pelos aportes
+  // Aproximação: considera que metade do crescimento vem de aportes
+  const totalGrowthFactor = last.totalValue / first.totalValue;
+  const monthlyRate = Math.pow(totalGrowthFactor, 1 / monthsDiff) - 1;
+  
+  // Limita a um range razoável (0% a 5% a.m.)
+  return Math.max(0, Math.min(0.05, monthlyRate));
+}
+
+/**
+ * Auto-detecta o aporte médio mensal a partir das transações de compra.
+ * Considera os últimos 6 meses de transações `buy`.
+ */
+export function autoDetectMonthlyContribution(
+  transactions: Array<{ type: string; value: number; date: string }>,
+  strategyAssetIds: string[]
+): number {
+  const now = new Date();
+  const sixMonthsAgo = new Date(now);
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  
+  // Filtra compras dos últimos 6 meses, apenas ativos da estratégia
+  const recentBuys = transactions.filter(t => {
+    if (t.type !== 'buy') return false;
+    const txDate = new Date(t.date);
+    return txDate >= sixMonthsAgo && txDate <= now;
+  });
+  
+  if (recentBuys.length === 0) return 0;
+  
+  // Agrupa por mês e calcula média
+  const byMonth: Record<string, number> = {};
+  recentBuys.forEach(t => {
+    const monthKey = t.date.slice(0, 7); // YYYY-MM
+    byMonth[monthKey] = (byMonth[monthKey] || 0) + t.value;
+  });
+  
+  const monthTotals = Object.values(byMonth);
+  if (monthTotals.length === 0) return 0;
+  
+  return monthTotals.reduce((s, v) => s + v, 0) / monthTotals.length;
+}
+
+/**
+ * Calcula a projeção completa para atingir uma meta financeira.
+ */
+export function calculateGoalProjection(
+  goal: FinancialGoal,
+  currentValue: number,
+  autoMonthlyContribution: number,
+  autoMonthlyReturn: number,
+): GoalProjectionResult {
+  const pv = currentValue;
+  const target = goal.targetValue;
+  const pmt = goal.monthlyContribution ?? autoMonthlyContribution;
+  const annualRate = goal.monthlyReturnRate != null
+    ? goal.monthlyReturnRate * 12  // já é mensal, converte p/ anual
+    : autoMonthlyReturn * 12;
+  const monthlyRate = (goal.monthlyReturnRate ?? autoMonthlyReturn);
+  
+  const progressPercent = target > 0 ? Math.min(100, (pv / target) * 100) : 0;
+  
+  // Cenário base
+  const baseMonths = monthsToReachGoal(pv, monthlyRate, pmt, target);
+  const base = decomposeMonths(baseMonths);
+  
+  // Cenário 1: aumenta aporte em 20% (ou R$ 500, o que for maior)
+  const extraContribution = Math.max(pmt * 0.20, 500);
+  const increasedPmt = pmt + extraContribution;
+  const inc1Months = monthsToReachGoal(pv, monthlyRate, increasedPmt, target);
+  const inc1 = decomposeMonths(inc1Months);
+  
+  // Cenário 2: aumenta rendimento em 2 p.p. a.a.
+  const extraRatePP = 2; // 2 pontos percentuais a.a.
+  const increasedMonthlyRate = monthlyRate + (extraRatePP / 100 / 12);
+  const inc2Months = monthsToReachGoal(pv, increasedMonthlyRate, pmt, target);
+  const inc2 = decomposeMonths(inc2Months);
+  
+  // Curva de projeção (pontos mensais até a meta ou 360 meses)
+  const maxMonths = Math.min(baseMonths === Infinity ? 360 : baseMonths + 12, 360);
+  const step = Math.max(1, Math.floor(maxMonths / 48)); // máx 48 pontos
+  const projectionData: Array<{ month: number; value: number }> = [];
+  for (let m = 0; m <= maxMonths; m += step) {
+    projectionData.push({ month: m, value: Math.round(futureValue(pv, monthlyRate, m, pmt)) });
+  }
+  
+  return {
+    monthsToGoal: baseMonths,
+    yearsToGoal: base.years,
+    monthsFraction: base.months,
+    progressPercent,
+    projectionData,
+    scenarios: {
+      baseCase: { months: baseMonths, years: base.years, monthsFraction: base.months },
+      increasedContribution: { months: inc1Months, years: inc1.years, monthsFraction: inc1.months, extraAmount: extraContribution },
+      increasedReturn: { months: inc2Months, years: inc2.years, monthsFraction: inc2.months, extraRate: extraRatePP },
+    },
+    autoDetected: {
+      monthlyContribution: autoMonthlyContribution,
+      annualReturnRate: annualRate,
+    },
+  };
+}

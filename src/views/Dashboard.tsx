@@ -8,6 +8,7 @@ import { calculatePortfolio } from '@/lib/calculations';
 import SummaryCards from '@/components/SummaryCards';
 import AiAnalysisCard from '@/components/AiAnalysisCard';
 import EvolutionChart from '@/components/EvolutionChart';
+import GoalWidget from '@/components/GoalWidget';
 import styles from './Dashboard.module.css';
 import { AlertTriangle, TrendingUp, CalendarClock } from 'lucide-react';
 import { formatCurrency } from '@/lib/calculations';
@@ -261,6 +262,12 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
 
       {/* Evolution Chart */}
       <EvolutionChart snapshots={snapshots.filter(s => s.strategyId === activeStrategy.id)} />
+
+      {/* Goal Widget — Simulador de Metas */}
+      <GoalWidget
+        currentValue={summary.totalValue}
+        strategyId={activeStrategy.id}
+      />
 
       {/* AI Analysis Card */}
       <AiAnalysisCard summary={summary} strategyName={activeStrategy.name} />

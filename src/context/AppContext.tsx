@@ -8,7 +8,7 @@ import React, {
   useCallback,
   useMemo,
 } from 'react';
-import { Strategy, Asset, StrategyCategory, Transaction, PortfolioSnapshot, SellTaxRecord } from '@/types';
+import { Strategy, Asset, StrategyCategory, Transaction, PortfolioSnapshot, SellTaxRecord, FinancialGoal } from '@/types';
 import { generateId } from '@/lib/calculations';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -74,6 +74,13 @@ interface AppContextType {
 
   addSellTaxRecord: (record: Omit<SellTaxRecord, 'id' | 'createdAt'>) => void;
   updateSellTaxRecord: (id: string, data: Partial<SellTaxRecord>) => void;
+
+  // Financial Goals
+  goals: FinancialGoal[];
+  activeGoal: FinancialGoal | null;
+  addGoal: (data: Omit<FinancialGoal, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateGoal: (id: string, data: Partial<FinancialGoal>) => void;
+  deleteGoal: (id: string) => void;
 
   syncPrices: () => Promise<void>;
   isSyncingPrices: boolean;
@@ -201,6 +208,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [sellTaxRecords, setSellTaxRecords] = useState<SellTaxRecord[]>([]);
+  const [goals, setGoals] = useState<FinancialGoal[]>([]);
   const [mounted, setMounted] = useState(false);
   const [dbSynced, setDbSynced] = useState(false);
   const [isSyncingPrices, setIsSyncingPrices] = useState(false);
@@ -374,6 +382,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setSnapshots(appSnapshots);
         setSellTaxRecords(appTaxRecords);
         setHasCompletedOnboarding(true);
+
+        // Busca metas
+        const { data: goalRows } = await supabase
+          .from('financial_goals')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at');
+        const appGoals: FinancialGoal[] = (goalRows ?? []).map((r: any) => ({
+          id: r.id,
+          strategyId: r.strategy_id,
+          title: r.title,
+          emoji: r.emoji ?? '🎯',
+          targetValue: Number(r.target_value),
+          monthlyContribution: r.monthly_contribution != null ? Number(r.monthly_contribution) : undefined,
+          monthlyReturnRate: r.monthly_return_rate != null ? Number(r.monthly_return_rate) : undefined,
+          isAchieved: r.is_achieved ?? false,
+          achievedAt: r.achieved_at ?? undefined,
+          createdAt: r.created_at,
+          updatedAt: r.updated_at,
+        }));
+        setGoals(appGoals);
+
         saveToStorage('investmap_onboarding', true);
       } else {
         // Usuário novo — verifica se tem dados de GUEST (visitante) para migrar
@@ -808,6 +838,59 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   // ============================================
+  // Financial Goals CRUD
+  // ============================================
+  const addGoal = useCallback(async (data: Omit<FinancialGoal, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newGoal: FinancialGoal = { ...data, id: generateId(), createdAt: now, updatedAt: now };
+    setGoals(prev => [...prev, newGoal]);
+
+    if (user) {
+      supabase.from('financial_goals').insert({
+        id: newGoal.id,
+        user_id: user.id,
+        strategy_id: newGoal.strategyId,
+        title: newGoal.title,
+        emoji: newGoal.emoji,
+        target_value: newGoal.targetValue,
+        monthly_contribution: newGoal.monthlyContribution ?? null,
+        monthly_return_rate: newGoal.monthlyReturnRate ?? null,
+        is_achieved: newGoal.isAchieved,
+        achieved_at: newGoal.achievedAt ?? null,
+        created_at: now,
+        updated_at: now,
+      }).then(({ error }) => { if (error) console.error('addGoal error:', error); });
+    }
+  }, [user]);
+
+  const updateGoal = useCallback(async (id: string, data: Partial<FinancialGoal>) => {
+    const now = new Date().toISOString();
+    setGoals(prev => prev.map(g => g.id === id ? { ...g, ...data, updatedAt: now } : g));
+
+    if (user) {
+      const payload: Record<string, unknown> = { updated_at: now };
+      if (data.title !== undefined)              payload.title = data.title;
+      if (data.emoji !== undefined)              payload.emoji = data.emoji;
+      if (data.targetValue !== undefined)        payload.target_value = data.targetValue;
+      if (data.monthlyContribution !== undefined) payload.monthly_contribution = data.monthlyContribution ?? null;
+      if (data.monthlyReturnRate !== undefined)  payload.monthly_return_rate = data.monthlyReturnRate ?? null;
+      if (data.isAchieved !== undefined)         payload.is_achieved = data.isAchieved;
+      if (data.achievedAt !== undefined)         payload.achieved_at = data.achievedAt ?? null;
+
+      supabase.from('financial_goals').update(payload).eq('id', id).eq('user_id', user.id)
+        .then(({ error }) => { if (error) console.error('updateGoal error:', error); });
+    }
+  }, [user]);
+
+  const deleteGoal = useCallback(async (id: string) => {
+    setGoals(prev => prev.filter(g => g.id !== id));
+    if (user) {
+      supabase.from('financial_goals').delete().eq('id', id).eq('user_id', user.id)
+        .then(({ error }) => { if (error) console.error('deleteGoal error:', error); });
+    }
+  }, [user]);
+
+  // ============================================
   // SellTaxRecord CRUD
   // ============================================
   const addSellTaxRecord = useCallback((data: Omit<SellTaxRecord, 'id' | 'createdAt'>) => {
@@ -941,6 +1024,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assets, isSyncingPrices, user]);
 
+  const activeGoal = useMemo(() =>
+    goals.find(g => g.strategyId === activeStrategyId) ?? null,
+  [goals, activeStrategyId]);
+
   const contextValue = useMemo(() => ({
     hasCompletedOnboarding,
     completeOnboarding,
@@ -969,6 +1056,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     saveSnapshot,
     addSellTaxRecord,
     updateSellTaxRecord,
+    goals,
+    activeGoal,
+    addGoal,
+    updateGoal,
+    deleteGoal,
     syncPrices,
     isSyncingPrices,
     lastPriceSyncAt,
@@ -1001,6 +1093,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     saveSnapshot,
     addSellTaxRecord,
     updateSellTaxRecord,
+    goals,
+    activeGoal,
+    addGoal,
+    updateGoal,
+    deleteGoal,
     syncPrices,
     isSyncingPrices,
     lastPriceSyncAt,
