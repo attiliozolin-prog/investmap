@@ -42,9 +42,13 @@ function parseCurrency(value: string): number {
   return Number(value.replace(/[^0-9,]/g, '').replace(',', '.')) || 0;
 }
 
+// Formata número no padrão pt-BR sem depender de locale do ambiente
 function formatInput(value: number): string {
-  if (!value) return '';
-  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (!value && value !== 0) return '';
+  const fixed = value.toFixed(2);
+  const [intPart, decPart] = fixed.split('.');
+  const intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${intFormatted},${decPart}`;
 }
 
 // ── Cálculo de projeção inline (sem import circular) ─────────────────────────
@@ -129,10 +133,17 @@ export default function GoalModal({
     onClose();
   };
 
-  const handleCurrencyInput = (field: 'targetValue' | 'monthlyContribution' | 'annualReturn') => (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCurrencyInput = (field: 'targetValue' | 'monthlyContribution') => (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[^0-9]/g, '');
     const num = Number(raw) / 100;
     setForm(prev => ({ ...prev, [field]: formatInput(num) }));
+  };
+
+  // Rendimento: o usuário digita em % inteiro (ex: "1200" → 12,00%)
+  const handlePercentInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/[^0-9]/g, '');
+    const num = Number(raw) / 100; // 1200 → 12.00
+    setForm(prev => ({ ...prev, annualReturn: formatInput(num) }));
   };
 
   const selectPreset = (emoji: string, title: string) => {
@@ -316,7 +327,7 @@ export default function GoalModal({
                     inputMode="numeric"
                     placeholder="12,00"
                     value={form.annualReturn}
-                    onChange={handleCurrencyInput('annualReturn')}
+                    onChange={handlePercentInput}
                     style={{ paddingRight: '48px' }}
                   />
                   <span className={styles.inputSuffix}>% a.a.</span>

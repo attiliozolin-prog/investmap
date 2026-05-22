@@ -258,30 +258,36 @@ function decomposeMonths(totalMonths: number): { years: number; months: number }
  */
 export function autoDetectMonthlyReturn(snapshots: PortfolioSnapshot[], strategyId: string): number {
   const sorted = [...snapshots]
-    .filter(s => s.strategyId === strategyId && s.totalValue > 0)
+    .filter(s => s.strategyId === strategyId && s.totalValue > 0 && s.totalInvested > 0)
     .sort((a, b) => a.date.localeCompare(b.date));
-  
-  if (sorted.length < 2) return 0.01; // fallback: 1% a.m. (~12,7% a.a.)
-  
-  // Usa primeiros e últimos 12 meses para suavizar volatilidade
-  const first = sorted[0];
+
+  if (sorted.length < 2) return 0.01; // fallback: ~12,7% a.a.
+
   const last = sorted[sorted.length - 1];
-  
+  const first = sorted[0];
+
   const firstDate = new Date(first.date);
-  const lastDate = new Date(last.date);
-  const monthsDiff = 
+  const lastDate  = new Date(last.date);
+  const monthsDiff =
     (lastDate.getFullYear() - firstDate.getFullYear()) * 12 +
     (lastDate.getMonth() - firstDate.getMonth());
-  
-  if (monthsDiff <= 0 || first.totalValue <= 0) return 0.01;
-  
-  // Fator de crescimento, ajustado parcialmente pelos aportes
-  // Aproximação: considera que metade do crescimento vem de aportes
-  const totalGrowthFactor = last.totalValue / first.totalValue;
-  const monthlyRate = Math.pow(totalGrowthFactor, 1 / monthsDiff) - 1;
-  
-  // Limita a um range razoável (0% a 5% a.m.)
-  return Math.max(0, Math.min(0.05, monthlyRate));
+
+  if (monthsDiff <= 0) return 0.01;
+
+  // Rendimento real = profitLoss / totalInvested (descontando aportes)
+  // Alinhado com o que o dashboard exibe como "rendimento %"
+  const profitLoss    = last.profitLoss;
+  const totalInvested = last.totalInvested;
+
+  if (totalInvested <= 0) return 0.01;
+
+  const totalReturn = profitLoss / totalInvested;
+
+  // Converte para taxa mensal equivalente
+  const monthlyRate = Math.pow(1 + totalReturn, 1 / monthsDiff) - 1;
+
+  // Limita a um range razoável (-2% a 5% a.m.)
+  return Math.max(-0.02, Math.min(0.05, monthlyRate));
 }
 
 /**
