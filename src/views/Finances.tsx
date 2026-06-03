@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFinance } from '@/context/FinanceContext';
 import { useApp } from '@/context/AppContext';
@@ -83,10 +83,10 @@ export default function Finances() {
     updateTransaction(tx.id, { paymentStatus: next });
   };
 
-  const handleImportAndCreate = (monthStr: string, importFromId: string | null) => {
+  const handleImportAndCreate = (monthStr: string, selectedTxIds: string[]) => {
     const newMonth = createMonth(monthStr);
-    if (importFromId) {
-      const toCopy = transactions.filter(t => t.monthId === importFromId && (t.section === 'boleto' || t.section === 'assinatura' || t.section === 'income'));
+    if (selectedTxIds.length > 0) {
+      const toCopy = transactions.filter(t => selectedTxIds.includes(t.id));
       toCopy.forEach(t => {
         const { id, createdAt, monthId, ...rest } = t;
         addTransaction({ ...rest, monthId: newMonth.id, paymentStatus: t.section === 'boleto' ? 'pending' : t.paymentStatus });
@@ -355,6 +355,7 @@ export default function Finances() {
       {isMonthModalOpen && (
         <MonthModal
           months={sortedMonths}
+          transactions={transactions}
           onClose={()=>setIsMonthModalOpen(false)}
           onCreate={handleImportAndCreate}
         />
@@ -402,33 +403,252 @@ function SummaryCard({label,value,accent,highlight}:{label:string;value:number;a
 }
 
 // ─── Month Modal ──────────────────────────────────────────────────────────────
-function MonthModal({months,onClose,onCreate}:{months:{id:string;month:string}[];onClose:()=>void;onCreate:(v:string,importId:string|null)=>void}) {
-  const [val,setVal] = useState(()=>{
-    const d=new Date();
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-  });
-  const [importFrom,setImportFrom] = useState<string>('none');
+const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const SECTION_LABELS_IMPORT: Record<string,string> = { boleto:'Boletos', assinatura:'Assinaturas', income:'Receitas', extra:'Gastos Extras' };
+const SECTION_ORDER = ['boleto','assinatura','income','extra'];
+
+function MonthModal({
+  months, transactions, onClose, onCreate
+}: {
+  months: {id:string;month:string}[];
+  transactions: FinanceTransaction[];
+  onClose: ()=>void;
+  onCreate: (v:string, selectedTxIds:string[])=>void;
+}) {
+  const now = new Date();
+  // Sugere o próximo mês ainda não existente
+  const suggestNext = useCallback(() => {
+    const existingMonths = new Set(months.map(m => m.month));
+    let year = now.getFullYear();
+    let month = now.getMonth() + 1; // mês atual
+    // tenta até 24 meses à frente para achar o primeiro ausente
+    for (let i = 0; i < 24; i++) {
+      const key = `${year}-${String(month).padStart(2,'0')}`;
+      if (!existingMonths.has(key)) return { year, month };
+      month++;
+      if (month > 12) { month = 1; year++; }
+    }
+    return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  }, [months]);
+
+  const suggested = useMemo(() => suggestNext(), [suggestNext]);
+
+  const [selYear,  setSelYear]  = useState(suggested.year);
+  const [selMonth, setSelMonth] = useState(suggested.month);
+  const [importFrom, setImportFrom] = useState<string>('none');
+
+  // step: 'config' | 'select'
+  const [step, setStep] = useState<'config'|'select'>('config');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const monthStr = `${selYear}-${String(selMonth).padStart(2,'0')}`;
+  const alreadyExists = months.some(m => m.month === monthStr);
+
+  const yearOptions = useMemo(() => {
+    const y = now.getFullYear();
+    return Array.from({length: 5}, (_, i) => y - 1 + i);
+  }, []);
+
+  // Lançamentos disponíveis no mês de origem
+  const importableTxs = useMemo(() => {
+    if (importFrom === 'none') return [];
+    return transactions.filter(t =>
+      t.monthId === importFrom &&
+      (t.section === 'boleto' || t.section === 'assinatura' || t.section === 'income' || t.section === 'extra')
+    );
+  }, [importFrom, transactions]);
+
+  const grouped = useMemo(() => {
+    const map: Record<string, FinanceTransaction[]> = {};
+    importableTxs.forEach(t => {
+      if (!map[t.section]) map[t.section] = [];
+      map[t.section].push(t);
+    });
+    return map;
+  }, [importableTxs]);
+
+  const handleGoToSelect = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (importFrom === 'none') {
+      // sem importação → criar direto
+      onCreate(monthStr, []);
+      return;
+    }
+    // pré-selecionar todos
+    setSelectedIds(new Set(importableTxs.map(t => t.id)));
+    setStep('select');
+  };
+
+  const toggleId = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSection = (section: string) => {
+    const ids = (grouped[section] || []).map(t => t.id);
+    const allSelected = ids.every(id => selectedIds.has(id));
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      ids.forEach(id => allSelected ? next.delete(id) : next.add(id));
+      return next;
+    });
+  };
+
+  const handleCreate = () => {
+    onCreate(monthStr, Array.from(selectedIds));
+  };
+
+  const fmt2 = (v: number) => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(v);
+
+  if (step === 'select') {
+    return (
+      <div className={styles.overlay} onClick={onClose}>
+        <div className={styles.modal} style={{maxWidth:520}} onClick={e=>e.stopPropagation()}>
+          <div className={styles.modalHead}>
+            <div style={{display:'flex',alignItems:'center',gap:'0.6rem'}}>
+              <button className={styles.closeBtn} onClick={()=>setStep('config')} title="Voltar" style={{marginRight:0}}>
+                <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <h3 style={{margin:0}}>Selecionar Lançamentos</h3>
+            </div>
+            <button className={styles.closeBtn} onClick={onClose}><X size={20}/></button>
+          </div>
+
+          <div className={styles.modalBody} style={{padding:'0.75rem 1.25rem 1.25rem',gap:'0.75rem',maxHeight:'65vh',overflowY:'auto'}}>
+            <p style={{fontSize:'0.8rem',color:'var(--color-text-2)',margin:0,lineHeight:1.5}}>
+              Importando de <strong style={{color:'var(--color-text)'}}>{fmtMonth(months.find(m=>m.id===importFrom)?.month||'')}</strong> → <strong style={{color:'var(--color-text)'}}>{MONTH_NAMES[selMonth-1]} {selYear}</strong>
+            </p>
+
+            {/* Selecionar todos / nenhum */}
+            <div style={{display:'flex',gap:'0.5rem'}}>
+              <button type="button" className={styles.btnPrimary}
+                style={{fontSize:'0.75rem',padding:'0.3rem 0.75rem'}}
+                onClick={()=>setSelectedIds(new Set(importableTxs.map(t=>t.id)))}
+              >Selecionar todos</button>
+              <button type="button" className={styles.btnSecondary}
+                style={{fontSize:'0.75rem',padding:'0.3rem 0.75rem',color:'var(--color-text-2)',borderColor:'var(--color-border)'}}
+                onClick={()=>setSelectedIds(new Set())}
+              >Limpar seleção</button>
+            </div>
+
+            {SECTION_ORDER.filter(s => grouped[s]?.length).map(section => {
+              const txs = grouped[section];
+              const allSel = txs.every(t => selectedIds.has(t.id));
+              const someSel = txs.some(t => selectedIds.has(t.id));
+              return (
+                <div key={section} className={styles.importGroup}>
+                  <div className={styles.importGroupHeader} onClick={()=>toggleSection(section)}>
+                    <input
+                      type="checkbox"
+                      checked={allSel}
+                      ref={el => { if(el) el.indeterminate = !allSel && someSel; }}
+                      onChange={()=>toggleSection(section)}
+                      onClick={e=>e.stopPropagation()}
+                      className={styles.importCheck}
+                    />
+                    <span className={styles.importGroupLabel}>{SECTION_LABELS_IMPORT[section]}</span>
+                    <span className={styles.importGroupCount}>{txs.filter(t=>selectedIds.has(t.id)).length}/{txs.length}</span>
+                  </div>
+                  {txs.map(tx => (
+                    <label key={tx.id} className={styles.importRow}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(tx.id)}
+                        onChange={()=>toggleId(tx.id)}
+                        className={styles.importCheck}
+                      />
+                      <span className={styles.importDesc}>{tx.description}</span>
+                      <span className={styles.importVal}>{fmt2(tx.value)}</span>
+                    </label>
+                  ))}
+                </div>
+              );
+            })}
+
+            {importableTxs.length === 0 && (
+              <p style={{color:'var(--color-text-2)',fontSize:'0.85rem',textAlign:'center',padding:'1rem 0'}}>Nenhum lançamento disponível neste mês.</p>
+            )}
+          </div>
+
+          <div style={{padding:'1rem 1.25rem',borderTop:'1px solid var(--color-border)',display:'flex',gap:'0.75rem',alignItems:'center'}}>
+            <span style={{flex:1,fontSize:'0.8rem',color:'var(--color-text-2)'}}>
+              {selectedIds.size} lançamento{selectedIds.size !== 1 ? 's' : ''} selecionado{selectedIds.size !== 1 ? 's' : ''}
+            </span>
+            <button type="button" className={styles.submitBtn} style={{margin:0,padding:'0.6rem 1.5rem'}} onClick={handleCreate}>
+              Criar Mês
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={e=>e.stopPropagation()}>
-        <div className={styles.modalHead}><h3>Novo Mês de Controle</h3><button className={styles.closeBtn} onClick={onClose}><X size={20}/></button></div>
-        <form className={styles.modalBody} onSubmit={e=>{e.preventDefault();if(val)onCreate(val,importFrom==='none'?null:importFrom);}}>
+        <div className={styles.modalHead}>
+          <h3>Novo Mês de Controle</h3>
+          <button className={styles.closeBtn} onClick={onClose}><X size={20}/></button>
+        </div>
+        <form className={styles.modalBody} onSubmit={handleGoToSelect}>
           <div className={styles.formGroup}>
             <label>Mês / Ano</label>
-            <input type="month" required className={styles.input} value={val} onChange={e=>setVal(e.target.value)}/>
+            <div className={styles.monthYearPicker}>
+              <select
+                className={styles.input}
+                value={selMonth}
+                onChange={e=>setSelMonth(Number(e.target.value))}
+              >
+                {MONTH_NAMES.map((name,i) => (
+                  <option key={i+1} value={i+1}>{name}</option>
+                ))}
+              </select>
+              <select
+                className={styles.input}
+                value={selYear}
+                onChange={e=>setSelYear(Number(e.target.value))}
+              >
+                {yearOptions.map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+            {alreadyExists && (
+              <span className={styles.inputHint} style={{color:'#F59E0B'}}>
+                ⚠️ Este mês já existe. Escolha outro período.
+              </span>
+            )}
           </div>
-          {months.length>0&&(
+
+          {months.length > 0 && (
             <div className={styles.formGroup}>
-              <label>Importar lançamentos fixos de</label>
+              <label>Importar lançamentos de</label>
               <select className={styles.input} value={importFrom} onChange={e=>setImportFrom(e.target.value)}>
                 <option value="none">Não importar</option>
                 {months.map(m=><option key={m.id} value={m.id}>{fmtMonth(m.month)}</option>)}
               </select>
-              <span className={styles.inputHint}>Boletos, assinaturas e receitas serão copiados com status "Pendente".</span>
+              {importFrom !== 'none' && (
+                <span className={styles.inputHint}>
+                  Você poderá escolher exatamente quais lançamentos importar no próximo passo.
+                </span>
+              )}
+              {importFrom === 'none' && (
+                <span className={styles.inputHint}>Boletos, assinaturas e receitas podem ser copiados com status "Pendente".</span>
+              )}
             </div>
           )}
-          <button type="submit" className={styles.submitBtn}>Criar Mês</button>
+
+          <button
+            type="submit"
+            className={styles.submitBtn}
+            disabled={alreadyExists}
+            style={{opacity: alreadyExists ? 0.5 : 1}}
+          >
+            {importFrom === 'none' ? 'Criar Mês' : 'Próximo: Escolher Lançamentos →'}
+          </button>
         </form>
       </div>
     </div>

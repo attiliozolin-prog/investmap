@@ -721,3 +721,83 @@
 .rowHighlight td {
   animation: rowPulse 1.8s ease-out forwards !important;
 }
+
+/* ── Month/Year Picker ── */
+.monthYearPicker {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 0.5rem;
+}
+
+/* ── Import Checklist ── */
+.importGroup {
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.importGroupHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.85rem;
+  background: var(--color-surface-2);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+.importGroupHeader:hover { background: var(--color-surface-3, var(--color-surface-2)); }
+
+.importGroupLabel {
+  flex: 1;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text);
+}
+
+.importGroupCount {
+  font-size: 0.75rem;
+  color: var(--color-text-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  font-weight: 600;
+}
+
+.importRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.85rem;
+  border-top: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.importRow:hover { background: var(--color-surface-2); }
+
+.importCheck {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.importDesc {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.importVal {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-2);
+  white-space: nowrap;
+}

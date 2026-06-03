@@ -179,6 +179,12 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
     if (!pendingTaxCalc) return;
     const calc = pendingTaxCalc;
 
+    // Para Renda Fixa (CDB, Tesouro Direto etc.) e LCI/LCA, o IR é sempre
+    // retido na fonte pelo banco — o investidor NÃO precisa emitir DARF.
+    // Marcamos taxPaid=true automaticamente para não gerar pendência falsa.
+    const isWithheldAtSource = calc.assetType === 'renda_fixa' || calc.assetType === 'lci_lca';
+    const sellDateIso = new Date(date + 'T12:00:00').toISOString();
+
     addSellTaxRecord({
       assetId: asset.id,
       assetTicker: asset.ticker,
@@ -192,7 +198,8 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
       exemptReason: calc.exemptReason,
       isLoss: calc.isLoss,
       lossUsedForCompensation: 0,
-      taxPaid: false,
+      taxPaid: isWithheldAtSource,
+      taxPaidAt: isWithheldAtSource ? sellDateIso : undefined,
       darfPeriod: calc.darfPeriod,
       notes: notes.trim() || undefined,
       sellDate: date,
