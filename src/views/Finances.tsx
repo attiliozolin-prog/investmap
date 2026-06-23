@@ -5,7 +5,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFinance } from '@/context/FinanceContext';
 import { useApp } from '@/context/AppContext';
 import { FinanceTransaction, FinanceSection, FinancePaymentStatus, FinanceCpfCnpj } from '@/types';
-import { Plus, Trash2, X, Wallet, ShieldAlert, Edit2, Clock, Tags } from 'lucide-react';
+import { Plus, Trash2, X, Wallet, ShieldAlert, Edit2, Clock, Tags, Receipt, CreditCard, ShoppingBag, ArrowDownCircle } from 'lucide-react';
 import styles from './Finances.module.css';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -39,6 +39,7 @@ export default function Finances() {
   const [editTx, setEditTx] = useState<FinanceTransaction | null>(null);
   const [monthToDelete, setMonthToDelete] = useState<string | null>(null);
   const [highlightTxId, setHighlightTxId] = useState<string | null>(null);
+  const [mobileSection, setMobileSection] = useState<FinanceSection>('boleto');
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sortedMonths = useMemo(() => [...months].sort((a,b) => b.month.localeCompare(a.month)), [months]);
@@ -173,9 +174,30 @@ export default function Finances() {
             </div>
           </div>
 
+          {/* Tab bar de seções — estilo Nubank, só visível em mobile */}
+          <div className={styles.mobileTabs}>
+            {([
+              { id: 'boleto'     as FinanceSection, icon: <Receipt     size={20} strokeWidth={1.75}/>, label: 'Boletos',     total: totalBoletos },
+              { id: 'assinatura' as FinanceSection, icon: <CreditCard  size={20} strokeWidth={1.75}/>, label: 'Assinaturas', total: totalAssinaturas },
+              { id: 'extra'      as FinanceSection, icon: <ShoppingBag size={20} strokeWidth={1.75}/>, label: 'Extras',      total: totalExtras },
+              { id: 'income'     as FinanceSection, icon: <ArrowDownCircle size={20} strokeWidth={1.75}/>, label: 'Receitas', total: totalIncome },
+            ]).map(tab => (
+              <button
+                key={tab.id}
+                className={`${styles.mobileTabBtn} ${mobileSection === tab.id ? styles.mobileTabActive : ''}`}
+                onClick={() => setMobileSection(tab.id)}
+              >
+                <span className={styles.mobileTabIcon}>{tab.icon}</span>
+                <span className={styles.mobileTabLabel}>{tab.label}</span>
+                <span className={styles.mobileTabAmount}>{fmt(tab.total)}</span>
+              </button>
+            ))}
+          </div>
+
           {/* Duas colunas */}
           <div className={styles.twoCol}>
             <div className={styles.colLeft}>
+              <div className={mobileSection !== 'boleto' ? styles.mobileHidden : ''}>
               <Section title="Controle de Boletos" total={totalBoletos} accent="#3B82F6" onAdd={()=>setAddSection('boleto')}>
                 <table className={styles.table}>
                   <thead><tr><th>Descrição</th><th>Vcto</th><th>Categoria</th><th>CPF/CNPJ</th><th>Valor</th><th>Status</th><th></th></tr></thead>
@@ -184,11 +206,11 @@ export default function Finances() {
                     {boletos.map(tx=>(
                       <tr key={tx.id} id={`tx-row-${tx.id}`} className={highlightTxId === tx.id ? styles.rowHighlight : ''}>
                         <td className={styles.descCell}>{tx.description}</td>
-                        <td className={styles.centerCell}>{tx.dueDay?`Dia ${tx.dueDay}`:'–'}</td>
-                        <td>{tx.category||'–'}</td>
-                        <td>{tx.cpfCnpj&&<span className={tx.cpfCnpj==='CPF'?styles.tagCpf:styles.tagCnpj}>{tx.cpfCnpj}</span>}</td>
-                        <td className={styles.valueCell}>{fmt(tx.value)}</td>
-                        <td><button className={`${styles.statusBtn} ${STATUS_CSS[tx.paymentStatus||'pending']}`} onClick={()=>toggleStatus(tx)}>{STATUS_LABELS[tx.paymentStatus||'pending']}</button></td>
+                        <td data-label="Vcto" className={styles.centerCell}>{tx.dueDay?`Dia ${tx.dueDay}`:'–'}</td>
+                        <td data-label="Categoria">{tx.category||'–'}</td>
+                        <td data-label="Tipo">{tx.cpfCnpj&&<span className={tx.cpfCnpj==='CPF'?styles.tagCpf:styles.tagCnpj}>{tx.cpfCnpj}</span>}</td>
+                        <td data-label="Valor" className={styles.valueCell}>{fmt(tx.value)}</td>
+                        <td data-label="Status"><button className={`${styles.statusBtn} ${STATUS_CSS[tx.paymentStatus||'pending']}`} onClick={()=>toggleStatus(tx)}>{STATUS_LABELS[tx.paymentStatus||'pending']}</button></td>
                         <td className={styles.actionCell}>
                           <button className={styles.editBtn} onClick={()=>setEditTx(tx)} title="Editar"><Edit2 size={13}/></button>
                           <button className={styles.delBtn} onClick={()=>{if(confirm('Apagar?'))deleteTransaction(tx.id)}} title="Apagar"><Trash2 size={13}/></button>
@@ -196,10 +218,12 @@ export default function Finances() {
                       </tr>
                     ))}
                   </tbody>
-                  {boletos.length>0&&<tfoot><tr><td colSpan={4} className={styles.totalLabel}>TOTAL</td><td className={styles.totalValue}>{fmt(totalBoletos)}</td><td colSpan={2}></td></tr></tfoot>}
+                  {boletos.length>0&&<tfoot><tr><td colSpan={5} className={styles.totalLabel}>TOTAL BOLETOS</td><td colSpan={2} className={styles.totalValue}>{fmt(totalBoletos)}</td></tr></tfoot>}
                 </table>
               </Section>
+              </div>
 
+              <div className={mobileSection !== 'assinatura' ? styles.mobileHidden : ''}>
               <Section title="Assinaturas — Débito Automático" total={totalAssinaturas} accent="#F59E0B" onAdd={()=>setAddSection('assinatura')}>
                 <table className={styles.table}>
                   <thead><tr><th>Descrição</th><th>Categoria</th><th>Cartão</th><th>Valor</th><th></th></tr></thead>
@@ -208,9 +232,9 @@ export default function Finances() {
                     {assinaturas.map(tx=>(
                       <tr key={tx.id}>
                         <td className={styles.descCell}>{tx.description}</td>
-                        <td>{tx.category||'–'}</td>
-                        <td><span className={styles.tagCard}>{tx.card||'PF'}</span></td>
-                        <td className={styles.valueCell}>{fmt(tx.value)}</td>
+                        <td data-label="Categoria">{tx.category||'–'}</td>
+                        <td data-label="Cartão"><span className={styles.tagCard}>{tx.card||'PF'}</span></td>
+                        <td data-label="Valor" className={styles.valueCell}>{fmt(tx.value)}</td>
                         <td className={styles.actionCell}>
                           <button className={styles.editBtn} onClick={()=>setEditTx(tx)} title="Editar"><Edit2 size={13}/></button>
                           <button className={styles.delBtn} onClick={()=>{if(confirm('Apagar?'))deleteTransaction(tx.id)}} title="Apagar"><Trash2 size={13}/></button>
@@ -218,12 +242,14 @@ export default function Finances() {
                       </tr>
                     ))}
                   </tbody>
-                  {assinaturas.length>0&&<tfoot><tr><td colSpan={3} className={styles.totalLabel}>TOTAL</td><td className={styles.totalValue}>{fmt(totalAssinaturas)}</td><td></td></tr></tfoot>}
+                  {assinaturas.length>0&&<tfoot><tr><td colSpan={3} className={styles.totalLabel}>TOTAL ASSINATURAS</td><td colSpan={2} className={styles.totalValue}>{fmt(totalAssinaturas)}</td></tr></tfoot>}
                 </table>
               </Section>
+              </div>
             </div>
 
             <div className={styles.colRight}>
+              <div className={mobileSection !== 'extra' ? styles.mobileHidden : ''}>
               <Section title="Gastos Extras" total={totalExtras} accent="#FF1493" onAdd={()=>setAddSection('extra')}>
                 <table className={styles.table}>
                   <thead><tr><th>Descrição</th><th>Valor</th><th>Status</th><th></th></tr></thead>
@@ -232,8 +258,8 @@ export default function Finances() {
                     {extras.map(tx=>(
                       <tr key={tx.id}>
                         <td className={styles.descCell}>{tx.description}</td>
-                        <td className={styles.valueCell}>{fmt(tx.value)}</td>
-                        <td><button className={`${styles.statusBtn} ${STATUS_CSS[tx.paymentStatus||'pending']}`} onClick={()=>toggleStatus(tx)}>{STATUS_LABELS[tx.paymentStatus||'pending']}</button></td>
+                        <td data-label="Valor" className={styles.valueCell}>{fmt(tx.value)}</td>
+                        <td data-label="Status"><button className={`${styles.statusBtn} ${STATUS_CSS[tx.paymentStatus||'pending']}`} onClick={()=>toggleStatus(tx)}>{STATUS_LABELS[tx.paymentStatus||'pending']}</button></td>
                         <td className={styles.actionCell}>
                           <button className={styles.editBtn} onClick={()=>setEditTx(tx)} title="Editar"><Edit2 size={13}/></button>
                           <button className={styles.delBtn} onClick={()=>{if(confirm('Apagar?'))deleteTransaction(tx.id)}} title="Apagar"><Trash2 size={13}/></button>
@@ -241,7 +267,7 @@ export default function Finances() {
                       </tr>
                     ))}
                   </tbody>
-                  {extras.length>0&&<tfoot><tr><td className={styles.totalLabel}>TOTAL</td><td className={styles.totalValue}>{fmt(totalExtras)}</td><td colSpan={2}></td></tr></tfoot>}
+                  {extras.length>0&&<tfoot><tr><td colSpan={2} className={styles.totalLabel}>TOTAL EXTRAS</td><td colSpan={2} className={styles.totalValue}>{fmt(totalExtras)}</td></tr></tfoot>}
                 </table>
               </Section>
 
@@ -257,9 +283,9 @@ export default function Finances() {
                       {impostos.map(tx => (
                         <tr key={tx.id}>
                           <td className={styles.descCell}>{tx.description}</td>
-                          <td className={styles.centerCell}>{tx.dueDay ? `Dia ${tx.dueDay}` : '—'}</td>
-                          <td className={styles.valueCell}>{fmt(tx.value)}</td>
-                          <td>
+                          <td data-label="Vcto" className={styles.centerCell}>{tx.dueDay ? `Dia ${tx.dueDay}` : '—'}</td>
+                          <td data-label="Valor" className={styles.valueCell}>{fmt(tx.value)}</td>
+                          <td data-label="Status">
                             <button
                               className={`${styles.statusBtn} ${STATUS_CSS[tx.paymentStatus||'pending']}`}
                               onClick={() => toggleStatus(tx)}
@@ -273,14 +299,15 @@ export default function Finances() {
                     <tfoot>
                       <tr>
                         <td colSpan={2} className={styles.totalLabel}>TOTAL DE IMPOSTOS</td>
-                        <td className={styles.totalValue}>{fmt(totalImpostos)}</td>
-                        <td />
+                        <td colSpan={2} className={styles.totalValue}>{fmt(totalImpostos)}</td>
                       </tr>
                     </tfoot>
                   </table>
                 </Section>
               )}
+              </div>
 
+              <div className={mobileSection !== 'income' ? styles.mobileHidden : ''}>
               <Section title="Entrada e Saída" total={null} accent="#10B981" onAdd={()=>setAddSection('income')}>
                 <table className={styles.table}>
                   <thead><tr><th>Descrição</th><th>Valor</th><th></th></tr></thead>
@@ -289,7 +316,7 @@ export default function Finances() {
                     {incomes.map(tx=>(
                       <tr key={tx.id}>
                         <td className={styles.descCell}>{tx.description}</td>
-                        <td className={`${styles.valueCell} ${styles.incomeValue}`}>{fmt(tx.value)}</td>
+                        <td data-label="Valor" className={`${styles.valueCell} ${styles.incomeValue}`}>{fmt(tx.value)}</td>
                         <td className={styles.actionCell}>
                           <button className={styles.editBtn} onClick={()=>setEditTx(tx)} title="Editar"><Edit2 size={13}/></button>
                           <button className={styles.delBtn} onClick={()=>{if(confirm('Apagar?'))deleteTransaction(tx.id)}} title="Apagar"><Trash2 size={13}/></button>
@@ -298,12 +325,13 @@ export default function Finances() {
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr><td className={styles.totalLabel}>Total de entrada</td><td className={`${styles.totalValue} ${styles.incomeValue}`}>{fmt(totalIncome)}</td><td></td></tr>
-                    <tr><td className={styles.totalLabel}>Gastos do mês</td><td className={`${styles.totalValue} ${styles.expenseValue}`}>{fmt(totalExp)}</td><td></td></tr>
-                    <tr className={styles.balanceRow}><td className={styles.totalLabel}>Sobra / Falta</td><td className={`${styles.totalValue} ${balance>=0?styles.incomeValue:styles.expenseValue}`}>{fmt(balance)}</td><td></td></tr>
+                    <tr><td colSpan={2} className={styles.totalLabel}>Entradas</td><td className={`${styles.totalValue} ${styles.incomeValue}`}>{fmt(totalIncome)}</td></tr>
+                    <tr><td colSpan={2} className={styles.totalLabel}>Gastos do mês</td><td className={`${styles.totalValue} ${styles.expenseValue}`}>{fmt(totalExp)}</td></tr>
+                    <tr className={styles.balanceRow}><td colSpan={2} className={styles.totalLabel}>Sobra / Falta</td><td className={`${styles.totalValue} ${balance>=0?styles.incomeValue:styles.expenseValue}`}>{fmt(balance)}</td></tr>
                   </tfoot>
                 </table>
               </Section>
+              </div>
             </div>
           </div>
 
@@ -313,7 +341,9 @@ export default function Finances() {
               <div className={styles.chartHeader}>
                 <h3 className={styles.chartTitle}>Distribuição de Gastos por Categoria</h3>
               </div>
-              <div className={styles.chartBody}>
+
+              {/* Desktop: donut + legenda */}
+              <div className={`${styles.chartBody} ${styles.chartDesktop}`}>
                 <ResponsiveContainer width="100%" height={400}>
                   <PieChart>
                     <Pie data={categoryTotals} cx="50%" cy="50%" innerRadius={75} outerRadius={130}
@@ -335,6 +365,33 @@ export default function Finances() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Mobile: lista de barras horizontais rankeadas */}
+              <div className={styles.chartMobile}>
+                {categoryTotals
+                  .slice()
+                  .sort((a,b)=>b.value-a.value)
+                  .map((c,i)=>{
+                    const pct = totalExp>0 ? (c.value/totalExp)*100 : 0;
+                    const color = CHART_COLORS[categoryTotals.indexOf(c)%CHART_COLORS.length];
+                    return (
+                      <div key={c.name} className={styles.chartBarRow}>
+                        <div className={styles.chartBarInfo}>
+                          <span className={styles.chartBarName}>{c.name}</span>
+                          <span className={styles.chartBarVal}>{fmt(c.value)}</span>
+                        </div>
+                        <div className={styles.chartBarTrack}>
+                          <div
+                            className={styles.chartBarFill}
+                            style={{ width:`${pct}%`, background: color }}
+                          />
+                        </div>
+                        <span className={styles.chartBarPct}>{pct.toFixed(1)}%</span>
+                      </div>
+                    );
+                  })
+                }
               </div>
             </div>
           )}

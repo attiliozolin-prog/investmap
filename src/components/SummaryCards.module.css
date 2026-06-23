@@ -13,13 +13,18 @@
 }
 
 .card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  border-color: var(--color-border-hover);
 }
 
 .cardHighlight {
   border-color: var(--color-primary-glow) !important;
-  background: linear-gradient(135deg, var(--color-surface), rgba(139, 92, 246, 0.08)) !important;
+  background: linear-gradient(135deg, var(--color-surface), rgba(139, 92, 246, 0.1)) !important;
+}
+
+.cardHighlight:hover {
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.15);
 }
 
 .cardAlert {
@@ -101,16 +106,19 @@
   transition: width var(--transition-slow);
 }
 
-@media (max-width: 1024px) {
-  .grid { grid-template-columns: 1fr 1fr; }
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+  .cardValue { font-size: 1.4rem; }
 }
 @media (max-width: 640px) {
   .grid { grid-template-columns: 1fr 1fr; gap: 10px; }
-  .card { padding: 14px 16px; }
-  .cardLabel { font-size: 0.68rem; }
-  .cardValue { font-size: 1.1rem; }
-  .cardSub { font-size: 0.75rem; }
-  .cardIcon { width: 24px; height: 24px; }
+  .card { padding: 16px 18px; border-radius: var(--radius-lg); }
+  .cardLabel { font-size: 0.65rem; letter-spacing: 0.1em; }
+  .cardValue { font-size: 1.25rem; letter-spacing: -0.02em; }
+  .cardSub { font-size: 0.72rem; }
+  .cardIcon { width: 26px; height: 26px; border-radius: 8px; }
+  .cardBadge { font-size: 0.68rem; padding: 2px 8px; }
+  .healthBar { height: 5px; margin-top: var(--space-2); }
 }
 
 /* Indicador de sync de preços */

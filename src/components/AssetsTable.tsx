@@ -438,6 +438,13 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                 >
                   <td colSpan={2}>
                     <div className={styles.groupHeaderContent}>
+                      <span title="Arraste para reordenar os grupos" aria-label="Arraste para reordenar os grupos">
+                        <GripVertical size={16} className={styles.dragIcon} />
+                      </span>
+                      <span className={styles.groupHeaderTitle}>{group.className}</span>
+                      <span className={styles.collapsedCount}>
+                        {group.assets.length} ativo{group.assets.length !== 1 ? 's' : ''}
+                      </span>
                       <button
                         className={styles.collapseBtn}
                         onClick={(e) => { e.stopPropagation(); toggleGroup(group.className); }}
@@ -449,13 +456,6 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                           : <ChevronDown size={14} />
                         }
                       </button>
-                      <span title="Arraste para reordenar os grupos" aria-label="Arraste para reordenar os grupos">
-                        <GripVertical size={16} className={styles.dragIcon} />
-                      </span>
-                      <span className={styles.groupHeaderTitle}>{group.className}</span>
-                      {collapsedGroups.has(group.className) && (
-                        <span className={styles.collapsedCount}>{group.assets.length} ativo{group.assets.length !== 1 ? 's' : ''}</span>
-                      )}
                     </div>
                   </td>
 
@@ -526,9 +526,9 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                       </div>
                     </td>
 
-                    <td className={styles.right}>{formatCurrency(asset.investedValue)}</td>
+                    <td data-label="Investido" className={styles.right}>{formatCurrency(asset.investedValue)}</td>
 
-                    <td className={styles.right}>
+                    <td data-label="Atual" className={styles.right}>
                       {editingValueId === asset.id ? (
                         <div className={styles.inlineEdit}>
                           <input
@@ -564,20 +564,20 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                       )}
                     </td>
 
-                    <td className={styles.right}>
+                    <td data-label="Lucro/Prej." className={styles.right}>
                       <div className={`${styles.profitLoss} ${asset.profitLoss >= 0 ? styles.profit : styles.loss}`}>
                         <span>{formatCurrency(asset.profitLoss)}</span>
                         <span className={styles.profitPercent}>({formatPercent(asset.profitLossPercent)})</span>
                       </div>
                     </td>
 
-                    <td className={styles.center} title={`Meta total da subclasse: ${asset.targetPercent}%`}>
+                    <td data-label="% Alvo" className={styles.center} title={`Meta total da subclasse: ${asset.targetPercent}%`}>
                       <div className={styles.targetCell} style={{ justifyContent: 'center' }}>
                         <span className={styles.muted}>{asset.assetTargetPercent.toFixed(2)}%</span>
                       </div>
                     </td>
 
-                    <td className={styles.right}>
+                    <td data-label="% Cart." className={styles.right}>
                       <div className={styles.percentCell}>
                         <span>{formatPercentAbs(asset.currentPortfolioPercent)}</span>
                         {asset.assetTargetPercent > 0 && (
@@ -594,13 +594,13 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                       </div>
                     </td>
 
-                    <td className={`${styles.right} ${styles.rebalance}`}>
+                    <td data-label="Rebalancear" className={`${styles.right} ${styles.rebalance}`}>
                       <span className={asset.rebalanceAmount > 0 ? styles.profit : asset.rebalanceAmount < 0 ? styles.loss : styles.muted}>
                         {asset.rebalanceAmount >= 0 ? '+' : ''}{formatCurrency(asset.rebalanceAmount)}
                       </span>
                     </td>
 
-                    <td>
+                    <td data-label="Status">
                       <ActionBadge action={asset.action} />
                     </td>
 

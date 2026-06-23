@@ -96,7 +96,7 @@
 .tabActive {
   color: var(--color-text) !important;
   background: var(--color-surface) !important;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3), 0 0 12px rgba(139, 92, 246, 0.08);
   font-weight: 600;
 }
 
@@ -150,6 +150,8 @@
 .strategyBtn:hover {
   border-color: var(--color-border-hover);
   background: var(--color-surface-3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transform: translateY(-1px);
 }
 
 /* Badge informativo (carteira única — NÃO é botão) */
@@ -216,8 +218,8 @@
   border-radius: var(--radius-md);
   padding: var(--space-2);
   min-width: 200px;
-  box-shadow: var(--shadow-lg);
-  animation: dropIn 0.15s ease;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  animation: dropReveal 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 200;
 }
 
@@ -271,6 +273,8 @@
   background: var(--color-surface-2);
   border-color: var(--color-border-hover);
   color: var(--color-text);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transform: translateY(-1px);
 }
 
 .profileBtnActive {
@@ -297,8 +301,8 @@
   border-radius: var(--radius-md);
   padding: var(--space-2);
   min-width: 200px;
-  box-shadow: var(--shadow-lg);
-  animation: dropIn 0.15s ease;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  animation: dropReveal 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 200;
 }
 
@@ -407,31 +411,34 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 64px;
-  background: var(--color-surface);
-  border-top: 1px solid var(--color-border);
+  height: 72px;
+  background: rgba(19, 19, 31, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid rgba(255,255,255,0.06);
   z-index: 1000;
-  padding: 8px 16px;
+  padding: 6px 12px;
   padding-bottom: env(safe-area-inset-bottom);
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.35);
 }
 
 .mobileTabItem {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   background: transparent;
   border: none;
   color: var(--color-text-3);
-  font-size: 0.68rem;
-  font-weight: 500;
+  font-size: 0.63rem;
+  font-weight: 600;
   font-family: var(--font);
   cursor: pointer;
-  transition: all 0.18s ease;
-  min-width: 56px;
-  padding: 4px;
-  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  min-width: 60px;
+  padding: 6px 8px;
+  border-radius: var(--radius-md);
+  position: relative;
 }
 
 .mobileTabItem:hover {
@@ -439,12 +446,26 @@
 }
 
 .mobileTabItemActive {
-  color: var(--color-primary) !important;
+  color: var(--color-primary-light) !important;
+}
+
+/* Dot indicator acima do ícone ativo */
+.mobileTabItemActive::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--color-primary);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.5);
 }
 
 .mobileTabIcon {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
 }
 
 /* ── Animações ─────────────────────────────────────────────────────────────── */
@@ -453,8 +474,24 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes dropReveal {
+  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* ── Responsividade ────────────────────────────────────────────────────────── */
-@media (max-width: 900px) {
+
+/* Tablet: 701px–1024px — iPad Air portrait entra aqui */
+@media (min-width: 701px) and (max-width: 1024px) {
+  .logoText { font-size: 0.9rem; }
+  .tab { padding: 7px 10px; font-size: 0.8rem; gap: 5px; }
+  .strategyName { max-width: 100px; }
+  .profileBtnLabel { display: none; }
+  .profileBtn { padding: 6px 8px; }
+}
+
+/* Comprime apenas telas menores que 701px (phones grandes) */
+@media (max-width: 700px) {
   .logoText { display: none; }
   .tab { padding: 7px 10px; font-size: 0.82rem; }
   .strategyName { max-width: 80px; }

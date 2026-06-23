@@ -6,7 +6,12 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
   position: relative;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.container:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
 }
 
 .header {
@@ -86,7 +91,12 @@
 .periodButtonActive {
   background: var(--bg-card);
   color: var(--color-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.periodButton:not(.periodButtonActive):hover {
+  background: rgba(139, 92, 246, 0.08);
+  color: var(--color-text);
 }
 
 .chartContainer {

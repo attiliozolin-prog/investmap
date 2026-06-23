@@ -11,10 +11,16 @@
   padding: var(--space-4) var(--space-5);
   background: var(--color-warning-bg);
   border: 1px solid rgba(245, 158, 11, 0.25);
+  border-left: 3px solid var(--color-warning);
   border-radius: var(--radius-lg);
   color: var(--color-warning);
   font-size: 0.9rem;
   line-height: 1.5;
+  transition: box-shadow 0.2s ease;
+}
+
+.alert:hover {
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.08);
 }
 
 .alertIcon { flex-shrink: 0; margin-top: 2px; }
@@ -87,6 +93,7 @@
   padding: var(--space-4) var(--space-5);
   background: rgba(239, 68, 68, 0.08);
   border: 1px solid rgba(239, 68, 68, 0.25);
+  border-left: 3px solid var(--color-danger);
   border-radius: var(--radius-lg);
   color: var(--color-danger);
   font-size: 0.9rem;
@@ -164,9 +171,12 @@
   justify-content: space-between;
   padding: var(--space-3) var(--space-3);
   border-radius: var(--radius-md);
-  transition: background var(--transition);
+  transition: background 0.2s ease, transform 0.15s ease;
 }
-.catRow:hover { background: var(--color-surface-2); }
+.catRow:hover {
+  background: rgba(139, 92, 246, 0.05);
+  transform: translateX(2px);
+}
 
 .catName {
   font-size: 0.9rem;
@@ -228,31 +238,41 @@
 }
 
 @media (max-width: 640px) {
+  .wrapper { gap: var(--space-5); }
   .alert {
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-4);
     font-size: 0.82rem;
+    border-radius: var(--radius-lg);
     overflow: hidden;
   }
   .alertDanger {
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-4);
     font-size: 0.82rem;
+    border-radius: var(--radius-lg);
   }
   .alertBadges {
     gap: 6px;
   }
   .alertTickerBuy, .alertTickerSell {
-    font-size: 0.7rem;
-    padding: 2px 7px;
+    font-size: 0.72rem;
+    padding: 4px 10px;
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
   }
   .alertBoletoItem {
     flex-direction: column;
     align-items: flex-start;
-    gap: 4px;
+    gap: 5px;
+    padding: 8px 12px;
+    border-radius: 10px;
   }
   .alertBoletoValue {
     margin-left: 0;
+    font-size: 0.88rem;
   }
+  .catRow { padding: var(--space-3) var(--space-2); }
   .catName { font-size: 0.82rem; }
   .catValue { font-size: 0.875rem; }
-  .catPercents { font-size: 0.7rem; }
+  .catPercents { font-size: 0.7rem; gap: var(--space-1); }
 }

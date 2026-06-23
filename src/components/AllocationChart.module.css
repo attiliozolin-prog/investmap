@@ -36,6 +36,12 @@
   background: var(--color-surface-2);
   border-radius: var(--radius-md);
   border-left: 4px solid transparent;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.macroLegendItem:hover {
+  background: rgba(139, 92, 246, 0.05);
+  transform: translateX(3px);
 }
 
 .macroLegendHeader {
@@ -87,6 +93,12 @@
   padding: 20px;
   display: flex;
   flex-direction: column;
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.microCard:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  transform: translateY(-2px);
 }
 
 .microHeader {
@@ -183,16 +195,16 @@
 }
 
 .barContainer {
-  height: 6px;
+  height: 7px;
   background: var(--color-surface-4);
-  border-radius: 3px;
+  border-radius: 4px;
   position: relative;
   overflow: visible;
 }
 
 .barFill {
   height: 100%;
-  border-radius: 3px;
+  border-radius: 4px;
   transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -285,22 +297,51 @@
 @media (max-width: 640px) {
   .macroContent {
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
   }
+  
+  .macroCard { padding: 16px; }
   
   .macroChartSide {
     max-width: 100%;
+    min-height: 180px;
   }
   
   .macroLegendSide {
     width: 100%;
+    gap: 10px;
   }
+
+  .macroLegendItem {
+    padding: 10px 14px;
+    border-radius: 10px;
+  }
+
+  .macroName { font-size: 0.88rem; }
+
+  .macroLegendValues .val { font-size: 1rem; }
+  .macroLegendValues .target { font-size: 0.68rem; }
 
   .microGrid {
     grid-template-columns: 1fr;
+    gap: 14px;
   }
+
+  .microCard { padding: 16px; }
+  .microHeader { margin-bottom: 12px; padding-bottom: 10px; }
+  .microHeader h4 { font-size: 0.92rem; }
 
   .microChartSection {
     flex-direction: column;
+    gap: 12px;
+    margin-bottom: 18px;
   }
+
+  .progressBarRow { gap: 5px; }
+  .barInfo { font-size: 0.72rem; }
+  .barContainer { height: 7px; border-radius: 4px; }
+  .barFill { border-radius: 4px; }
+  .barDiff { font-size: 0.65rem; }
+
+  .header h3 { font-size: 0.95rem; }
 }

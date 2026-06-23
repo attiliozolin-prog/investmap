@@ -136,7 +136,23 @@
 .clearAll:hover { color: var(--color-text-2); }
 
 /* ──────────────────────────────────────────
-   Responsivo
+   Tablet (iPad Air 11" portrait — laptops >900px usam desktop)
+   ────────────────────────────────────────── */
+@media (min-width: 641px) and (max-width: 900px) {
+  .filterBar { flex-wrap: nowrap; gap: 8px; }
+  .searchWrapper { min-width: 200px; max-width: 260px; }
+  .chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .chips::-webkit-scrollbar { display: none; }
+}
+
+/* ──────────────────────────────────────────
+   Responsivo mobile
    ────────────────────────────────────────── */
 @media (max-width: 640px) {
   .header { flex-direction: column; }

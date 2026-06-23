@@ -95,7 +95,7 @@ export default function Assets() {
           <h2>Ativos</h2>
           <p style={{ marginTop: 4 }}>{activeAssets.length} ativo{activeAssets.length !== 1 ? 's' : ''} nesta carteira</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button
             className="btn btn-ghost"
             onClick={() => setShowHistory(true)}
@@ -134,7 +134,7 @@ export default function Assets() {
           )}
         </div>
 
-        <div className={styles.chips}>
+        <div className={styles.chips} style={{ overflowX: 'auto', flexWrap: 'nowrap', paddingBottom: '2px' }}>
           {classNames.map(cls => (
             <button
               key={cls}

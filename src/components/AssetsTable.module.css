@@ -137,7 +137,7 @@
 }
 
 .groupHeader:hover {
-  background: rgba(139, 92, 246, 0.08);
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.08), rgba(139, 92, 246, 0.03));
 }
 
 .groupHeaderContent {
@@ -394,6 +394,7 @@
 .actionBtnTransaction:hover {
   background: rgba(16, 185, 129, 0.1) !important;
   border-color: rgba(16, 185, 129, 0.4) !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.15);
 }
 
 /* ──────────────────────────────────────────
@@ -573,9 +574,9 @@
 
 .progressTrack {
   width: 48px;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 2px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-full);
   overflow: hidden;
 }
 
@@ -605,15 +606,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 4px 10px;
-  /* Sticky logo abaixo da navbar */
   position: sticky;
   top: var(--navbar-height);
-  background: var(--color-surface);
-  z-index: 41; /* Acima do thead (z-index 40) */
+  background: rgba(19, 19, 31, 0.85);
+  z-index: 41;
   border-bottom: 1px solid var(--color-border);
   margin-bottom: 0;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 /* Tema claro */
@@ -624,11 +624,11 @@
 /* ──────────────────────────────────────────
    Mobile: overflow-x auto + sem sticky thead
    ────────────────────────────────────────── */
-@media (max-width: 768px) {
+/* Tablet + mobile: scroll horizontal com touch inercial */
+@media (max-width: 1024px) {
   .tableWrapper {
-    /* Em mobile, permite scroll horizontal */
     overflow-x: auto;
-    /* Scrollbar fina e discreta */
+    -webkit-overflow-scrolling: touch; /* scroll inercial no iPadOS */
     scrollbar-width: thin;
     scrollbar-color: transparent transparent;
     transition: scrollbar-color 0.3s;
@@ -645,10 +645,193 @@
   .tableWrapper:hover::-webkit-scrollbar-thumb {
     background: var(--color-surface-3);
   }
-  /* Remove sticky dos th em mobile — overflow-x:auto quebraria o sticky */
+  /* Remove sticky dos th em tablet/mobile — overflow-x:auto quebraria o sticky */
   .tableWrapper table th {
     position: static !important;
     box-shadow: none;
+  }
+}
+
+/* ──────────────────────────────────────────
+   Mobile card-stack ≤ 640px
+   ────────────────────────────────────────── */
+@media (max-width: 640px) {
+
+  /* Wrapper vira contentor normal sem scroll horizontal */
+  .tableWrapper {
+    overflow-x: visible;
+  }
+
+  /* Tabela e thead ocultos — substituídos pelos cards */
+  .tableWrapper table {
+    display: block;
+  }
+  .tableWrapper table thead {
+    display: none;
+  }
+  .tableWrapper table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* ── Cabeçalho de grupo: card premium com gradiente ── */
+
+  /* Esconde TODAS as tds do grupo (alta especificidade para vencer .tableWrapper table td) */
+  .tableWrapper table tr.groupHeader td {
+    display: none !important;
+  }
+
+  /* Mostra APENAS a primeira td (título + controles) */
+  .tableWrapper table tr.groupHeader td:first-child {
+    display: flex !important;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.85rem 0.9rem !important;
+    background: transparent !important;
+    border-bottom: none !important;
+  }
+  .tableWrapper table tr.groupHeader td:first-child::before {
+    display: none !important;
+    content: none !important;
+  }
+
+  /* O <tr> em si: card com gradiente e borda lateral roxa */
+  .tableWrapper table tr.groupHeader {
+    display: block !important;
+    margin-top: 1.25rem;
+    margin-bottom: 0.25rem;
+    border-radius: 0.7rem;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-left: 3px solid var(--color-primary);
+    background: linear-gradient(135deg,
+      rgba(139, 92, 246, 0.14) 0%,
+      rgba(139, 92, 246, 0.04) 100%
+    );
+    overflow: hidden;
+    cursor: default;
+  }
+  .tableWrapper table tr.groupHeader:hover {
+    background: linear-gradient(135deg,
+      rgba(139, 92, 246, 0.22) 0%,
+      rgba(139, 92, 246, 0.08) 100%
+    );
+  }
+
+  /* Títulos e ícones do grupo */
+  .groupHeaderContent { gap: 0.4rem; flex: 1; }
+  .groupHeaderTitle {
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #c4b5fd;
+    flex: 1;
+  }
+  .dragIcon { display: none; } /* drag inútil em touch */
+  .collapseBtn {
+    margin-left: auto;
+    color: var(--color-primary-light);
+    background: rgba(139,92,246,0.12);
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .collapsedCount {
+    background: rgba(139,92,246,0.15);
+    border-color: rgba(139,92,246,0.3);
+    color: var(--color-primary-light);
+  }
+
+  /* ── Cada linha de ativo vira um card ── */
+  .row {
+    display: block;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: var(--color-surface-2);
+    margin: 0.45rem 0;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .tableWrapper table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 1rem;
+    border: none;
+    font-size: 0.84rem;
+    color: var(--color-text);
+  }
+  .tableWrapper table td::before {
+    content: attr(data-label);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-3);
+    flex-shrink: 0;
+    margin-right: auto;
+    padding-right: 0.75rem;
+  }
+  .tableWrapper table td:empty { display: none; }
+
+  /* Ticker: destaque gradiente no topo do card */
+  .tableWrapper table td:first-child {
+    background: linear-gradient(135deg, rgba(139,92,246,0.1) 0%, rgba(139,92,246,0.03) 100%);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 0.75rem 1rem;
+    justify-content: flex-start;
+  }
+  .tableWrapper table td:first-child::before { display: none; }
+  .tickerCell { flex-direction: row; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+  .ticker { font-size: 1.05rem; font-weight: 800; }
+  .subclassBadge { font-size: 0.6rem; }
+  .info { font-size: 0.7rem; }
+
+  /* Alinhamento: colunas numéricas à direita */
+  .tableWrapper table td.right,
+  .tableWrapper table td.center {
+    text-align: right;
+    justify-content: space-between;
+  }
+
+  /* Lucro/prejuízo mais visível */
+  .profitLoss { flex-direction: row; align-items: baseline; gap: 0.35rem; }
+  .profitPercent { font-size: 0.7rem; }
+
+  /* Célula de ações: sempre visível, respiro premium */
+  .actionsCell {
+    opacity: 1 !important;
+    border-top: 1px solid rgba(255,255,255,0.04);
+    background: rgba(255,255,255,0.015);
+    justify-content: flex-end;
+    padding: 0.6rem 1rem !important;
+  }
+  .actionsCell::before { display: none; }
+  .actions { gap: 0.6rem; }
+  .actionBtn { width: 36px !important; height: 36px !important; padding: 8px !important; border-radius: 10px !important; }
+
+  /* Toolbar inline: cotações à esquerda, botão compacto à direita */
+  .tableToolbar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem 0.25rem;
+    border-bottom: none;
+  }
+  .tableToolbarLeft { justify-content: flex-start; }
+  .lastSync { font-size: 0.68rem; }
+  .syncBtn {
+    width: auto;
+    font-size: 0.72rem !important;
+    padding: 0.35rem 0.75rem !important;
+    min-height: 32px;
+    gap: 4px !important;
   }
 }
 
