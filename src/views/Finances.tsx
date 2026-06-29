@@ -270,6 +270,7 @@ export default function Finances() {
                   {extras.length>0&&<tfoot><tr><td colSpan={2} className={styles.totalLabel}>TOTAL EXTRAS</td><td colSpan={2} className={styles.totalValue}>{fmt(totalExtras)}</td></tr></tfoot>}
                 </table>
               </Section>
+              </div>
 
               {/* ── Total de Impostos — somente conferência, sem duplicar no total ── */}
               {impostos.length > 0 && (
@@ -305,7 +306,6 @@ export default function Finances() {
                   </table>
                 </Section>
               )}
-              </div>
 
               <div className={mobileSection !== 'income' ? styles.mobileHidden : ''}>
               <Section title="Entrada e Saída" total={null} accent="#10B981" onAdd={()=>setAddSection('income')}>
