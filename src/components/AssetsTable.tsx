@@ -5,6 +5,7 @@ import { AssetWithCalcs } from '@/types';
 import { formatCurrency, formatPercent, formatPercentAbs } from '@/lib/calculations';
 import styles from './AssetsTable.module.css';
 import { Pencil, Trash2, ArrowUp, ArrowDown, Minus, RefreshCw, AlertCircle, PlusCircle, GripVertical, Info, History, ChevronDown, ChevronRight, TrendingUp, ChevronsUpDown } from 'lucide-react';
+import HelpTip from './HelpTip';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import TransactionModal from './TransactionModal';
@@ -418,7 +419,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                 onClick={() => handleSort('rebalanceAmount')}
                 title="Ordenar por valor a rebalancear"
               >
-                <span>Rebalancear</span><SortIcon field="rebalanceAmount" />
+                <span>Rebalancear</span><HelpTip text="Sugestão automática baseada na sua estratégia. Valores positivos indicam quanto comprar; negativos, quanto reduzir." /><SortIcon field="rebalanceAmount" />
               </th>
               <th>Status</th>
               <th className={styles.center} title="Ações"></th>

@@ -40,7 +40,11 @@ export default function AuthPage() {
     } else if (mode === 'forgot-password') {
       const { error } = await requestPasswordReset(email);
       if (error) setError(translateError(error));
-      else setSuccess('Link de recuperação enviado para o seu e-mail!');
+      else {
+        const parts = email.split('@');
+        const masked = parts[0].slice(0, 3) + '***@' + parts[1];
+        setSuccess(`Link de recuperação enviado para ${masked}`);
+      }
     }
 
     setLoading(false);

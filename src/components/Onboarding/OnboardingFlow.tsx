@@ -294,6 +294,13 @@ export default function OnboardingFlow({ onFinish }: OnboardingFlowProps) {
                 {selectedProfile ? 'Confirmar perfil' : 'Selecione um perfil'} <ArrowRight size={18} />
               </button>
             </div>
+            <button
+              className={styles.ghostButton}
+              onClick={() => { setSelectedProfile('moderado'); handleNext(); }}
+              style={{ marginTop: '0.5rem', fontSize: '0.8rem', opacity: 0.7, width: '100%', justifyContent: 'center' }}
+            >
+              Pular e configurar depois
+            </button>
           </div>
         )}
 

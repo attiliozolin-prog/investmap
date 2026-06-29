@@ -9,9 +9,11 @@ import { AssetWithCalcs, Asset } from '@/types';
 import styles from './Assets.module.css';
 import { Plus, Search, X, BookOpen } from 'lucide-react';
 import PortfolioHistory from '@/components/PortfolioHistory';
+import { useToast } from '@/components/Toast';
 
 export default function Assets() {
   const { activeStrategy, activeAssets, activeStrategyId, addAsset, updateAsset, deleteAsset } = useApp();
+  const { toast } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -65,8 +67,10 @@ export default function Assets() {
   const handleSave = (data: Omit<Asset, 'id' | 'updatedAt'>) => {
     if (editingAsset) {
       updateAsset(editingAsset.id, data);
+      toast(`${data.ticker} atualizado com sucesso`);
     } else {
       addAsset(data);
+      toast(`${data.ticker} adicionado à carteira`);
     }
     setEditingAsset(null);
     setShowModal(false);
@@ -74,7 +78,9 @@ export default function Assets() {
 
   // Encerra definitivamente um ativo — marca isArchived=true no banco
   const handleArchive = (id: string) => {
+    const ticker = activeAssets.find(a => a.id === id)?.ticker ?? 'Ativo';
     updateAsset(id, { isArchived: true });
+    toast(`${ticker} encerrado com sucesso`);
     setEditingAsset(null);
     setShowModal(false);
   };
@@ -102,7 +108,7 @@ export default function Assets() {
             title="Ver histórico geral, IR e compensações"
           >
             <BookOpen size={16} />
-            Histórico Geral
+            Histórico & IR
           </button>
           <button
             id="add-asset-btn"

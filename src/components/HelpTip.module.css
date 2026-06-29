@@ -1,0 +1,81 @@
+/* ── HelpTip ─────────────────────────────────────────────────────────────── */
+
+.helpTipWrapper {
+  display: inline-flex;
+  position: relative;
+}
+
+.helpTipBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border, #252538);
+  background: var(--color-surface-2, #14142A);
+  color: var(--color-text-3, #6B6B80);
+  font-size: 0.625rem;
+  font-weight: 700;
+  cursor: help;
+  transition: all 0.15s;
+  margin-left: 4px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.helpTipBtn:hover {
+  border-color: var(--color-primary, #8B5CF6);
+  color: var(--color-primary-light, #A78BFA);
+  background: var(--color-primary-glow, rgba(139,92,246,0.08));
+}
+
+.helpTipPopover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-surface, #1A1A2E);
+  border: 1px solid var(--color-border, #252538);
+  border-radius: var(--radius-sm, 8px);
+  padding: 10px 14px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--color-text-2, #B0B0C0);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  min-width: 200px;
+  max-width: 300px;
+  z-index: 100;
+  animation: helpTipIn 0.15s ease;
+  pointer-events: none;
+  white-space: normal;
+}
+
+.helpTipPopover::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--color-border, #252538);
+}
+
+@keyframes helpTipIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@media (max-width: 600px) {
+  .helpTipPopover {
+    left: auto;
+    right: -8px;
+    transform: none;
+    min-width: 180px;
+  }
+  .helpTipPopover::after {
+    left: auto;
+    right: 12px;
+    transform: none;
+  }
+}

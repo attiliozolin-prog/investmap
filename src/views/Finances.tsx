@@ -143,9 +143,23 @@ export default function Finances() {
 
       {!activeMonth ? (
         <div className={styles.emptyState}>
-          <Clock size={48}/>
-          <h2>Nenhum mês criado ainda</h2>
-          <p>Inicie seu controle financeiro criando o primeiro mês.</p>
+          <Wallet size={48}/>
+          <h2>Organize suas finanças mensais</h2>
+          <p style={{ maxWidth: 400, margin: '0.5rem auto 1rem', lineHeight: 1.6 }}>
+            Crie o primeiro mês para começar a registrar seus boletos, assinaturas e receitas.
+            O InvestMap calcula automaticamente sua sobra, gastos por categoria e tempo de sobrevivência.
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center', margin: '1rem 0 1.5rem' }}>
+            {[
+              { icon: <Receipt size={16}/>, label: 'Boletos & Contas' },
+              { icon: <CreditCard size={16}/>, label: 'Assinaturas' },
+              { icon: <ArrowDownCircle size={16}/>, label: 'Receitas' },
+            ].map((item, i) => (
+              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20, background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', fontSize: '0.8rem', color: 'var(--color-text-2)' }}>
+                {item.icon} {item.label}
+              </span>
+            ))}
+          </div>
           <button className={styles.btnPrimary} onClick={()=>setIsMonthModalOpen(true)}><Plus size={18}/> Criar Primeiro Mês</button>
         </div>
       ) : (
@@ -225,6 +239,9 @@ export default function Finances() {
 
               <div className={mobileSection !== 'assinatura' ? styles.mobileHidden : ''}>
               <Section title="Assinaturas — Débito Automático" total={totalAssinaturas} accent="#F59E0B" onAdd={()=>setAddSection('assinatura')}>
+                <p style={{ fontSize: '0.72rem', color: 'var(--color-text-3)', padding: '0 0.85rem 0.5rem', fontStyle: 'italic' }}>
+                  ℹ️ Estes valores não são somados ao total de gastos pois já estão incluídos na fatura do cartão de crédito.
+                </p>
                 <table className={styles.table}>
                   <thead><tr><th>Descrição</th><th>Categoria</th><th>Cartão</th><th>Valor</th><th></th></tr></thead>
                   <tbody>
@@ -799,7 +816,8 @@ function DeleteMonthModal({monthName,onClose,onConfirm}:{monthName:string;onClos
 }
 
 // ─── Transaction Modal ────────────────────────────────────────────────────────
-const SECTION_LABELS: Record<FinanceSection,string> = {boleto:'Boleto',assinatura:'Assinatura',extra:'Gasto Extra',income:'Receita'};
+const SECTION_LABELS: Record<FinanceSection,string> = {boleto:'Novo Boleto',assinatura:'Nova Assinatura',extra:'Novo Gasto Extra',income:'Nova Receita'};
+const SECTION_ICONS: Record<FinanceSection,React.ReactNode> = {boleto:<Receipt size={18} style={{color:'#3B82F6'}}/>,assinatura:<CreditCard size={18} style={{color:'#F59E0B'}}/>,extra:<ShoppingBag size={18} style={{color:'#FF1493'}}/>,income:<ArrowDownCircle size={18} style={{color:'#10B981'}}/>};
 
 function TxModal({section,monthId,existing,onClose,onSave}:{
   section: FinanceSection;
@@ -845,7 +863,7 @@ function TxModal({section,monthId,existing,onClose,onSave}:{
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={e=>e.stopPropagation()}>
         <div className={styles.modalHead}>
-          <h3>{isEdit?`Editar ${SECTION_LABELS[section]}`:`+ ${SECTION_LABELS[section]}`}</h3>
+          <h3 style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>{SECTION_ICONS[section]}{isEdit?`Editar ${SECTION_LABELS[section].replace('Nov','Nov')}`:`${SECTION_LABELS[section]}`}</h3>
           <button className={styles.closeBtn} onClick={onClose}><X size={20}/></button>
         </div>
         <form className={styles.modalBody} onSubmit={handleSubmit}>

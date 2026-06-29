@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { AppProvider, useApp } from '@/context/AppContext';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { ToastProvider } from '@/components/Toast';
 import Navbar from '@/components/Navbar';
 import Dashboard from '@/views/Dashboard';
 import Assets from '@/views/Assets';
@@ -91,7 +92,9 @@ export default function Home() {
       <AuthProvider>
         <AppProvider>
           <FinanceProvider>
-            <AppContent />
+            <ToastProvider>
+              <AppContent />
+            </ToastProvider>
           </FinanceProvider>
         </AppProvider>
       </AuthProvider>

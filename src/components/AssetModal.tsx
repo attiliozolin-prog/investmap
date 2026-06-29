@@ -5,6 +5,7 @@ import { Asset, StrategyCategory } from '@/types';
 import styles from './AssetModal.module.css';
 import { X, RefreshCw, Calculator, Landmark, TrendingUp, Archive } from 'lucide-react';
 import TickerSearch from './TickerSearch';
+import HelpTip from './HelpTip';
 import { fetchAssetPrice, detectPriceMode } from '@/lib/brapi';
 
 interface Props {
@@ -307,6 +308,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
                 <div className="form-group">
                   <label className="label" htmlFor="asset-avgprice">
                     Preço Médio
+                    <HelpTip text="Quanto você pagou em média por cada ação ou cota. É o custo total de aquisição dividido pela quantidade." />
                     <span className={styles.labelHint}>por ação</span>
                   </label>
                   <input
@@ -332,7 +334,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
                 </div>
               ) : (
                 <div className="form-group">
-                  <label className="label" htmlFor="asset-invested">Custo Total (R$) *</label>
+                  <label className="label" htmlFor="asset-invested">Custo Total (R$) * <HelpTip text="Soma de tudo que você investiu neste ativo. Se preencher Quantidade e Preço Médio, será calculado automaticamente." /></label>
                   <input
                     id="asset-invested"
                     className="input"
@@ -372,6 +374,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
                 <div className="form-group">
                   <label className="label" htmlFor="asset-price">
                     Preço de Mercado
+                    <HelpTip text="Cotação atual do ativo na bolsa. No modo Auto, é atualizado pela Brapi. No modo Manual, você insere o valor." />
                     {priceMode === 'auto' && (
                       <button
                         type="button"
@@ -409,7 +412,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
                   </div>
                 ) : (
                   <div className="form-group">
-                    <label className="label" htmlFor="asset-current">Valor Atual (R$) *</label>
+                    <label className="label" htmlFor="asset-current">Valor Atual (R$) * <HelpTip text="Valor de mercado total deste ativo hoje. Se preencher Quantidade e Preço de Mercado, será calculado automaticamente." /></label>
                     <input
                       ref={currentInputRef}
                       id="asset-current"

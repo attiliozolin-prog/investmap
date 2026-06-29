@@ -6,10 +6,12 @@ import { useApp } from '@/context/AppContext';
 import { Download, Upload, AlertTriangle } from 'lucide-react';
 import styles from './Profile.module.css';
 import B3ImportSection from '@/components/profile/B3ImportSection';
+import { useToast } from '@/components/Toast';
 
 export default function Profile() {
   const { user, updateUser, deleteAccountData } = useAuth();
-  const { strategies, assets, importData } = useApp();
+  const { strategies, assets, importData, dbSynced } = useApp();
+  const { toast } = useToast();
   const importRef = useRef<HTMLInputElement>(null);
   
   const [name, setName] = useState(user?.user_metadata?.full_name ?? '');
@@ -45,6 +47,7 @@ export default function Profile() {
     a.download = `investmap-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    toast('Backup exportado com sucesso');
   };
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,15 +58,15 @@ export default function Profile() {
       try {
         const data = JSON.parse(ev.target?.result as string);
         if (!data.strategies || !data.assets) {
-          alert('Arquivo inválido. Certifique-se de usar um backup exportado pelo InvestMap.');
+          toast('Arquivo inválido. Certifique-se de usar um backup exportado pelo InvestMap.', 'error');
           return;
         }
         if (confirm(`Importar ${data.strategies.length} carteira(s) e ${data.assets.length} ativo(s)? Os dados existentes serão mantidos.`)) {
           importData(data.strategies, data.assets);
-          alert('Dados importados com sucesso!');
+          toast(`${data.strategies.length} carteira(s) e ${data.assets.length} ativo(s) importados com sucesso`);
         }
       } catch {
-        alert('Erro ao ler o arquivo. Verifique se é um JSON válido.');
+        toast('Erro ao ler o arquivo. Verifique se é um JSON válido.', 'error');
       }
     };
     reader.readAsText(file);
@@ -157,6 +160,7 @@ export default function Profile() {
           <h3>Portabilidade de Dados</h3>
           <p className={styles.helpText} style={{ marginBottom: '1.5rem', display: 'block' }}>
             Baixe seus dados para backup ou importe de um arquivo anterior.
+            {dbSynced && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 8, color: '#10B981', fontSize: '0.75rem', fontWeight: 500 }}>● Dados sincronizados</span>}
           </p>
           <div className={styles.buttonGroup}>
             <button className={styles.secondaryBtn} onClick={handleExport}>
@@ -174,7 +178,7 @@ export default function Profile() {
         </div>
       </div>
 
-      {user?.email === 'attiliozolin@gmail.com' && (
+      {(process.env.NEXT_PUBLIC_ADMIN_EMAILS || '').split(',').includes(user?.email ?? '') && (
         <div className={styles.card}>
           <div className={styles.formSection}>
             <h3>Modo Desenvolvedor</h3>

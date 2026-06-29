@@ -12,6 +12,7 @@ import GoalWidget from '@/components/GoalWidget';
 import styles from './Dashboard.module.css';
 import { AlertTriangle, TrendingUp, CalendarClock } from 'lucide-react';
 import { formatCurrency } from '@/lib/calculations';
+import FirstUseTip from '@/components/FirstUseTip';
 
 // Recharts usa window/ResizeObserver — deve renderizar SOMENTE no cliente
 const AllocationChart = dynamic(() => import('@/components/AllocationChart'), {
@@ -38,7 +39,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
 
   // Salva o snapshot diário automaticamente quando montamos a Dashboard (e temos dados da summary)
   useEffect(() => {
-    if (summary && activeStrategy) {
+    if (summary && activeStrategy && summary.totalValue > 0) {
       const today = new Date().toISOString().split('T')[0];
       
       // Evita loop: verifica se já existe um snapshot para hoje com os mesmos valores
@@ -82,13 +83,37 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
 
   if (!summary || activeAssets.length === 0) {
     return (
-      <div className="empty-state">
-        <TrendingUp size={48} />
-        <h3>Sua carteira está vazia</h3>
-        <p>Adicione seus ativos para começar a acompanhar sua carteira.</p>
-        <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => onNavigate('assets')}>
-          Adicionar ativos
-        </button>
+      <div className="empty-state" style={{ maxWidth: 520, textAlign: 'left', padding: '2.5rem 2rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <TrendingUp size={48} style={{ color: 'var(--color-primary-light)', marginBottom: 12 }} />
+          <h3 style={{ margin: 0 }}>Vamos começar sua jornada</h3>
+          <p style={{ color: 'var(--color-text-3)', marginTop: 6 }}>Configure em 3 passos simples:</p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {[
+            { step: 1, icon: '🎯', title: 'Defina sua estratégia', desc: 'Escolha como alocar seu patrimônio entre classes de ativos.', action: () => onNavigate('strategy'), label: 'Configurar estratégia', done: !!activeStrategy },
+            { step: 2, icon: '📊', title: 'Adicione seus ativos', desc: 'Cadastre ações, FIIs, ETFs e renda fixa que você possui hoje.', action: () => onNavigate('assets'), label: 'Adicionar ativos', done: false },
+            { step: 3, icon: '⚖️', title: 'Acompanhe e rebalanceie', desc: 'O InvestMap calcula automaticamente onde investir para manter sua estratégia.', action: undefined, label: undefined, done: false },
+          ].map(item => (
+            <div key={item.step} style={{
+              display: 'flex', gap: '1rem', alignItems: 'flex-start',
+              padding: '1rem', borderRadius: 'var(--radius-md)', background: 'var(--color-surface-2)',
+              border: '1px solid var(--color-border)', opacity: item.done ? 0.5 : 1
+            }}>
+              <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>{item.icon}</span>
+              <div style={{ flex: 1 }}>
+                <strong style={{ fontSize: '0.9rem' }}>{item.step}. {item.title}</strong>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-3)', margin: '4px 0 0' }}>{item.desc}</p>
+              </div>
+              {item.action && !item.done && (
+                <button className="btn btn-primary btn-sm" onClick={item.action} style={{ whiteSpace: 'nowrap', alignSelf: 'center' }}>
+                  {item.label}
+                </button>
+              )}
+              {item.done && <span style={{ color: '#10B981', fontWeight: 600, fontSize: '0.8rem', alignSelf: 'center' }}>✓ Feito</span>}
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -96,6 +121,9 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
   const { assetsWithCalcs, categorySummaries, needsRebalancing } = summary;
   const buyAssets  = assetsWithCalcs.filter((a) => a.action === 'buy');
   const sellAssets = assetsWithCalcs.filter((a) => a.action === 'sell');
+
+  // Tour de primeiro uso
+  const showFirstUseTip = assetsWithCalcs.length > 0;
 
   // ── Boletos próximos do vencimento (≤ 7 dias) ─────────────────────────────
   const upcomingBoletos = useMemo(() => {
@@ -147,6 +175,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
 
   return (
     <div className={styles.wrapper}>
+      {showFirstUseTip && <FirstUseTip />}
       {/* Rebalancing alert */}
       {needsRebalancing && (
         <div className={styles.alert}>

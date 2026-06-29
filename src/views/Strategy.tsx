@@ -7,6 +7,7 @@ import { CHART_COLORS } from '@/lib/calculations';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import styles from './Strategy.module.css';
 import { Plus, Trash2, Save, AlertCircle, CheckCircle, Pencil, Check, X } from 'lucide-react';
+import HelpTip from '@/components/HelpTip';
 import DeleteStrategyModal from '@/components/DeleteStrategyModal';
 
 export default function Strategy() {
@@ -196,7 +197,7 @@ export default function Strategy() {
             />
           </div>
           <div className="form-group">
-            <label className="label" htmlFor="strat-tolerance">Tolerância de desvio (%)</label>
+            <label className="label" htmlFor="strat-tolerance">Tolerância de desvio (%) <HelpTip text="Quando qualquer subclasse se desviar mais do que este percentual da meta, o Dashboard mostrará um alerta de rebalanceamento." /></label>
             <input
               id="strat-tolerance"
               className="input"
@@ -226,7 +227,7 @@ export default function Strategy() {
               <CheckCircle size={14} /> Salvo com sucesso
             </span>
           )}
-          <button id="save-strategy-btn" className="btn btn-primary" onClick={handleSaveStrategy}>
+          <button id="save-strategy-btn" className="btn btn-primary" onClick={handleSaveStrategy} disabled={!isValid && categories.length > 0} title={!isValid && categories.length > 0 ? `Total est\u00e1 em ${totalTarget.toFixed(1)}%. Ajuste para 100% antes de salvar.` : ''}>
             <Save size={15} /> Salvar
           </button>
         </div>
