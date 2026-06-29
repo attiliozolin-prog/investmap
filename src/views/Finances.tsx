@@ -7,6 +7,7 @@ import { useApp } from '@/context/AppContext';
 import { FinanceTransaction, FinanceSection, FinancePaymentStatus, FinanceCpfCnpj } from '@/types';
 import { Plus, Trash2, X, Wallet, ShieldAlert, Edit2, Clock, Tags, Receipt, CreditCard, ShoppingBag, ArrowDownCircle } from 'lucide-react';
 import styles from './Finances.module.css';
+import { useToast } from '@/components/Toast';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 const fmt = (v: number) =>
@@ -32,6 +33,7 @@ const CHART_COLORS = ['#3B82F6','#F59E0B','#FF1493','#10B981','#8B5CF6','#EF4444
 export default function Finances() {
   const { months, transactions, categories, activeMonthId, setActiveMonthId, createMonth, deleteMonth, addTransaction, deleteTransaction, updateTransaction } = useFinance();
   const { assets } = useApp();
+  const { toast } = useToast();
 
   const [isMonthModalOpen, setIsMonthModalOpen] = useState(false);
   const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
@@ -92,6 +94,9 @@ export default function Finances() {
         const { id, createdAt, monthId, ...rest } = t;
         addTransaction({ ...rest, monthId: newMonth.id, paymentStatus: t.section === 'boleto' ? 'pending' : t.paymentStatus });
       });
+      toast(`Mês criado com ${selectedTxIds.length} lançamento(s) importado(s)`);
+    } else {
+      toast('Novo mês criado com sucesso');
     }
     setIsMonthModalOpen(false);
   };
@@ -227,7 +232,7 @@ export default function Finances() {
                         <td data-label="Status"><button className={`${styles.statusBtn} ${STATUS_CSS[tx.paymentStatus||'pending']}`} onClick={()=>toggleStatus(tx)}>{STATUS_LABELS[tx.paymentStatus||'pending']}</button></td>
                         <td className={styles.actionCell}>
                           <button className={styles.editBtn} onClick={()=>setEditTx(tx)} title="Editar"><Edit2 size={13}/></button>
-                          <button className={styles.delBtn} onClick={()=>{if(confirm('Apagar?'))deleteTransaction(tx.id)}} title="Apagar"><Trash2 size={13}/></button>
+                          <button className={styles.delBtn} onClick={()=>{deleteTransaction(tx.id);toast('Lançamento removido');}} title="Apagar"><Trash2 size={13}/></button>
                         </td>
                       </tr>
                     ))}
@@ -254,7 +259,7 @@ export default function Finances() {
                         <td data-label="Valor" className={styles.valueCell}>{fmt(tx.value)}</td>
                         <td className={styles.actionCell}>
                           <button className={styles.editBtn} onClick={()=>setEditTx(tx)} title="Editar"><Edit2 size={13}/></button>
-                          <button className={styles.delBtn} onClick={()=>{if(confirm('Apagar?'))deleteTransaction(tx.id)}} title="Apagar"><Trash2 size={13}/></button>
+                          <button className={styles.delBtn} onClick={()=>{deleteTransaction(tx.id);toast('Lançamento removido');}} title="Apagar"><Trash2 size={13}/></button>
                         </td>
                       </tr>
                     ))}
@@ -279,7 +284,7 @@ export default function Finances() {
                         <td data-label="Status"><button className={`${styles.statusBtn} ${STATUS_CSS[tx.paymentStatus||'pending']}`} onClick={()=>toggleStatus(tx)}>{STATUS_LABELS[tx.paymentStatus||'pending']}</button></td>
                         <td className={styles.actionCell}>
                           <button className={styles.editBtn} onClick={()=>setEditTx(tx)} title="Editar"><Edit2 size={13}/></button>
-                          <button className={styles.delBtn} onClick={()=>{if(confirm('Apagar?'))deleteTransaction(tx.id)}} title="Apagar"><Trash2 size={13}/></button>
+                          <button className={styles.delBtn} onClick={()=>{deleteTransaction(tx.id);toast('Lançamento removido');}} title="Apagar"><Trash2 size={13}/></button>
                         </td>
                       </tr>
                     ))}
@@ -336,7 +341,7 @@ export default function Finances() {
                         <td data-label="Valor" className={`${styles.valueCell} ${styles.incomeValue}`}>{fmt(tx.value)}</td>
                         <td className={styles.actionCell}>
                           <button className={styles.editBtn} onClick={()=>setEditTx(tx)} title="Editar"><Edit2 size={13}/></button>
-                          <button className={styles.delBtn} onClick={()=>{if(confirm('Apagar?'))deleteTransaction(tx.id)}} title="Apagar"><Trash2 size={13}/></button>
+                          <button className={styles.delBtn} onClick={()=>{deleteTransaction(tx.id);toast('Lançamento removido');}} title="Apagar"><Trash2 size={13}/></button>
                         </td>
                       </tr>
                     ))}
@@ -439,12 +444,20 @@ export default function Finances() {
       )}
       {addSection && activeMonthId && (
         <TxModal section={addSection} monthId={activeMonthId} onClose={()=>setAddSection(null)}
-          onSave={(data)=>{addTransaction(data);setAddSection(null);}}/>
+          onSave={(data)=>{
+            addTransaction(data);
+            toast('Lançamento adicionado com sucesso');
+            setAddSection(null);
+          }}/>
       )}
       {editTx && (
         <TxModal section={editTx.section} monthId={editTx.monthId} existing={editTx}
           onClose={()=>setEditTx(null)}
-          onSave={(data)=>{updateTransaction(editTx.id, data as Partial<FinanceTransaction>);setEditTx(null);}}/>
+          onSave={(data)=>{
+            updateTransaction(editTx.id, data as Partial<FinanceTransaction>);
+            toast('Lançamento atualizado com sucesso');
+            setEditTx(null);
+          }}/>
       )}
     </div>
   );

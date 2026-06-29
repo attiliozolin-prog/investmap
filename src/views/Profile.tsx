@@ -26,6 +26,7 @@ export default function Profile() {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [pendingImportData, setPendingImportData] = useState<{strategies: unknown[]; assets: unknown[]} | null>(null);
 
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== 'DELETAR') return;
@@ -61,10 +62,7 @@ export default function Profile() {
           toast('Arquivo inválido. Certifique-se de usar um backup exportado pelo InvestMap.', 'error');
           return;
         }
-        if (confirm(`Importar ${data.strategies.length} carteira(s) e ${data.assets.length} ativo(s)? Os dados existentes serão mantidos.`)) {
-          importData(data.strategies, data.assets);
-          toast(`${data.strategies.length} carteira(s) e ${data.assets.length} ativo(s) importados com sucesso`);
-        }
+        setPendingImportData({ strategies: data.strategies, assets: data.assets });
       } catch {
         toast('Erro ao ler o arquivo. Verifique se é um JSON válido.', 'error');
       }
@@ -288,6 +286,41 @@ export default function Profile() {
                 style={{ marginTop: 0, flex: 1 }}
               >
                 {deleteLoading ? 'Excluindo...' : 'Confirmar Exclusão'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {pendingImportData && (
+        <div className={styles.modalOverlay} onClick={() => setPendingImportData(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', padding: '1.25rem 1.5rem 0' }}>Confirmar Importação</h3>
+            <div style={{ padding: '1.25rem 1.5rem' }}>
+              <p style={{ margin: '0 0 0.75rem', color: 'var(--color-text-2)', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                Você está prestes a importar:
+              </p>
+              <ul style={{ margin: '0 0 1rem 1.2rem', color: 'var(--color-text)', fontSize: '0.9rem', lineHeight: 2 }}>
+                <li><strong>{pendingImportData.strategies.length}</strong> carteira(s)</li>
+                <li><strong>{pendingImportData.assets.length}</strong> ativo(s)</li>
+              </ul>
+              <p style={{ margin: 0, color: 'var(--color-text-3)', fontSize: '0.8rem' }}>
+                Os dados existentes serão mantidos — não há sobreposição.
+              </p>
+            </div>
+            <div className={styles.modalActions}>
+              <button className={styles.cancelBtn} onClick={() => setPendingImportData(null)}>
+                Cancelar
+              </button>
+              <button
+                className={styles.secondaryBtn}
+                style={{ flex: 1 }}
+                onClick={() => {
+                  importData(pendingImportData.strategies as Parameters<typeof importData>[0], pendingImportData.assets as Parameters<typeof importData>[1]);
+                  toast(`${pendingImportData.strategies.length} carteira(s) e ${pendingImportData.assets.length} ativo(s) importados com sucesso`);
+                  setPendingImportData(null);
+                }}
+              >
+                Confirmar Importação
               </button>
             </div>
           </div>

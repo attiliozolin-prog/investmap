@@ -419,9 +419,9 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
                 onClick={() => handleSort('rebalanceAmount')}
                 title="Ordenar por valor a rebalancear"
               >
-                <span>Rebalancear</span><HelpTip text="Sugestão automática baseada na sua estratégia. Valores positivos indicam quanto comprar; negativos, quanto reduzir." /><SortIcon field="rebalanceAmount" />
+                <span>Rebalancear</span><SortIcon field="rebalanceAmount" />
               </th>
-              <th>Status</th>
+              <th><span>Status</span><HelpTip text="Diagnóstico do ativo baseado na sua estratégia: Comprar (abaixo da meta), Vender (acima da meta) ou Manter (dentro da tolerância de desvio)." /></th>
               <th className={styles.center} title="Ações"></th>
             </tr>
           </thead>
