@@ -12,10 +12,9 @@ import {
 
 // ── Tab definitions (ícones reaproveitados do mobile) ─────────────────────────
 const TABS = [
-  { id: 'dashboard', label: 'Dashboard',  Icon: LayoutDashboard },
-  { id: 'assets',    label: 'Ativos',     Icon: Briefcase },
-  { id: 'strategy',  label: 'Estratégia', Icon: Target },
-  { id: 'finances',  label: 'Finanças',   Icon: Wallet },
+  { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
+  { id: 'assets',    label: 'Ativos',    Icon: Briefcase },
+  { id: 'finances',  label: 'Finanças',  Icon: Wallet },
 ];
 
 export default function Navbar({ activeTab, onTabChange }: {
@@ -191,17 +190,42 @@ export default function Navbar({ activeTab, onTabChange }: {
                           {s.name}
                         </button>
                       ))}
+                      <div className={styles.strategyDropdownDivider} />
+                      <button
+                        className={styles.strategyItem}
+                        onClick={() => { onTabChange('strategy'); setShowStrategies(false); }}
+                      >
+                        <Target size={13} style={{ opacity: 0.7 }} />
+                        <span>Configurar Estratégia</span>
+                      </button>
                     </div>
                   )}
                 </>
               ) : (
-                /* Badge informativo — não é clicável */
-                <div className={styles.strategyBadge}>
+                /* Badge único — clicável para acessar estratégia */
+                <button
+                  className={styles.strategyBtn}
+                  onClick={() => setShowStrategies(!showStrategies)}
+                >
                   <BarChart3 size={14} className={styles.strategyBtnIcon} />
                   <div className={styles.strategyBtnContent}>
                     <span className={styles.strategyLabel}>Carteira</span>
                     <span className={styles.strategyName}>{activeStrategy?.name ?? 'Minha Carteira'}</span>
                   </div>
+                  <ChevronDown size={13} className={`${styles.strategyChevron} ${showStrategies ? styles.chevronUp : ''}`} />
+                </button>
+              )}
+
+              {/* Dropdown para badge único */}
+              {!multipleStrategies && showStrategies && (
+                <div className={styles.strategyDropdown}>
+                  <button
+                    className={styles.strategyItem}
+                    onClick={() => { onTabChange('strategy'); setShowStrategies(false); }}
+                  >
+                    <Target size={13} style={{ opacity: 0.7 }} />
+                    <span>Configurar Estratégia</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -271,6 +295,13 @@ export default function Navbar({ activeTab, onTabChange }: {
           <div className={styles.mobileMenuOverlay} onClick={() => setShowMobileMenu(false)}>
             <div className={styles.mobileMenu} onClick={(e) => e.stopPropagation()}>
               <div className={styles.mobileMenuHeader}>Preferências</div>
+              <button className={styles.strategyItem} onClick={() => { onTabChange('strategy'); setShowMobileMenu(false); }}>
+                <div className={styles.menuItemInner}>
+                  <Target size={18} />
+                  <span>Estratégia da Carteira</span>
+                </div>
+              </button>
+              <div className={styles.menuDivider} />
               <button className={styles.strategyItem} onClick={() => { toggleTheme(); setShowMobileMenu(false); }}>
                 <div className={styles.menuItemInner}>
                   {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
@@ -318,10 +349,6 @@ export default function Navbar({ activeTab, onTabChange }: {
         <button className={`${styles.mobileTabItem} ${activeTab === 'assets' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('assets')}>
           <Briefcase className={styles.mobileTabIcon} />
           <span>Ativos</span>
-        </button>
-        <button className={`${styles.mobileTabItem} ${activeTab === 'strategy' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('strategy')}>
-          <Target className={styles.mobileTabIcon} />
-          <span>Estratégia</span>
         </button>
         <button className={`${styles.mobileTabItem} ${activeTab === 'finances' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('finances')}>
           <Wallet className={styles.mobileTabIcon} />

@@ -224,7 +224,9 @@
 }
 
 .strategyItem {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
   text-align: left;
   padding: 10px 12px;
@@ -246,6 +248,13 @@
 .strategyItemActive {
   color: var(--color-primary-light) !important;
   background: var(--color-primary-glow) !important;
+}
+
+/* Divisor dentro do dropdown de Carteira */
+.strategyDropdownDivider {
+  height: 1px;
+  background: var(--color-border);
+  margin: var(--space-2) 0;
 }
 
 /* ── Dropdown de Perfil ────────────────────────────────────────────────────── */
