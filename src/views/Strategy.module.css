@@ -424,13 +424,11 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  background: rgba(28, 28, 46, 0.6);
+  background: var(--color-surface);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
   margin-bottom: var(--space-5);
   border: 1px solid var(--color-border);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   transition: box-shadow 0.25s ease;
 }
 
