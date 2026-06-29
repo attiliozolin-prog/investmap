@@ -1,5 +1,5 @@
 const BRAPI_TOKEN = process.env.NEXT_PUBLIC_BRAPI_TOKEN ?? '';
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
+const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutos
 const CHUNK_SIZE = 10; // Conservador para o plano gratuito
 
 // -----------------------------------------------
@@ -20,6 +20,24 @@ function setCache(ticker: string, price: number): void {
   if (typeof localStorage === 'undefined') return;
   try {
     localStorage.setItem(`brapi_price_${ticker}`, JSON.stringify({ price, ts: Date.now() }));
+  } catch { /* ignore */ }
+}
+
+/**
+ * Invalida o cache de um ou todos os tickers para forçar
+ * uma busca fresca na próxima chamada.
+ */
+export function clearPriceCache(tickers?: string[]): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    if (tickers) {
+      tickers.forEach(t => localStorage.removeItem(`brapi_price_${t.toUpperCase()}`));
+    } else {
+      // Remove todas as entradas brapi_price_*
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('brapi_price_'))
+        .forEach(k => localStorage.removeItem(k));
+    }
   } catch { /* ignore */ }
 }
 
@@ -75,12 +93,15 @@ export async function fetchAssetPrice(ticker: string): Promise<number | null> {
 // Busca preços de MÚLTIPLOS ativos em batch
 // Retorna Map<ticker, price>
 // -----------------------------------------------
-export async function fetchAssetPrices(tickers: string[]): Promise<Map<string, number>> {
+export async function fetchAssetPrices(tickers: string[], forceRefresh = false): Promise<Map<string, number>> {
   const result = new Map<string, number>();
   if (!tickers.length) return result;
 
   // Deduplica e limpa tickers
   const cleanTickers = Array.from(new Set(tickers.map(t => t.toUpperCase().replace(/F$/, ''))));
+
+  // Se forceRefresh, invalida o cache para esses tickers
+  if (forceRefresh) clearPriceCache(cleanTickers);
 
   // Divide em chunks de CHUNK_SIZE
   const chunks: string[][] = [];

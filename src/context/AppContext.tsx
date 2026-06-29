@@ -981,7 +981,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const { fetchAssetPrices } = await import('@/lib/brapi');
       const tickers = eligible.map(a => a.ticker);
-      const prices = await fetchAssetPrices(tickers);
+      // forceRefresh=true: invalida cache e busca preços frescos da API
+      const prices = await fetchAssetPrices(tickers, true);
 
       const updates: Array<() => void> = [];
       for (const asset of eligible) {
@@ -989,10 +990,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const price = prices.get(cleanTicker);
         if (price == null) continue;
 
-        // Calcula novo currentValue: qty × price, ou mantém o anterior se não tiver qty
-        const newCurrentValue = (asset.quantity && asset.quantity > 0)
-          ? asset.quantity * price
-          : asset.currentValue; // sem qty: guarda o preço mas não altera o valor total
+        // Calcula novo currentValue:
+        // - Com quantity: qty × price (mais preciso)
+        // - Sem quantity mas com customPrice anterior: proporciona o currentValue pelo delta de preço
+        // - Sem nenhum dado anterior: mantém o currentValue existente
+        let newCurrentValue: number;
+        if (asset.quantity && asset.quantity > 0) {
+          newCurrentValue = asset.quantity * price;
+        } else if (asset.customPrice && asset.customPrice > 0 && asset.currentValue && asset.currentValue > 0) {
+          // Aplica a variação percentual do preço ao currentValue existente
+          const ratio = price / asset.customPrice;
+          newCurrentValue = asset.currentValue * ratio;
+        } else {
+          newCurrentValue = asset.currentValue ?? 0;
+        }
 
         updates.push(() => {
           // Atualiza estado local imediatamente
@@ -1023,6 +1034,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assets, isSyncingPrices, user]);
+
+  // Auto-sync de preços a cada 5 minutos enquanto o app está aberto
+  useEffect(() => {
+    if (!dbSynced) return;
+    // Primeira chamada já é feita pelo Dashboard ao carregar; aqui apenas o intervalo
+    const interval = setInterval(() => {
+      syncPrices();
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dbSynced]);
 
   const activeGoal = useMemo(() =>
     goals.find(g => g.strategyId === activeStrategyId) ?? null,
