@@ -154,3 +154,74 @@
 .toggleBtn:hover {
   color: var(--color-primary);
 }
+
+/* ── Google OAuth ── */
+.divider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: var(--space-4) 0 var(--space-3);
+  color: var(--color-text-dimmed);
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.dividerText {
+  padding: 0 var(--space-3);
+  font-size: 0.75rem;
+  color: var(--color-text-dimmed);
+  white-space: nowrap;
+}
+
+.googleBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 11px var(--space-4);
+  background: var(--color-surface-2, #1E1E30);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  color: var(--color-text);
+  font-family: var(--font);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.1s;
+}
+
+.googleBtn:hover:not(:disabled) {
+  background: var(--color-surface-3, #252538);
+  border-color: var(--color-border-hover, #3a3a5c);
+  transform: translateY(-1px);
+}
+
+.googleBtn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.googleBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.googleSpinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
