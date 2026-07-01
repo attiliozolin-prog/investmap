@@ -591,9 +591,15 @@ function MonthModal({
   const fmt2 = (v: number) => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(v);
 
   if (step === 'select') {
+    const totalSelected = importableTxs
+      .filter(t => selectedIds.has(t.id))
+      .reduce((s, t) => s + t.value, 0);
+
     return (
       <div className={styles.overlay} onClick={onClose}>
-        <div className={styles.modal} style={{maxWidth:520}} onClick={e=>e.stopPropagation()}>
+        <div className={styles.modalFlex} onClick={e=>e.stopPropagation()}>
+
+          {/* ── Header fixo ───────────────────────────────────────── */}
           <div className={styles.modalHead}>
             <div style={{display:'flex',alignItems:'center',gap:'0.6rem'}}>
               <button className={styles.closeBtn} onClick={()=>setStep('config')} title="Voltar" style={{marginRight:0}}>
@@ -604,12 +610,13 @@ function MonthModal({
             <button className={styles.closeBtn} onClick={onClose}><X size={20}/></button>
           </div>
 
-          <div className={styles.modalBody} style={{padding:'0.75rem 1.25rem 1.25rem',gap:'0.75rem',maxHeight:'65vh',overflowY:'auto'}}>
+          {/* ── Lista rolável ─────────────────────────────────────── */}
+          <div className={styles.modalScrollBody}>
             <p style={{fontSize:'0.8rem',color:'var(--color-text-2)',margin:0,lineHeight:1.5}}>
               Importando de <strong style={{color:'var(--color-text)'}}>{fmtMonth(months.find(m=>m.id===importFrom)?.month||'')}</strong> → <strong style={{color:'var(--color-text)'}}>{MONTH_NAMES[selMonth-1]} {selYear}</strong>
             </p>
 
-            {/* Selecionar todos / nenhum */}
+            {/* Ações em massa */}
             <div style={{display:'flex',gap:'0.5rem'}}>
               <button type="button" className={styles.btnPrimary}
                 style={{fontSize:'0.75rem',padding:'0.3rem 0.75rem'}}
@@ -621,6 +628,7 @@ function MonthModal({
               >Limpar seleção</button>
             </div>
 
+            {/* Grupos por seção */}
             {SECTION_ORDER.filter(s => grouped[s]?.length).map(section => {
               const txs = grouped[section];
               const allSel = txs.every(t => selectedIds.has(t.id));
@@ -660,10 +668,18 @@ function MonthModal({
             )}
           </div>
 
-          <div style={{padding:'1rem 1.25rem',borderTop:'1px solid var(--color-border)',display:'flex',gap:'0.75rem',alignItems:'center'}}>
-            <span style={{flex:1,fontSize:'0.8rem',color:'var(--color-text-2)'}}>
-              {selectedIds.size} lançamento{selectedIds.size !== 1 ? 's' : ''} selecionado{selectedIds.size !== 1 ? 's' : ''}
-            </span>
+          {/* ── Footer fixo ───────────────────────────────────────── */}
+          <div className={styles.modalFooter}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:'0.82rem',fontWeight:600,color:'var(--color-text)'}}>
+                {selectedIds.size} lançamento{selectedIds.size !== 1 ? 's' : ''}
+              </div>
+              {selectedIds.size > 0 && (
+                <div style={{fontSize:'0.75rem',color:'var(--color-text-2)',marginTop:'0.1rem'}}>
+                  {fmt2(totalSelected)}
+                </div>
+              )}
+            </div>
             <button type="button" className={styles.submitBtn} style={{margin:0,padding:'0.6rem 1.5rem'}} onClick={handleCreate}>
               Criar Mês
             </button>
@@ -672,6 +688,7 @@ function MonthModal({
       </div>
     );
   }
+
 
   return (
     <div className={styles.overlay} onClick={onClose}>
