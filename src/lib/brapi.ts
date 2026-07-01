@@ -136,10 +136,13 @@ export async function fetchAssetPrices(tickers: string[], forceRefresh = false):
       for (const item of data.results ?? []) {
         const price: number = item.regularMarketPrice;
         if (price != null && !isNaN(price)) {
-          result.set(item.symbol as string, price);
-          setCache(item.symbol as string, price);
+          // Normaliza o símbolo: remove sufixo .SA que a Brapi às vezes retorna
+          const normalizedSymbol = (item.symbol as string).replace(/\.SA$/i, '').toUpperCase();
+          result.set(normalizedSymbol, price);
+          setCache(normalizedSymbol, price);
         }
       }
+      console.log(`[Brapi] chunk ${chunk.join(',')}: ${data.results?.length ?? 0} resultados, ${result.size} preços obtidos`);
     } catch (e) {
       console.error('Brapi batch fetch error:', e);
     }

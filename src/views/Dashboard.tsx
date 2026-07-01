@@ -60,13 +60,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
     }
   }, [summary, activeStrategy, saveSnapshot, snapshots]);
 
-  // Sincroniza preços automáticos uma vez que o banco carregou
-  useEffect(() => {
-    if (dbSynced) {
-      syncPrices();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dbSynced]);
+
 
   if (!activeStrategy) {
     return (

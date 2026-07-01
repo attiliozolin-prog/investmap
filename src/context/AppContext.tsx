@@ -4,6 +4,7 @@ import React, {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   useCallback,
   useMemo,
@@ -213,6 +214,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [dbSynced, setDbSynced] = useState(false);
   const [isSyncingPrices, setIsSyncingPrices] = useState(false);
   const [lastPriceSyncAt, setLastPriceSyncAt] = useState<Date | null>(null);
+
+  // Refs para garantir que syncPrices sempre acesse o estado mais recente
+  // sem stale closure (evita recapturar assets[] antigo na closure do setInterval)
+  const assetsRef = useRef<Asset[]>([]);
+  const userRef = useRef(user);
+  const isSyncingRef = useRef(false);
 
   // ============================================
   // Monitora mudança de usuário (LogOut ou Switch)
@@ -479,6 +486,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { if (mounted) saveToStorage('assets', assets, user?.id); }, [assets, mounted, user?.id]);
   useEffect(() => { if (mounted) saveToStorage('transactions', transactions, user?.id); }, [transactions, mounted, user?.id]);
   useEffect(() => { if (mounted) saveToStorage('snapshots', snapshots, user?.id); }, [snapshots, mounted, user?.id]);
+
+  // Mantém refs sempre sincronizadas com o estado mais recente
+  useEffect(() => { assetsRef.current = assets; }, [assets]);
+  useEffect(() => { userRef.current = user; }, [user]);
 
   const activeStrategy = useMemo(() => 
     strategies.find((s) => s.id === activeStrategyId) ?? null,
@@ -967,81 +978,92 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ============================================
   // Sync de Preços — Brapi batch
+  // Usa refs para sempre ler o estado mais recente,
+  // evitando stale closure quando chamado via setInterval
   // ============================================
   const syncPrices = useCallback(async () => {
-    if (isSyncingPrices) return;
+    if (isSyncingRef.current) return;
+
+    const currentAssets = assetsRef.current;
+    const currentUser = userRef.current;
 
     // Filtra ativos elegíveis: modo 'auto' (ou sem definição = auto por padrão)
-    const eligible = assets.filter(
-      a => (a.priceMode ?? 'auto') === 'auto'
+    const eligible = currentAssets.filter(
+      a => (a.priceMode ?? 'auto') === 'auto' && !a.isArchived
     );
+
+    console.log(`[syncPrices] ${eligible.length} ativos elegíveis de ${currentAssets.length} total`);
     if (eligible.length === 0) return;
 
+    isSyncingRef.current = true;
     setIsSyncingPrices(true);
     try {
       const { fetchAssetPrices } = await import('@/lib/brapi');
       const tickers = eligible.map(a => a.ticker);
+      console.log(`[syncPrices] buscando preços para: ${tickers.join(', ')}`);
+
       // forceRefresh=true: invalida cache e busca preços frescos da API
       const prices = await fetchAssetPrices(tickers, true);
+      console.log(`[syncPrices] ${prices.size} preços recebidos`);
 
-      const updates: Array<() => void> = [];
       for (const asset of eligible) {
-        const cleanTicker = asset.ticker.toUpperCase().replace(/F$/, '');
+        const cleanTicker = asset.ticker.toUpperCase().replace(/\.SA$/i, '').replace(/F$/, '');
         const price = prices.get(cleanTicker);
-        if (price == null) continue;
+        if (price == null) {
+          console.warn(`[syncPrices] sem preço para ${cleanTicker}`);
+          continue;
+        }
 
         // Calcula novo currentValue:
         // - Com quantity: qty × price (mais preciso)
-        // - Sem quantity mas com customPrice anterior: proporciona o currentValue pelo delta de preço
-        // - Sem nenhum dado anterior: mantém o currentValue existente
+        // - Sem quantity mas com customPrice anterior: aplica variação percentual
+        // - Sem dados anteriores: mantém currentValue existente
         let newCurrentValue: number;
         if (asset.quantity && asset.quantity > 0) {
           newCurrentValue = asset.quantity * price;
         } else if (asset.customPrice && asset.customPrice > 0 && asset.currentValue && asset.currentValue > 0) {
-          // Aplica a variação percentual do preço ao currentValue existente
           const ratio = price / asset.customPrice;
           newCurrentValue = asset.currentValue * ratio;
         } else {
           newCurrentValue = asset.currentValue ?? 0;
         }
 
-        updates.push(() => {
-          // Atualiza estado local imediatamente
-          setAssets(prev => prev.map(a =>
-            a.id === asset.id
-              ? { ...a, customPrice: price, currentValue: newCurrentValue, updatedAt: new Date().toISOString() }
-              : a
-          ));
-          // Persiste no banco
-          if (user) {
-            supabase.from('assets').update({
-              custom_price: price,
-              current_value: newCurrentValue,
-              updated_at: new Date().toISOString(),
-            }).eq('id', asset.id).eq('user_id', user.id)
-              .then(({ error }) => { if (error) console.error('syncPrices update error:', error); });
-          }
-        });
+        // Atualiza estado local (usando functional update para evitar stale state)
+        setAssets(prev => prev.map(a =>
+          a.id === asset.id
+            ? { ...a, customPrice: price, currentValue: newCurrentValue, updatedAt: new Date().toISOString() }
+            : a
+        ));
+
+        // Persiste no banco
+        if (currentUser) {
+          supabase.from('assets').update({
+            custom_price: price,
+            current_value: newCurrentValue,
+            updated_at: new Date().toISOString(),
+          }).eq('id', asset.id).eq('user_id', currentUser.id)
+            .then(({ error }) => { if (error) console.error('syncPrices update error:', error, 'asset:', asset.ticker); });
+        }
       }
 
-      // Aplica todas as atualizações
-      updates.forEach(fn => fn());
       setLastPriceSyncAt(new Date());
     } catch (err) {
       console.error('syncPrices error:', err);
     } finally {
+      isSyncingRef.current = false;
       setIsSyncingPrices(false);
     }
+  // Deps vazias: usa apenas refs para evitar stale closure
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assets, isSyncingPrices, user]);
+  }, []);
 
   // Auto-sync de preços a cada 5 minutos enquanto o app está aberto
   useEffect(() => {
     if (!dbSynced) return;
-    // Primeira chamada já é feita pelo Dashboard ao carregar; aqui apenas o intervalo
-    const interval = setInterval(() => {
-      syncPrices();
-    }, 5 * 60 * 1000);
+    // Roda imediatamente ao abrir o app (após dbSynced)
+    syncPrices();
+    // Depois a cada 5 minutos
+    const interval = setInterval(syncPrices, 5 * 60 * 1000);
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dbSynced]);
