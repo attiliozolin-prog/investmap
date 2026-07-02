@@ -50,7 +50,11 @@ export default function PortfolioHistory({ onClose }: Props) {
   const totalTaxPending = totalTaxDue - totalTaxPaid;
   const totalRealizedProfit = sells.filter(r => !r.isLoss).reduce((s, r) => s + r.profitLoss, 0);
   const totalRealizedLoss   = sells.filter(r => r.isLoss).reduce((s, r) => s + Math.abs(r.profitLoss), 0);
-  const availableForComp    = sellsWithLoss.reduce((s, r) => s + (Math.abs(r.profitLoss) - r.lossUsedForCompensation), 0);
+  // Apenas tipos compensáveis: bolsa comum (ações/ETFs/BDRs) e FII.
+  // Cripto no regime nacional, renda fixa e LCI/LCA não permitem compensação.
+  const availableForComp    = sellsWithLoss
+    .filter(r => r.assetType === 'acao' || r.assetType === 'etf' || r.assetType === 'bdr' || r.assetType === 'fii')
+    .reduce((s, r) => s + (Math.abs(r.profitLoss) - r.lossUsedForCompensation), 0);
 
   // Total Aportado: soma o investedValue de TODOS os ativos (ativos + encerrados)
   // + valor das vendas já realizadas (que saíram do investedValue)

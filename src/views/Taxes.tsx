@@ -43,10 +43,21 @@ export default function Taxes() {
   const totalTaxPaid    = sellsWithTax.filter(r => r.taxPaid).reduce((s, r) => s + r.taxDue, 0);
   const totalTaxPending = totalTaxDue - totalTaxPaid;
   const totalExemptProfit = sellsExempt.reduce((s, r) => s + r.profitLoss, 0);
-  // Compensação considera SEMPRE todos os anos (prejuízo acumula entre anos)
-  const availableForComp = sellTaxRecords
-    .filter(r => r.isLoss)
-    .reduce((s, r) => s + (Math.abs(r.profitLoss) - r.lossUsedForCompensation), 0);
+
+  // Compensação: considera todos os anos (prejuízo em bolsa acumula sem prazo),
+  // mas SÓ os tipos compensáveis — cripto (regime nacional), renda fixa e
+  // LCI/LCA não permitem compensação. FII compensa apenas com FII.
+  const remaining = (r: SellTaxRecord) => Math.abs(r.profitLoss) - r.lossUsedForCompensation;
+  const allLosses = sellTaxRecords.filter(r => r.isLoss);
+  const compBolsa = allLosses
+    .filter(r => r.assetType === 'acao' || r.assetType === 'etf' || r.assetType === 'bdr')
+    .reduce((s, r) => s + remaining(r), 0);
+  const compFii = allLosses
+    .filter(r => r.assetType === 'fii')
+    .reduce((s, r) => s + remaining(r), 0);
+  const availableForComp = compBolsa + compFii;
+  const isCompensable = (r: SellTaxRecord) =>
+    r.assetType === 'acao' || r.assetType === 'etf' || r.assetType === 'bdr' || r.assetType === 'fii';
 
   const handleMarkPaid = (rec: SellTaxRecord) => {
     const paidAt = taxPaidDate[rec.id] || new Date().toISOString().slice(0, 10);
@@ -206,12 +217,17 @@ export default function Taxes() {
                 <Info size={16} color="#FBBF24"/>
                 <div>
                   <strong style={{ color: '#FBBF24' }}>Como funciona a compensação?</strong>
-                  <p>Prejuízos em <strong>renda variável</strong> abatem o lucro de vendas futuras do mesmo tipo, reduzindo o IR. Declare mensalmente na ficha de Renda Variável do IRPF.</p>
+                  <p>
+                    Prejuízos em <strong>operações comuns na bolsa</strong> (ações, ETFs, BDRs) abatem lucros futuros entre si;
+                    prejuízos em <strong>FII</strong> compensam apenas lucros de FII. Declare na ficha de Renda Variável do IRPF.{' '}
+                    <strong>Cripto em exchange nacional, renda fixa e LCI/LCA não permitem compensação.</strong>
+                  </p>
                 </div>
               </div>
               <div className={phStyles.list}>
                 {sellsWithLoss.map(rec => {
-                  const available = Math.abs(rec.profitLoss) - rec.lossUsedForCompensation;
+                  const compensable = isCompensable(rec);
+                  const available = remaining(rec);
                   return (
                     <div key={rec.id} className={`${phStyles.taxCard} ${phStyles.taxCardLoss}`}>
                       <div className={phStyles.taxCardMain}>
@@ -222,13 +238,18 @@ export default function Taxes() {
                         <div className={phStyles.taxCardRight}>
                           <div style={{ textAlign: 'right' }}>
                             <div className={phStyles.taxLossRed}>-{fmt(Math.abs(rec.profitLoss))}</div>
-                            <div style={{ fontSize: '0.72rem', color: available > 0 ? '#10B981' : 'var(--color-text-3)' }}>
-                              Disponível: {fmt(available)}
+                            <div style={{ fontSize: '0.72rem', color: compensable && available > 0 ? '#10B981' : 'var(--color-text-3)' }}>
+                              {compensable ? `Disponível: ${fmt(available)}` : 'Não compensável'}
                             </div>
                           </div>
                         </div>
                       </div>
-                      {rec.lossUsedForCompensation > 0 && (
+                      {!compensable && rec.assetType === 'crypto' && (
+                        <p className={phStyles.taxExemptReason}>
+                          ⚠️ Cripto em exchange nacional: a apuração mensal (GCAP) é definitiva — este prejuízo não abate lucros de outros meses.
+                        </p>
+                      )}
+                      {compensable && rec.lossUsedForCompensation > 0 && (
                         <p className={phStyles.taxExemptReason}>
                           ✅ {fmt(rec.lossUsedForCompensation)} já utilizados em compensações anteriores.
                         </p>
@@ -238,11 +259,34 @@ export default function Taxes() {
                 })}
               </div>
               <div className={phStyles.compensationSummary}>
-                <span>Total disponível para compensar:</span>
+                <span>
+                  Total disponível para compensar
+                  {compBolsa > 0 && compFii > 0 && (
+                    <span style={{ fontWeight: 400, color: 'var(--color-text-2)' }}>
+                      {' '}(bolsa: {fmt(compBolsa)} · FII: {fmt(compFii)})
+                    </span>
+                  )}
+                  :
+                </span>
                 <strong style={{ color: '#FBBF24' }}>{fmt(availableForComp)}</strong>
               </div>
             </section>
           )}
+
+          {/* ── Limitações e avisos ── */}
+          <div className={phStyles.alertBox} style={{ borderColor: 'rgba(96,165,250,0.3)', background: 'rgba(96,165,250,0.06)' }}>
+            <Info size={16} color="#60A5FA"/>
+            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-2)', lineHeight: 1.6 }}>
+              <strong style={{ color: 'var(--color-text)' }}>Limitações deste cálculo — leia antes de declarar</strong>
+              <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.1rem' }}>
+                <li>As isenções de R$ 20 mil (ações) e R$ 35 mil (cripto) valem para o TOTAL vendido no mês em todas as corretoras/exchanges — aqui só entram as vendas registradas no InvestMap.</li>
+                <li><strong>Day trade</strong> (compra e venda no mesmo dia) tem alíquota de 20% e apuração separada — não é diferenciado pelo app.</li>
+                <li>Ativos em <strong>exchange/corretora no exterior</strong> seguem a Lei 14.754/2023 (apuração anual, 15%) — não cobertos.</li>
+                <li>Rendas anuais acima de R$ 600 mil podem estar sujeitas ao imposto mínimo (IRPFM) da Lei 15.270/2025, que alcança até ganhos isentos em bolsa.</li>
+                <li>Este app é uma ferramenta de organização e não substitui um contador. Valores calculados devem ser conferidos no programa GCAP/IRPF da Receita.</li>
+              </ul>
+            </div>
+          </div>
         </>
       )}
     </div>

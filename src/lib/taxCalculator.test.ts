@@ -30,6 +30,24 @@ describe('detectAssetType', () => {
     expect(detectAssetType('Renda Variável', 'ETF - S&P 500', 'IVVB11')).toBe('etf');
   });
 
+  it('detecta ETF de renda fixa por ticker conhecido e por subclass', () => {
+    expect(detectAssetType('Renda Fixa', 'ETF', 'IMAB11')).toBe('etf_rf');
+    expect(detectAssetType('Renda Fixa', 'ETF - Renda Fixa', 'B5P211')).toBe('etf_rf');
+    expect(detectAssetType('Renda Fixa', 'ETF Tesouro Selic', 'LFTS11')).toBe('etf_rf');
+  });
+
+  it('detecta BDR pelo padrão do ticker (4 letras + 31–39)', () => {
+    expect(detectAssetType('Renda Variável', 'Ações EUA', 'AAPL34')).toBe('bdr');
+    expect(detectAssetType('Renda Variável', 'Ações EUA', 'AMZO34')).toBe('bdr');
+    expect(detectAssetType('Renda Variável', 'Exterior', 'XPBR31')).toBe('bdr');
+    expect(detectAssetType('Renda Variável', 'Exterior', 'INBR32')).toBe('bdr');
+  });
+
+  it('BDR não é confundido com ação nem unit', () => {
+    expect(detectAssetType('Renda Variável', 'Ações Brasil', 'PETR4')).toBe('acao');
+    expect(detectAssetType('Renda Variável', 'Ações - Dividendos', 'TAEE11')).toBe('acao');
+  });
+
   it('default é ação', () => {
     expect(detectAssetType('Renda Variável', 'Ações Brasil', 'PETR4')).toBe('acao');
   });
@@ -37,13 +55,32 @@ describe('detectAssetType', () => {
 
 describe('calculateTax — prejuízo', () => {
   it('venda com prejuízo nunca gera imposto, em qualquer tipo', () => {
-    for (const type of ['acao', 'etf', 'fii', 'crypto', 'renda_fixa'] as const) {
+    for (const type of ['acao', 'etf', 'etf_rf', 'bdr', 'fii', 'crypto', 'renda_fixa', 'lci_lca'] as const) {
       const r = calculateTax(type, 5000, 8000, '2026-06-15');
       expect(r.isLoss).toBe(true);
       expect(r.taxDue).toBe(0);
       expect(r.isExempt).toBe(true);
       expect(r.profitLoss).toBe(-3000);
     }
+  });
+
+  it('prejuízo em bolsa (ação/ETF/BDR) orienta que é compensável', () => {
+    for (const type of ['acao', 'etf', 'bdr'] as const) {
+      const r = calculateTax(type, 5000, 8000, '2026-06-15');
+      expect(r.explanation.join(' ')).toContain('pode ser compensado');
+    }
+  });
+
+  it('prejuízo em FII orienta compensação apenas com FIIs', () => {
+    const r = calculateTax('fii', 5000, 8000, '2026-06-15');
+    expect(r.explanation.join(' ')).toContain('APENAS com lucros futuros em vendas de FIIs');
+  });
+
+  it('prejuízo em cripto (regime nacional) orienta que NÃO é compensável', () => {
+    const r = calculateTax('crypto', 5000, 8000, '2026-06-15');
+    const text = r.explanation.join(' ');
+    expect(text).toContain('NÃO pode ser compensado');
+    expect(text).not.toContain('pode ser compensado com lucros futuros em criptoativos');
   });
 });
 
@@ -80,6 +117,26 @@ describe('calculateTax — ETF', () => {
     expect(r.isExempt).toBe(false);
     expect(r.taxRate).toBe(0.15);
     expect(r.taxDue).toBeCloseTo(200 * 0.15, 2);
+  });
+});
+
+describe('calculateTax — BDR', () => {
+  it('tributa 15% SEM a isenção de R$ 20 mil (venda pequena com lucro)', () => {
+    const r = calculateTax('bdr', 5000, 4000, '2026-06-15');
+    expect(r.isExempt).toBe(false);
+    expect(r.taxRate).toBe(0.15);
+    expect(r.taxDue).toBeCloseTo(1000 * 0.15, 2);
+    expect(r.explanation.join(' ')).toContain('NÃO têm a isenção');
+  });
+});
+
+describe('calculateTax — ETF de Renda Fixa', () => {
+  it('retido na fonte: sem DARF, taxDue e taxRate zerados, não isento', () => {
+    const r = calculateTax('etf_rf', 11000, 10000, '2026-06-15');
+    expect(r.isExempt).toBe(false);
+    expect(r.taxRate).toBe(0);
+    expect(r.taxDue).toBe(0);
+    expect(r.explanation.join(' ')).toContain('RETIDO NA FONTE');
   });
 });
 
