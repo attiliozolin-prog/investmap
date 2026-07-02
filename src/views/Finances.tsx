@@ -527,6 +527,7 @@ function MonthModal({
   // step: 'config' | 'select'
   const [step, setStep] = useState<'config'|'select'>('config');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
   const monthStr = `${selYear}-${String(selMonth).padStart(2,'0')}`;
   const alreadyExists = months.some(m => m.month === monthStr);
@@ -584,6 +585,14 @@ function MonthModal({
     });
   };
 
+  const toggleCollapsed = (section: string) => {
+    setCollapsedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(section)) next.delete(section); else next.add(section);
+      return next;
+    });
+  };
+
   const handleCreate = () => {
     onCreate(monthStr, Array.from(selectedIds));
   };
@@ -599,7 +608,7 @@ function MonthModal({
       <div className={styles.overlay} onClick={onClose}>
         <div className={styles.modalFlex} onClick={e=>e.stopPropagation()}>
 
-          {/* ── Header fixo ───────────────────────────────────────── */}
+          {/* ── Header fixo ── */}
           <div className={styles.modalHead}>
             <div style={{display:'flex',alignItems:'center',gap:'0.6rem'}}>
               <button className={styles.closeBtn} onClick={()=>setStep('config')} title="Voltar" style={{marginRight:0}}>
@@ -610,7 +619,7 @@ function MonthModal({
             <button className={styles.closeBtn} onClick={onClose}><X size={20}/></button>
           </div>
 
-          {/* ── Lista rolável ─────────────────────────────────────── */}
+          {/* ── Lista rolável ── */}
           <div className={styles.modalScrollBody}>
             <p style={{fontSize:'0.8rem',color:'var(--color-text-2)',margin:0,lineHeight:1.5}}>
               Importando de <strong style={{color:'var(--color-text)'}}>{fmtMonth(months.find(m=>m.id===importFrom)?.month||'')}</strong> → <strong style={{color:'var(--color-text)'}}>{MONTH_NAMES[selMonth-1]} {selYear}</strong>
@@ -628,37 +637,69 @@ function MonthModal({
               >Limpar seleção</button>
             </div>
 
-            {/* Grupos por seção */}
+            {/* Grupos accordion retráteis */}
             {SECTION_ORDER.filter(s => grouped[s]?.length).map(section => {
               const txs = grouped[section];
               const allSel = txs.every(t => selectedIds.has(t.id));
               const someSel = txs.some(t => selectedIds.has(t.id));
+              const isOpen = !collapsedSections.has(section);
+              const selCount = txs.filter(t => selectedIds.has(t.id)).length;
+
               return (
                 <div key={section} className={styles.importGroup}>
-                  <div className={styles.importGroupHeader} onClick={()=>toggleSection(section)}>
+                  {/* Header: checkbox seleciona tudo, resto colapsa */}
+                  <div className={styles.importGroupHeader}>
+                    {/* Checkbox — só altera seleção */}
                     <input
                       type="checkbox"
                       checked={allSel}
                       ref={el => { if(el) el.indeterminate = !allSel && someSel; }}
-                      onChange={()=>toggleSection(section)}
-                      onClick={e=>e.stopPropagation()}
+                      onChange={() => toggleSection(section)}
+                      onClick={e => e.stopPropagation()}
                       className={styles.importCheck}
                     />
-                    <span className={styles.importGroupLabel}>{SECTION_LABELS_IMPORT[section]}</span>
-                    <span className={styles.importGroupCount}>{txs.filter(t=>selectedIds.has(t.id)).length}/{txs.length}</span>
+
+                    {/* Clique no label/chevron colapsa */}
+                    <button
+                      type="button"
+                      className={styles.importGroupCollapse}
+                      onClick={() => toggleCollapsed(section)}
+                      aria-expanded={isOpen}
+                    >
+                      <span className={styles.importGroupLabel}>{SECTION_LABELS_IMPORT[section]}</span>
+                      <div style={{display:'flex',alignItems:'center',gap:'0.4rem',marginLeft:'auto'}}>
+                        <span className={styles.importGroupCount}
+                          style={{background: selCount > 0 ? 'var(--color-primary-subtle, rgba(139,92,246,0.15))' : undefined,
+                                  color: selCount > 0 ? 'var(--color-primary-light)' : undefined}}>
+                          {selCount}/{txs.length}
+                        </span>
+                        <svg
+                          width={15} height={15} viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"
+                          style={{transition:'transform 0.2s', transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
+                                  color:'var(--color-text-3, #666)', flexShrink:0}}
+                        >
+                          <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                      </div>
+                    </button>
                   </div>
-                  {txs.map(tx => (
-                    <label key={tx.id} className={styles.importRow}>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(tx.id)}
-                        onChange={()=>toggleId(tx.id)}
-                        className={styles.importCheck}
-                      />
-                      <span className={styles.importDesc}>{tx.description}</span>
-                      <span className={styles.importVal}>{fmt2(tx.value)}</span>
-                    </label>
-                  ))}
+
+                  {/* Items — visíveis apenas se seção aberta */}
+                  <div className={styles.importGroupItems} style={{display: isOpen ? 'block' : 'none'}}>
+                    {txs.map(tx => (
+                      <label key={tx.id} className={styles.importRow}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(tx.id)}
+                          onChange={()=>toggleId(tx.id)}
+                          className={styles.importCheck}
+                        />
+                        <span className={styles.importDesc}>{tx.description}</span>
+                        <span className={styles.importVal}>{fmt2(tx.value)}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               );
             })}
@@ -668,7 +709,7 @@ function MonthModal({
             )}
           </div>
 
-          {/* ── Footer fixo ───────────────────────────────────────── */}
+          {/* ── Footer fixo ── */}
           <div className={styles.modalFooter}>
             <div style={{flex:1}}>
               <div style={{fontSize:'0.82rem',fontWeight:600,color:'var(--color-text)'}}>
@@ -688,6 +729,7 @@ function MonthModal({
       </div>
     );
   }
+
 
 
   return (
