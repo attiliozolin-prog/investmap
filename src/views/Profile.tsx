@@ -176,7 +176,8 @@ export default function Profile() {
         </div>
       </div>
 
-      {(process.env.NEXT_PUBLIC_ADMIN_EMAILS || '').split(',').includes(user?.email ?? '') && (
+      {/* Ferramenta de desenvolvimento — nunca aparece em produção */}
+      {process.env.NODE_ENV === 'development' && (
         <div className={styles.card}>
           <div className={styles.formSection}>
             <h3>Modo Desenvolvedor</h3>

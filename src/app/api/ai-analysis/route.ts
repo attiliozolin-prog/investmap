@@ -1,12 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerSupabase } from '@/lib/supabase-server';
+import { checkRateLimit } from '@/lib/rateLimit';
+
+// Limite: 10 análises por usuário a cada 24h
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+// Sanitização: o body vem do client e é interpolado no prompt
+const str = (v: unknown, max = 60): string =>
+  typeof v === 'string' ? v.slice(0, max) : '';
+const num = (v: unknown): number => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  // ── Autenticação primeiro: anônimo não sonda nem a configuração ──
+  const supabase = createServerSupabase();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json(
+      { error: 'Não autenticado. Faça login para usar a análise IA.' },
+      { status: 401 }
+    );
+  }
 
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
       { error: 'OPENAI_API_KEY não configurada. Adicione ao arquivo .env.local e reinicie o servidor.' },
       { status: 500 }
+    );
+  }
+
+  // ── Rate limit por usuário ──
+  const limit = checkRateLimit(user.id, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: `Limite de ${RATE_LIMIT_MAX} análises por dia atingido. Tente novamente em ${Math.ceil(limit.retryAfterSeconds / 3600)}h.` },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfterSeconds) } }
     );
   }
 
@@ -17,27 +49,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Corpo da requisição inválido.' }, { status: 400 });
   }
 
-  const {
-    strategyName,
-    healthScore,
-    totalProfitLossPercent,
-    needsRebalancing,
-    categories,
-    assets,
-  } = body as {
-    strategyName: string;
-    healthScore: number;
-    totalInvested: number;
-    totalValue: number;
-    totalProfitLossPercent: number;
-    needsRebalancing: boolean;
-    categories: { class: string; subclass: string; targetPercent: number; currentPercent: number; action: string; rebalanceAmount: number }[];
-    assets: { ticker: string; subclass: string; profitLossPercent: number; currentPortfolioPercent: number; targetPercent: number; action: string }[];
-  };
+  const raw = body as Record<string, unknown>;
+
+  const strategyName = str(raw.strategyName);
+  const healthScore = num(raw.healthScore);
+  const totalProfitLossPercent = num(raw.totalProfitLossPercent);
+  const needsRebalancing = Boolean(raw.needsRebalancing);
+  const categories = (Array.isArray(raw.categories) ? raw.categories : [])
+    .slice(0, 30)
+    .map(c => {
+      const cat = c as Record<string, unknown>;
+      return {
+        class: str(cat.class),
+        subclass: str(cat.subclass),
+        targetPercent: num(cat.targetPercent),
+        currentPercent: num(cat.currentPercent),
+      };
+    });
 
   const prompt = `
 Você é um educador financeiro experiente, paciente e muito empático, especializado em ajudar investidores iniciantes no Brasil a organizarem suas carteiras.
-Sua missão é olhar os dados da carteira abaixo e escrever uma análise curta, encorajadora e fácil de entender. 
+Sua missão é olhar os dados da carteira abaixo e escrever uma análise curta, encorajadora e fácil de entender.
 
 ## Dados da Carteira: ${strategyName}
 - Saúde Financeira (nota gerada pelo app): ${healthScore.toFixed(0)}/100

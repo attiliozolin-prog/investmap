@@ -1,6 +1,6 @@
-const BRAPI_TOKEN = process.env.NEXT_PUBLIC_BRAPI_TOKEN ?? '';
+// As cotações passam pelo proxy autenticado /api/quotes —
+// o token da Brapi fica no servidor, fora do bundle do client.
 const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutos
-const CHUNK_SIZE = 10; // Conservador para o plano gratuito
 
 // -----------------------------------------------
 // Cache local
@@ -74,17 +74,15 @@ export async function fetchAssetPrice(ticker: string): Promise<number | null> {
   const cached = getCached(cleanTicker);
   if (cached !== null) return cached;
 
-  const tokenParam = BRAPI_TOKEN ? `?token=${BRAPI_TOKEN}` : '';
-
   try {
-    const res = await fetch(`https://brapi.dev/api/quote/${cleanTicker}${tokenParam}`);
+    const res = await fetch(`/api/quotes?tickers=${encodeURIComponent(cleanTicker)}`);
     if (!res.ok) return null;
-    const data = await res.json();
-    const price: number | null = data.results?.[0]?.regularMarketPrice ?? null;
+    const data = await res.json() as { prices?: Record<string, number> };
+    const price = data.prices?.[cleanTicker] ?? null;
     if (price !== null) setCache(cleanTicker, price);
     return price;
   } catch (error) {
-    console.error('Erro ao buscar preço na Brapi:', error);
+    console.error('Erro ao buscar preço:', error);
     return null;
   }
 }
@@ -103,49 +101,33 @@ export async function fetchAssetPrices(tickers: string[], forceRefresh = false):
   // Se forceRefresh, invalida o cache para esses tickers
   if (forceRefresh) clearPriceCache(cleanTickers);
 
-  // Divide em chunks de CHUNK_SIZE
-  const chunks: string[][] = [];
-  for (let i = 0; i < cleanTickers.length; i += CHUNK_SIZE) {
-    chunks.push(cleanTickers.slice(i, i + CHUNK_SIZE));
+  // Resolve o que der pelo cache local; o resto vai em uma chamada só
+  // (o chunking para a Brapi acontece no servidor)
+  const uncached: string[] = [];
+  for (const ticker of cleanTickers) {
+    const cached = getCached(ticker);
+    if (cached !== null) {
+      result.set(ticker, cached);
+    } else {
+      uncached.push(ticker);
+    }
   }
 
-  const tokenParam = BRAPI_TOKEN ? `?token=${BRAPI_TOKEN}` : '';
+  if (uncached.length === 0) return result;
 
-  for (const chunk of chunks) {
-    // Verifica cache antes de chamar a API
-    const uncached: string[] = [];
-    for (const ticker of chunk) {
-      const cached = getCached(ticker);
-      if (cached !== null) {
-        result.set(ticker, cached);
-      } else {
-        uncached.push(ticker);
+  try {
+    const res = await fetch(`/api/quotes?tickers=${encodeURIComponent(uncached.join(','))}`);
+    if (!res.ok) return result;
+    const data = await res.json() as { prices?: Record<string, number> };
+
+    for (const [symbol, price] of Object.entries(data.prices ?? {})) {
+      if (price != null && !isNaN(price)) {
+        result.set(symbol, price);
+        setCache(symbol, price);
       }
     }
-
-    if (uncached.length === 0) continue;
-
-    try {
-      const tickerParam = uncached.join(',');
-      const res = await fetch(
-        `https://brapi.dev/api/quote/${tickerParam}${tokenParam}`
-      );
-      if (!res.ok) continue;
-      const data = await res.json();
-
-      for (const item of data.results ?? []) {
-        const price: number = item.regularMarketPrice;
-        if (price != null && !isNaN(price)) {
-          // Normaliza o símbolo: remove sufixo .SA que a Brapi às vezes retorna
-          const normalizedSymbol = (item.symbol as string).replace(/\.SA$/i, '').toUpperCase();
-          result.set(normalizedSymbol, price);
-          setCache(normalizedSymbol, price);
-        }
-      }
-      console.log(`[Brapi] chunk ${chunk.join(',')}: ${data.results?.length ?? 0} resultados, ${result.size} preços obtidos`);
-    } catch (e) {
-      console.error('Brapi batch fetch error:', e);
-    }
+  } catch (e) {
+    console.error('Erro ao buscar preços em batch:', e);
   }
 
   return result;
