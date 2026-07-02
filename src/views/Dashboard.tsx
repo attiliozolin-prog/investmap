@@ -10,7 +10,7 @@ import AiAnalysisCard from '@/components/AiAnalysisCard';
 import EvolutionChart from '@/components/EvolutionChart';
 import GoalWidget from '@/components/GoalWidget';
 import styles from './Dashboard.module.css';
-import { AlertTriangle, TrendingUp, CalendarClock } from 'lucide-react';
+import { AlertTriangle, TrendingUp, CalendarClock, ShieldAlert } from 'lucide-react';
 import { formatCurrency } from '@/lib/calculations';
 import FirstUseTip from '@/components/FirstUseTip';
 
@@ -98,6 +98,13 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
       }
     }).sort((a, b) => (a.dueDay ?? 0) - (b.dueDay ?? 0));
   }, [transactions, activeMonthId, months]);
+
+  // ── Custo mensal (boletos + extras do mês ativo) para o Tempo de Sobrevivência ──
+  const monthlyCost = useMemo(() =>
+    transactions
+      .filter(t => t.monthId === activeMonthId && (t.section === 'boleto' || t.section === 'extra'))
+      .reduce((s, t) => s + t.value, 0),
+  [transactions, activeMonthId]);
 
   if (!activeStrategy) {
     return (
@@ -239,6 +246,26 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
 
       {/* Summary Cards */}
       <SummaryCards summary={summary} isSyncingPrices={isSyncingPrices} lastPriceSyncAt={lastPriceSyncAt} />
+
+      {/* Tempo de Sobrevivência — patrimônio ÷ custo mensal do controle financeiro */}
+      {monthlyCost > 0 && summary.totalValue > 0 && (
+        <div className={styles.survivalCard}>
+          <div className={styles.survivalIcon}><ShieldAlert size={28}/></div>
+          <div className={styles.survivalBody}>
+            <div className={styles.survivalTitle}>Tempo de Sobrevivência</div>
+            <div className={styles.survivalDesc}>
+              Com seu patrimônio de <strong>{formatCurrency(summary.totalValue)}</strong> e custo mensal de{' '}
+              <strong>{formatCurrency(monthlyCost)}</strong> (do seu controle financeiro), você sobreviveria por:
+            </div>
+          </div>
+          <div className={styles.survivalNumbers}>
+            <div className={styles.survivalMain}>{(summary.totalValue / monthlyCost).toFixed(0)} meses</div>
+            {summary.totalValue / monthlyCost >= 12 && (
+              <div className={styles.survivalSub}>≈ {(summary.totalValue / monthlyCost / 12).toFixed(1)} anos</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Chart + Category Table */}
       <div className={styles.middleRow}>

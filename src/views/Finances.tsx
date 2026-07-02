@@ -5,7 +5,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { useFinance } from '@/context/FinanceContext';
 import { useApp } from '@/context/AppContext';
 import { FinanceTransaction, FinanceSection, FinancePaymentStatus, FinanceCpfCnpj } from '@/types';
-import { Plus, Trash2, X, Wallet, ShieldAlert, Edit2, Clock, Tags, Receipt, CreditCard, ShoppingBag, ArrowDownCircle } from 'lucide-react';
+import { Plus, Trash2, X, Wallet, Edit2, Clock, Tags, Receipt, CreditCard, ShoppingBag, ArrowDownCircle, Sparkles } from 'lucide-react';
 import styles from './Finances.module.css';
 import { useToast } from '@/components/Toast';
 
@@ -32,7 +32,6 @@ const CHART_COLORS = ['#3B82F6','#F59E0B','#FF1493','#10B981','#8B5CF6','#EF4444
 // ─── Main ────────────────────────────────────────────────────────────────────
 export default function Finances() {
   const { months, transactions, categories, activeMonthId, setActiveMonthId, createMonth, deleteMonth, addTransaction, deleteTransaction, updateTransaction } = useFinance();
-  const { assets } = useApp();
   const { toast } = useToast();
 
   const [isMonthModalOpen, setIsMonthModalOpen] = useState(false);
@@ -75,10 +74,6 @@ export default function Finances() {
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a,b)=>b.value-a.value);
   }, [boletos, extras]);
 
-  const totalInvestments = useMemo(() => assets.reduce((s,a)=>s+a.currentValue,0), [assets]);
-  const survivalMonths = totalExp > 0 ? totalInvestments / totalExp : 0;
-  const survivalYears  = survivalMonths / 12;
-
   const toggleStatus = (tx: FinanceTransaction) => {
     const cycle: FinancePaymentStatus[] = ['pending','paid','auto_debit','scheduled'];
     const cur = tx.paymentStatus || 'pending';
@@ -99,6 +94,22 @@ export default function Finances() {
       toast('Novo mês criado com sucesso');
     }
     setIsMonthModalOpen(false);
+  };
+
+  // ── Materialização do mês corrente com 1 clique ────────────────────────────
+  // Se o mês do calendário ainda não existe, oferece criá-lo já importando os
+  // lançamentos recorrentes (boletos, assinaturas e receitas) do mês mais recente.
+  const today = new Date();
+  const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const currentMonthMissing = months.length > 0 && !months.some(m => m.month === currentMonthStr);
+  const latestMonth = sortedMonths[0];
+
+  const handleQuickCreateCurrentMonth = () => {
+    if (!latestMonth) return;
+    const recurringIds = transactions
+      .filter(t => t.monthId === latestMonth.id && t.section !== 'extra')
+      .map(t => t.id);
+    handleImportAndCreate(currentMonthStr, recurringIds);
   };
 
   // Scroll + highlight ao navegar pelo alerta do dashboard
@@ -169,28 +180,50 @@ export default function Finances() {
         </div>
       ) : (
         <>
-          {/* Resumo */}
-          <div className={styles.summaryRow}>
-            <SummaryCard label="Total de Entradas" value={totalIncome} accent="#10B981"/>
-            <SummaryCard label="Boletos" value={totalBoletos} accent="#3B82F6"/>
-            <SummaryCard label="Assinaturas" value={totalAssinaturas} accent="#F59E0B"/>
-            <SummaryCard label="Gastos Extras" value={totalExtras} accent="#FF1493"/>
-            <SummaryCard label="Sobra / Falta" value={balance} accent={balance>=0?'#10B981':'#EF4444'} highlight/>
-          </div>
-
-          {/* Sobrevivência */}
-          <div className={styles.survivalCard}>
-            <div className={styles.survivalIcon}><ShieldAlert size={28}/></div>
-            <div className={styles.survivalBody}>
-              <div className={styles.survivalTitle}>Tempo de Sobrevivência</div>
-              <div className={styles.survivalDesc}>
-                Com seu patrimônio investido de <strong>{fmt(totalInvestments)}</strong> e custo mensal de <strong>{fmt(totalExp)}</strong>, você sobreviveria por:
+          {/* Banner: mês do calendário ainda não criado */}
+          {currentMonthMissing && latestMonth && (
+            <div className={styles.newMonthBanner}>
+              <Sparkles size={20} className={styles.newMonthIcon}/>
+              <div className={styles.newMonthText}>
+                <strong>{MONTH_NAMES[today.getMonth()]} chegou!</strong>{' '}
+                Crie o mês atual já com os boletos, assinaturas e receitas de {fmtMonth(latestMonth.month)}.
+              </div>
+              <div className={styles.newMonthActions}>
+                <button className={styles.btnPrimary} onClick={handleQuickCreateCurrentMonth}>
+                  Criar {MONTH_NAMES[today.getMonth()]}
+                </button>
+                <button className={styles.btnSecondary} onClick={()=>setIsMonthModalOpen(true)}>
+                  Personalizar…
+                </button>
               </div>
             </div>
-            <div className={styles.survivalNumbers}>
-              <div className={styles.survivalMain}>{survivalMonths>0?`${survivalMonths.toFixed(0)} meses`:'–'}</div>
-              {survivalYears>0 && <div className={styles.survivalSub}>≈ {survivalYears.toFixed(1)} anos</div>}
-            </div>
+          )}
+
+          {/* ── Resumo do mês: o que entrou, o que saiu, o que sobrou ── */}
+          <div className={styles.heroRow}>
+            <SummaryCard label="Entradas" value={totalIncome} accent="#10B981"/>
+            <SummaryCard label="Saídas" value={totalExp} accent="#EF4444"/>
+            <SummaryCard label="Sobra do Mês" value={balance} accent={balance>=0?'#10B981':'#EF4444'} highlight/>
+          </div>
+
+          {/* Composição das saídas + valores informativos */}
+          <div className={styles.chipRow}>
+            <span className={styles.chip} style={{'--chip-accent':'#3B82F6'} as React.CSSProperties}>
+              Boletos <strong>{fmt(totalBoletos)}</strong>
+            </span>
+            <span className={styles.chip} style={{'--chip-accent':'#FF1493'} as React.CSSProperties}>
+              Gastos Extras <strong>{fmt(totalExtras)}</strong>
+            </span>
+            <span className={`${styles.chip} ${styles.chipInfo}`} style={{'--chip-accent':'#F59E0B'} as React.CSSProperties}
+              title="Cobradas na fatura do cartão de crédito — o valor já está dentro do boleto do cartão, por isso não soma de novo nas Saídas.">
+              💳 Assinaturas <strong>{fmt(totalAssinaturas)}</strong> <em>já na fatura do cartão</em>
+            </span>
+            {totalImpostos > 0 && (
+              <span className={`${styles.chip} ${styles.chipInfo}`} style={{'--chip-accent':'#F59E0B'} as React.CSSProperties}
+                title="Boletos com categoria Impostos — já contados nas Saídas, destacados aqui para acompanhamento.">
+                🧾 Impostos <strong>{fmt(totalImpostos)}</strong> <em>incluídos nos boletos</em>
+              </span>
+            )}
           </div>
 
           {/* Tab bar de seções — estilo Nubank, só visível em mobile */}
@@ -243,9 +276,9 @@ export default function Finances() {
               </div>
 
               <div className={mobileSection !== 'assinatura' ? styles.mobileHidden : ''}>
-              <Section title="Assinaturas — Débito Automático" total={totalAssinaturas} accent="#F59E0B" onAdd={()=>setAddSection('assinatura')}>
+              <Section title="Assinaturas no Cartão" total={totalAssinaturas} accent="#F59E0B" onAdd={()=>setAddSection('assinatura')}>
                 <p style={{ fontSize: '0.72rem', color: 'var(--color-text-3)', padding: '0 0.85rem 0.5rem', fontStyle: 'italic' }}>
-                  ℹ️ Estes valores não são somados ao total de gastos pois já estão incluídos na fatura do cartão de crédito.
+                  💳 Cobradas na fatura do cartão de crédito. O valor já está dentro do boleto do cartão — por isso não soma de novo nas Saídas do mês.
                 </p>
                 <table className={styles.table}>
                   <thead><tr><th>Descrição</th><th>Categoria</th><th>Cartão</th><th>Valor</th><th></th></tr></thead>
@@ -294,43 +327,8 @@ export default function Finances() {
               </Section>
               </div>
 
-              {/* ── Total de Impostos — somente conferência, sem duplicar no total ── */}
-              {impostos.length > 0 && (
-                <Section title="Total de Impostos" total={totalImpostos} accent="#F59E0B">
-                  <p style={{ fontSize: '0.72rem', color: 'var(--color-text-3)', padding: '0 0.85rem 0.65rem', fontStyle: 'italic' }}>
-                    ℹ️ Estes valores já estão incluídos em Controle de Boletos — listados aqui apenas para monitoramento.
-                  </p>
-                  <table className={styles.table}>
-                    <thead><tr><th>Descrição</th><th>Vcto</th><th>Valor</th><th>Status</th></tr></thead>
-                    <tbody>
-                      {impostos.map(tx => (
-                        <tr key={tx.id}>
-                          <td className={styles.descCell}>{tx.description}</td>
-                          <td data-label="Vcto" className={styles.centerCell}>{tx.dueDay ? `Dia ${tx.dueDay}` : '—'}</td>
-                          <td data-label="Valor" className={styles.valueCell}>{fmt(tx.value)}</td>
-                          <td data-label="Status">
-                            <button
-                              className={`${styles.statusBtn} ${STATUS_CSS[tx.paymentStatus||'pending']}`}
-                              onClick={() => toggleStatus(tx)}
-                            >
-                              {STATUS_LABELS[tx.paymentStatus||'pending']}
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <td colSpan={2} className={styles.totalLabel}>TOTAL DE IMPOSTOS</td>
-                        <td colSpan={2} className={styles.totalValue}>{fmt(totalImpostos)}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </Section>
-              )}
-
               <div className={mobileSection !== 'income' ? styles.mobileHidden : ''}>
-              <Section title="Entrada e Saída" total={null} accent="#10B981" onAdd={()=>setAddSection('income')}>
+              <Section title="Receitas do Mês" total={totalIncome} accent="#10B981" onAdd={()=>setAddSection('income')}>
                 <table className={styles.table}>
                   <thead><tr><th>Descrição</th><th>Valor</th><th></th></tr></thead>
                   <tbody>
@@ -347,9 +345,7 @@ export default function Finances() {
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr><td colSpan={2} className={styles.totalLabel}>Entradas</td><td className={`${styles.totalValue} ${styles.incomeValue}`}>{fmt(totalIncome)}</td></tr>
-                    <tr><td colSpan={2} className={styles.totalLabel}>Gastos do mês</td><td className={`${styles.totalValue} ${styles.expenseValue}`}>{fmt(totalExp)}</td></tr>
-                    <tr className={styles.balanceRow}><td colSpan={2} className={styles.totalLabel}>Sobra / Falta</td><td className={`${styles.totalValue} ${balance>=0?styles.incomeValue:styles.expenseValue}`}>{fmt(balance)}</td></tr>
+                    <tr><td colSpan={2} className={styles.totalLabel}>TOTAL RECEITAS</td><td className={`${styles.totalValue} ${styles.incomeValue}`}>{fmt(totalIncome)}</td></tr>
                   </tfoot>
                 </table>
               </Section>
