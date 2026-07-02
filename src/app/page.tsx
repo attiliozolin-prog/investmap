@@ -1,104 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { AppProvider, useApp } from '@/context/AppContext';
-import { AuthProvider, useAuth } from '@/context/AuthContext';
-import ErrorBoundary from '@/components/ErrorBoundary';
-import { ToastProvider } from '@/components/Toast';
-import Navbar from '@/components/Navbar';
+import { useRouter } from 'next/navigation';
 import Dashboard from '@/views/Dashboard';
-import Assets from '@/views/Assets';
-import Strategy from '@/views/Strategy';
-import Finances from '@/views/Finances';
-import LandingPage from '@/components/LandingPage/LandingPage';
-import OnboardingFlow from '@/components/Onboarding/OnboardingFlow';
-import AuthPage from '@/components/Auth/AuthPage';
-import Profile from '@/views/Profile';
-import styles from './page.module.css';
+import { routeForTab } from '@/lib/routes';
 
-type Tab = 'dashboard' | 'finances' | 'assets' | 'strategy' | 'profile';
-
-function AppContent() {
-  const { user, loading: authLoading } = useAuth();
-  const { hasCompletedOnboarding, dbSynced } = useApp();
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
-  const [showLanding, setShowLanding] = useState<boolean>(!hasCompletedOnboarding);
-
-  const [isTestOnboarding, setIsTestOnboarding] = useState(false);
-  
-  useEffect(() => {
-    setIsTestOnboarding(localStorage.getItem('investmap_test_onboarding') === '1');
-  }, []);
-
-  // Aguarda verificação de sessão e DB
-  if (authLoading || (user && !dbSynced)) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0B0B14' }}>
-        <div style={{ width: 32, height: 32, border: '2px solid #252538', borderTopColor: '#8B5CF6', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-      </div>
-    );
-  }
-
-  // Usuário não autenticado — exibe tela de login/cadastro
-  if (!user) {
-    return <AuthPage />;
-  }
-
-  if (!hasCompletedOnboarding && showLanding && !isTestOnboarding) {
-    return <LandingPage onStart={() => setShowLanding(false)} />;
-  }
-
-  if ((!hasCompletedOnboarding && !showLanding) || isTestOnboarding) {
-    return (
-      <OnboardingFlow 
-        onFinish={(action) => {
-          if (isTestOnboarding) {
-            window.location.href = '/';
-            return;
-          }
-          if (action === 'add-asset') {
-            setActiveTab('assets');
-            // Aguarda o render da tela de ativos para clicar no botão
-            setTimeout(() => {
-              document.getElementById('add-asset-btn')?.click();
-            }, 100);
-          }
-        }} 
-      />
-    );
-  }
-
-  return (
-    <div className={styles.app}>
-      <Navbar activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab as Tab)} />
-      <main className={styles.main}>
-        <div className={`container ${styles.content}`}>
-          {activeTab === 'dashboard' && <Dashboard onNavigate={(tab) => setActiveTab(tab as Tab)} />}
-          {activeTab === 'finances'  && <Finances />}
-          {activeTab === 'assets'    && <Assets />}
-          {activeTab === 'strategy'  && <Strategy />}
-          {activeTab === 'profile'   && <Profile />}
-        </div>
-      </main>
-    </div>
-  );
+export default function DashboardPage() {
+  const router = useRouter();
+  return <Dashboard onNavigate={(tab) => router.push(routeForTab(tab))} />;
 }
-
-import { FinanceProvider } from '@/context/FinanceContext';
-
-export default function Home() {
-  return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <AppProvider>
-          <FinanceProvider>
-            <ToastProvider>
-              <AppContent />
-            </ToastProvider>
-          </FinanceProvider>
-        </AppProvider>
-      </AuthProvider>
-    </ErrorBoundary>
-  );
-}
-

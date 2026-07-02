@@ -60,7 +60,44 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
     }
   }, [summary, activeStrategy, saveSnapshot, snapshots]);
 
+  // ── Boletos próximos do vencimento (≤ 7 dias) ─────────────────────────────
+  // Hook declarado ANTES dos early returns (regra de hooks do React)
+  const upcomingBoletos = useMemo(() => {
+    const today = new Date();
+    const todayDay = today.getDate();
+    const todayMonth = today.getMonth(); // 0-indexed
+    const todayYear = today.getFullYear();
 
+    // Mês ativo do controle financeiro
+    const activeMonth = months.find(m => m.id === activeMonthId);
+    if (!activeMonth) return [];
+
+    // Verifica se o mês ativo do controle financeiro é o mês atual
+    const [mYear, mMonth] = activeMonth.month.split('-').map(Number);
+    const isCurrentMonth = mYear === todayYear && (mMonth - 1) === todayMonth;
+
+    // Se o mês ativo for futuro, mostra os que vencem nos próximos 7 dias a partir do dia 1
+    // Se for o mês atual, mostra os que vencem entre hoje e hoje+7
+    const monthTxs = transactions.filter(t => t.monthId === activeMonthId && t.section === 'boleto');
+    const unpaid = monthTxs.filter(t =>
+      (t.paymentStatus === 'pending' || t.paymentStatus === 'scheduled') &&
+      t.dueDay != null
+    );
+
+    return unpaid.filter(t => {
+      const dueDay = t.dueDay!;
+      if (isCurrentMonth) {
+        // dueDay está entre hoje e hoje+7 (inclusive)
+        return dueDay >= todayDay && dueDay <= todayDay + 7;
+      } else {
+        // Para mês diferente do atual, mostra todos pendentes com dueDay nos próximos 7 dias do mês
+        const dueDate = new Date(mYear, mMonth - 1, dueDay);
+        const diffMs = dueDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        return diffDays >= 0 && diffDays <= 7;
+      }
+    }).sort((a, b) => (a.dueDay ?? 0) - (b.dueDay ?? 0));
+  }, [transactions, activeMonthId, months]);
 
   if (!activeStrategy) {
     return (
@@ -118,44 +155,6 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
 
   // Tour de primeiro uso
   const showFirstUseTip = assetsWithCalcs.length > 0;
-
-  // ── Boletos próximos do vencimento (≤ 7 dias) ─────────────────────────────
-  const upcomingBoletos = useMemo(() => {
-    const today = new Date();
-    const todayDay = today.getDate();
-    const todayMonth = today.getMonth(); // 0-indexed
-    const todayYear = today.getFullYear();
-
-    // Mês ativo do controle financeiro
-    const activeMonth = months.find(m => m.id === activeMonthId);
-    if (!activeMonth) return [];
-
-    // Verifica se o mês ativo do controle financeiro é o mês atual
-    const [mYear, mMonth] = activeMonth.month.split('-').map(Number);
-    const isCurrentMonth = mYear === todayYear && (mMonth - 1) === todayMonth;
-
-    // Se o mês ativo for futuro, mostra os que vencem nos próximos 7 dias a partir do dia 1
-    // Se for o mês atual, mostra os que vencem entre hoje e hoje+7
-    const monthTxs = transactions.filter(t => t.monthId === activeMonthId && t.section === 'boleto');
-    const unpaid = monthTxs.filter(t =>
-      (t.paymentStatus === 'pending' || t.paymentStatus === 'scheduled') &&
-      t.dueDay != null
-    );
-
-    return unpaid.filter(t => {
-      const dueDay = t.dueDay!;
-      if (isCurrentMonth) {
-        // dueDay está entre hoje e hoje+7 (inclusive)
-        return dueDay >= todayDay && dueDay <= todayDay + 7;
-      } else {
-        // Para mês diferente do atual, mostra todos pendentes com dueDay nos próximos 7 dias do mês
-        const dueDate = new Date(mYear, mMonth - 1, dueDay);
-        const diffMs = dueDate.getTime() - today.getTime();
-        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-        return diffDays >= 0 && diffDays <= 7;
-      }
-    }).sort((a, b) => (a.dueDay ?? 0) - (b.dueDay ?? 0));
-  }, [transactions, activeMonthId, months]);
 
   const handleAssetAlertClick = (assetId: string) => {
     sessionStorage.setItem('highlight_asset_id', assetId);

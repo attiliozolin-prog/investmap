@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { FinanceMonth, FinanceTransaction, FinanceCpfCnpj, FinancePaymentStatus, FinanceSection, FinanceCategory } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { reportSyncError } from '@/lib/syncStatus';
 
 interface FinanceContextType {
   months: FinanceMonth[];
@@ -222,7 +223,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       month: newMonth.month,
       created_at: newMonth.createdAt
     }).then(({error}) => {
-      if (error) console.error("Erro criando mês", error);
+      if (error) reportSyncError("Erro criando mês", error);
     });
 
     return newMonth;
@@ -243,7 +244,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     // Remove do Supabase
     supabase.from('finance_months').delete().eq('id', id).then(({error}) => {
-      if (error) console.error("Erro deletando mês", error);
+      if (error) reportSyncError("Erro deletando mês", error);
     });
   }, [activeMonthId]);
 
@@ -274,7 +275,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       card: newTx.card,
       created_at: newTx.createdAt
     }).then(({error}) => {
-      if (error) console.error("Erro inserindo transação", error);
+      if (error) reportSyncError("Erro inserindo transação", error);
     });
   }, [user]);
 
@@ -296,7 +297,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     if (Object.keys(updatePayload).length > 0) {
       supabase.from('finance_transactions').update(updatePayload).eq('id', id).then(({error}) => {
-        if (error) console.error("Erro atualizando transação", error);
+        if (error) reportSyncError("Erro atualizando transação", error);
       });
     }
   }, []);
@@ -306,7 +307,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
     // Persiste no Supabase
     supabase.from('finance_transactions').delete().eq('id', id).then(({error}) => {
-      if (error) console.error("Erro deletando transação", error);
+      if (error) reportSyncError("Erro deletando transação", error);
     });
   }, []);
 
@@ -315,21 +316,21 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     const newCat = { id: crypto.randomUUID(), name };
     setCategories(prev => [...prev, newCat]);
     supabase.from('finance_categories').insert({ id: newCat.id, user_id: user.id, name }).then(({error}) => {
-      if (error) console.error("Erro inserindo categoria", error);
+      if (error) reportSyncError("Erro inserindo categoria", error);
     });
   }, [user]);
 
   const updateCategory = useCallback((id: string, name: string) => {
     setCategories(prev => prev.map(c => c.id === id ? { ...c, name } : c));
     supabase.from('finance_categories').update({ name }).eq('id', id).then(({error}) => {
-      if (error) console.error("Erro atualizando categoria", error);
+      if (error) reportSyncError("Erro atualizando categoria", error);
     });
   }, []);
 
   const deleteCategory = useCallback((id: string) => {
     setCategories(prev => prev.filter(c => c.id !== id));
     supabase.from('finance_categories').delete().eq('id', id).then(({error}) => {
-      if (error) console.error("Erro deletando categoria", error);
+      if (error) reportSyncError("Erro deletando categoria", error);
     });
   }, []);
 

@@ -44,10 +44,10 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose, pendingTaxCalc]);
 
-  if (!asset) return null;
-
-  // Detecta tipo tributário do ativo
+  // Detecta tipo tributário do ativo (null-safe: os hooks abaixo precisam
+  // rodar em toda renderização — o early return de !asset vem depois deles)
   const assetType: AssetType = (() => {
+    if (!asset) return 'acao';
     for (const s of strategies) {
       const cat = s.categories.find(c => c.id === asset.categoryId);
       if (cat) return detectAssetType(cat.className, cat.subclassName, asset.ticker);
@@ -56,7 +56,7 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
   })();
 
   // Ativos sem quantidade definida usam custo manual na venda
-  const hasQuantity = !!asset.quantity && asset.quantity > 0;
+  const hasQuantity = !!asset?.quantity && asset.quantity > 0;
 
   // Para crypto e renda fixa sem qty, mostramos o campo de custo manual
   const needsManualCost = type === 'sell' && !hasQuantity;
@@ -80,6 +80,8 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
       })
       .reduce((sum, r) => sum + r.sellValue, 0);
   }, [assetType, date, sellTaxRecords]);
+
+  if (!asset) return null;
 
   const handleNumberInput = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
     let raw = e.target.value.replace(/\D/g, '');

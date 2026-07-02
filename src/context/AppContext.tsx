@@ -12,6 +12,7 @@ import React, {
 import { Strategy, Asset, StrategyCategory, Transaction, PortfolioSnapshot, SellTaxRecord, FinancialGoal } from '@/types';
 import { generateId } from '@/lib/calculations';
 import { supabase } from '@/lib/supabase';
+import { reportSyncError } from '@/lib/syncStatus';
 import { useAuth } from '@/context/AuthContext';
 
 // ============================================
@@ -124,7 +125,6 @@ function clearStorage(userId?: string): void {
 // Supabase Helpers — converte snake_case ↔ camelCase
 // ============================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function dbStrategyToApp(row: any, categories: StrategyCategory[]): Strategy {
   return {
     id: row.id,
@@ -137,7 +137,6 @@ function dbStrategyToApp(row: any, categories: StrategyCategory[]): Strategy {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function dbCategoryToApp(row: any): StrategyCategory {
   return {
     id: row.id,
@@ -148,7 +147,6 @@ function dbCategoryToApp(row: any): StrategyCategory {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function dbAssetToApp(row: any): Asset {
   return {
     id: row.id,
@@ -168,7 +166,6 @@ function dbAssetToApp(row: any): Asset {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function dbTransactionToApp(row: any): Transaction {
   return {
     id: row.id,
@@ -180,7 +177,6 @@ function dbTransactionToApp(row: any): Transaction {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function dbSnapshotToApp(row: any): PortfolioSnapshot {
   return {
     id: row.id,
@@ -566,7 +562,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deviation_tolerance: newStrategy.deviationTolerance,
         created_at: now,
         updated_at: now,
-      }).then(({ error }) => { if (error) console.error(error); });
+      }).then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
     }
     return newStrategy;
   }, [user]);
@@ -582,7 +578,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deviation_tolerance: data.deviationTolerance,
         updated_at: now,
       }).eq('id', id).eq('user_id', user.id)
-        .then(({ error }) => { if (error) console.error(error); });
+        .then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
     }
   }, [user]);
 
@@ -592,7 +588,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     if (user) {
       supabase.from('strategies').delete().eq('id', id).eq('user_id', user.id)
-        .then(({ error }) => { if (error) console.error(error); });
+        .then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
     }
   }, [user]);
 
@@ -604,7 +600,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .update({ updated_at: new Date().toISOString() })
         .eq('id', id)
         .eq('user_id', user.id)
-        .then(({ error }) => { if (error) console.error('Erro ao salvar carteira ativa:', error); });
+        .then(({ error }) => { if (error) reportSyncError('salvar carteira ativa', error); });
     }
   }, [user]);
 
@@ -628,7 +624,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         subclass_name: newCat.subclassName,
         target_percent: newCat.targetPercent,
         sort_order: 99,
-      }).then(({ error }) => { if (error) console.error(error); });
+      }).then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
     }
   }, [activeStrategyId, user]);
 
@@ -645,7 +641,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         subclass_name: data.subclassName,
         target_percent: data.targetPercent,
       }).eq('id', id).eq('user_id', user.id)
-        .then(({ error }) => { if (error) console.error(error); });
+        .then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
     }
   }, [activeStrategyId, user]);
 
@@ -659,7 +655,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     if (user) {
       supabase.from('strategy_categories').delete().eq('id', id).eq('user_id', user.id)
-        .then(({ error }) => { if (error) console.error(error); });
+        .then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
     }
   }, [activeStrategyId, user]);
 
@@ -692,7 +688,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         is_archived: false,
         created_at: now,
         updated_at: now,
-      }).then(({ error }) => { if (error) console.error(error); });
+      }).then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
 
       supabase.from('transactions').insert({
         id: firstTx.id,
@@ -701,7 +697,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         type: 'buy',
         value: firstTx.value,
         date: now,
-      }).then(({ error }) => { if (error) console.error(error); });
+      }).then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -724,7 +720,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         is_archived: data.isArchived !== undefined ? data.isArchived : undefined,
         updated_at: now,
       }).eq('id', id).eq('user_id', user.id)
-        .then(({ error }) => { if (error) console.error(error); });
+        .then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
     }
   }, [user]);
 
@@ -734,7 +730,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     if (user) {
       supabase.from('assets').delete().eq('id', id).eq('user_id', user.id)
-        .then(({ error }) => { if (error) console.error(error); });
+        .then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
     }
   }, [user]);
 
@@ -756,7 +752,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         value: newTx.value,
         notes: newTx.notes ?? '',
         date: txDate,
-      }).then(({ error }) => { if (error) console.error(error); });
+      }).then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
     }
   }, [user]);
 
@@ -798,12 +794,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       if (user) {
         supabase.from('transactions').delete().eq('id', id).eq('user_id', user.id)
-          .then(({ error }) => { if (error) console.error(error); });
+          .then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
         supabase.from('assets').update({
           invested_value: newInvested,
           updated_at: new Date().toISOString(),
         }).eq('id', toDelete.assetId).eq('user_id', user.id)
-          .then(({ error }) => { if (error) console.error(error); });
+          .then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
       }
 
       return remaining;
@@ -815,7 +811,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (user) {
       supabase.from('transactions').update({ notes: data.notes ?? '' })
         .eq('id', id).eq('user_id', user.id)
-        .then(({ error }) => { if (error) console.error(error); });
+        .then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
     }
   }, [user]);
 
@@ -844,7 +840,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         total_invested: newSnap.totalInvested,
         profit_loss: newSnap.profitLoss,
       }, { onConflict: 'strategy_id,date' })
-        .then(({ error }) => { if (error) console.error(error); });
+        .then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
     }
   }, [user]);
 
@@ -870,7 +866,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         achieved_at: newGoal.achievedAt ?? null,
         created_at: now,
         updated_at: now,
-      }).then(({ error }) => { if (error) console.error('addGoal error:', error); });
+      }).then(({ error }) => { if (error) reportSyncError('addGoal', error); });
     }
   }, [user]);
 
@@ -889,7 +885,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (data.achievedAt !== undefined)         payload.achieved_at = data.achievedAt ?? null;
 
       supabase.from('financial_goals').update(payload).eq('id', id).eq('user_id', user.id)
-        .then(({ error }) => { if (error) console.error('updateGoal error:', error); });
+        .then(({ error }) => { if (error) reportSyncError('updateGoal', error); });
     }
   }, [user]);
 
@@ -897,7 +893,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setGoals(prev => prev.filter(g => g.id !== id));
     if (user) {
       supabase.from('financial_goals').delete().eq('id', id).eq('user_id', user.id)
-        .then(({ error }) => { if (error) console.error('deleteGoal error:', error); });
+        .then(({ error }) => { if (error) reportSyncError('deleteGoal', error); });
     }
   }, [user]);
 
@@ -929,7 +925,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       darf_period: newRec.darfPeriod ?? null,
       notes: newRec.notes ?? null,
       sell_date: newRec.sellDate,
-    }).then(({ error }) => { if (error) console.error('sell_tax_records insert', error); });
+    }).then(({ error }) => { if (error) reportSyncError('sell_tax_records insert', error); });
   }, [user]);
 
   const updateSellTaxRecord = useCallback((id: string, data: Partial<SellTaxRecord>) => {
@@ -941,7 +937,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (data.lossUsedForCompensation !== undefined) payload.loss_used_for_compensation = data.lossUsedForCompensation;
     if (Object.keys(payload).length > 0 && user) {
       supabase.from('sell_tax_records').update(payload).eq('id', id)
-        .then(({ error }) => { if (error) console.error('sell_tax_records update', error); });
+        .then(({ error }) => { if (error) reportSyncError('sell_tax_records update', error); });
     }
   }, [user]);
 
@@ -992,7 +988,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       a => (a.priceMode ?? 'auto') === 'auto' && !a.isArchived
     );
 
-    console.log(`[syncPrices] ${eligible.length} ativos elegíveis de ${currentAssets.length} total`);
     if (eligible.length === 0) return;
 
     isSyncingRef.current = true;
@@ -1000,11 +995,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const { fetchAssetPrices } = await import('@/lib/brapi');
       const tickers = eligible.map(a => a.ticker);
-      console.log(`[syncPrices] buscando preços para: ${tickers.join(', ')}`);
 
       // forceRefresh=true: invalida cache e busca preços frescos da API
       const prices = await fetchAssetPrices(tickers, true);
-      console.log(`[syncPrices] ${prices.size} preços recebidos`);
 
       for (const asset of eligible) {
         const cleanTicker = asset.ticker.toUpperCase().replace(/\.SA$/i, '').replace(/F$/, '');
@@ -1042,7 +1035,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             current_value: newCurrentValue,
             updated_at: new Date().toISOString(),
           }).eq('id', asset.id).eq('user_id', currentUser.id)
-            .then(({ error }) => { if (error) console.error('syncPrices update error:', error, 'asset:', asset.ticker); });
+            .then(({ error }) => { if (error) reportSyncError(`syncPrices update (${asset.ticker})`, error); });
         }
       }
 

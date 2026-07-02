@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import AppShell from '@/components/AppShell';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -28,7 +29,9 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body>{children}</body>
+      <body>
+        <AppShell>{children}</AppShell>
+      </body>
     </html>
   );
 }
