@@ -105,10 +105,10 @@ export default function Assets() {
           <button
             className="btn btn-ghost"
             onClick={() => setShowHistory(true)}
-            title="Ver histórico geral, IR e compensações"
+            title="Ver extrato completo de compras e vendas"
           >
             <BookOpen size={16} />
-            Histórico & IR
+            Histórico
           </button>
           <button
             id="add-asset-btn"

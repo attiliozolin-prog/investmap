@@ -10,7 +10,7 @@ import AiAnalysisCard from '@/components/AiAnalysisCard';
 import EvolutionChart from '@/components/EvolutionChart';
 import GoalWidget from '@/components/GoalWidget';
 import styles from './Dashboard.module.css';
-import { AlertTriangle, TrendingUp, CalendarClock, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, TrendingUp, CalendarClock, ShieldAlert, Landmark } from 'lucide-react';
 import { formatCurrency } from '@/lib/calculations';
 import FirstUseTip from '@/components/FirstUseTip';
 
@@ -25,7 +25,7 @@ const AllocationChart = dynamic(() => import('@/components/AllocationChart'), {
 });
 
 export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void }) {
-  const { activeStrategy, activeAssets, saveSnapshot, snapshots, dbSynced, syncPrices, isSyncingPrices, lastPriceSyncAt } = useApp();
+  const { activeStrategy, activeAssets, saveSnapshot, snapshots, dbSynced, syncPrices, isSyncingPrices, lastPriceSyncAt, sellTaxRecords } = useApp();
   const { transactions, months, activeMonthId } = useFinance();
 
   const summary = useMemo(() => {
@@ -98,6 +98,12 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
       }
     }).sort((a, b) => (a.dueDay ?? 0) - (b.dueDay ?? 0));
   }, [transactions, activeMonthId, months]);
+
+  // ── DARFs pendentes de pagamento ──
+  const pendingDarfs = useMemo(() =>
+    sellTaxRecords.filter(r => !r.isLoss && !r.isExempt && r.taxDue > 0 && !r.taxPaid),
+  [sellTaxRecords]);
+  const pendingDarfTotal = pendingDarfs.reduce((s, r) => s + r.taxDue, 0);
 
   // ── Custo mensal (boletos + extras do mês ativo) para o Tempo de Sobrevivência ──
   const monthlyCost = useMemo(() =>
@@ -239,6 +245,36 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                   </span>
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DARF pendente */}
+      {pendingDarfs.length > 0 && (
+        <div className={styles.alertDanger}>
+          <Landmark size={16} className={styles.alertIcon} />
+          <div className={styles.alertContent}>
+            <strong>DARF pendente de pagamento</strong>
+            <div className={styles.alertBadges}>
+              {pendingDarfs.map((r) => (
+                <button
+                  key={r.id}
+                  className={styles.alertBoletoItem}
+                  onClick={() => onNavigate('taxes')}
+                  title="Ver detalhes na página Impostos"
+                >
+                  <span className={styles.alertBoletoDay}>{r.darfPeriod?.replace('-', '/')}</span>
+                  <span className={styles.alertBoletoDesc}>{r.assetTicker}</span>
+                  <span className={styles.alertBoletoValue}>{formatCurrency(r.taxDue)}</span>
+                </button>
+              ))}
+              {pendingDarfs.length > 1 && (
+                <button className={styles.alertBoletoItem} onClick={() => onNavigate('taxes')}>
+                  <span className={styles.alertBoletoDesc}>Total</span>
+                  <span className={styles.alertBoletoValue}>{formatCurrency(pendingDarfTotal)}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

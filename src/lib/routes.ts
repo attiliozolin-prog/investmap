@@ -7,6 +7,7 @@ export const TAB_TO_ROUTE: Record<string, string> = {
   dashboard: '/',
   assets: '/carteira',
   finances: '/financas',
+  taxes: '/impostos',
   strategy: '/estrategia',
   profile: '/perfil',
 };
