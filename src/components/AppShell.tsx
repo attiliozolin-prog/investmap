@@ -21,6 +21,9 @@ import styles from '@/app/page.module.css';
  * entre rotas — só o conteúdo da página troca.
  */
 
+// Rotas acessíveis sem login (páginas legais linkadas na tela de autenticação)
+const PUBLIC_ROUTES = ['/privacidade', '/termos'];
+
 function Gate({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const { hasCompletedOnboarding, dbSynced } = useApp();
@@ -33,6 +36,11 @@ function Gate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setIsTestOnboarding(localStorage.getItem('investmap_test_onboarding') === '1');
   }, []);
+
+  // Páginas públicas: renderizam sem gate de auth nem navbar
+  if (PUBLIC_ROUTES.includes(pathname)) {
+    return <>{children}</>;
+  }
 
   // Aguarda verificação de sessão e DB
   if (authLoading || (user && !dbSynced)) {

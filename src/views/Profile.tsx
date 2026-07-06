@@ -236,7 +236,7 @@ export default function Profile() {
         <div className={styles.dangerCard}>
           <h3>Zona de Perigo</h3>
           <p className={styles.helpText}>
-            A exclusão da conta removerá permanentemente todos os seus ativos, estratégias e histórico. Esta ação não pode ser desfeita.
+            A exclusão removerá permanentemente seus ativos, estratégias, finanças, impostos e o seu login (e-mail e senha). Esta ação não pode ser desfeita. Se quiser guardar uma cópia, exporte o backup em JSON antes.
           </p>
           <button 
             className={styles.deleteBtn}

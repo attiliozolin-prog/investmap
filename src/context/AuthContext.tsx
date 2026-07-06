@@ -14,6 +14,7 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signInWithGoogle: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   updateUser: (attributes: { password?: string; data?: { full_name?: string } }) => Promise<{ error: string | null }>;
   requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
@@ -66,6 +67,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error?.message ?? null };
   }, []);
 
+  const signInWithGoogle = useCallback(async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/` },
+    });
+    return { error: error?.message ?? null };
+  }, []);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     window.location.href = '/'; // Força um reload para limpar a cache do navegador e re-renderizar AuthPage
@@ -93,20 +102,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const deleteAccountData = useCallback(async () => {
     if (!user) return { error: 'Usuário não autenticado' };
-    const userId = user.id;
 
     try {
-      // Deletar dados em ordem para evitar erros de FK
-      await supabase.from('portfolio_snapshots').delete().eq('user_id', userId);
-      await supabase.from('transactions').delete().eq('user_id', userId);
-      await supabase.from('assets').delete().eq('user_id', userId);
-      await supabase.from('strategy_categories').delete().eq('user_id', userId);
-      await supabase.from('strategies').delete().eq('user_id', userId);
+      // A exclusão real (dados de todas as tabelas + usuário de auth) roda
+      // no servidor com a service role — RLS impediria o client de remover
+      // o próprio registro de autenticação.
+      const res = await fetch('/api/account/delete', { method: 'POST' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        return { error: body.error ?? `Falha na exclusão (HTTP ${res.status}).` };
+      }
+
+      // Limpa o cache local antes de recarregar em AuthPage
+      try {
+        Object.keys(localStorage)
+          .filter(k => k.startsWith('investmap_'))
+          .forEach(k => localStorage.removeItem(k));
+      } catch { /* ignore */ }
 
       await signOut();
       return { error: null };
-    } catch (err: any) {
-      return { error: err.message || 'Erro ao deletar dados' };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Erro ao excluir a conta.' };
     }
   }, [user, signOut]);
 
@@ -115,9 +132,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user, 
       session, 
       loading, 
-      signUp, 
-      signIn, 
-      signOut, 
+      signUp,
+      signIn,
+      signInWithGoogle,
+      signOut,
       updateUser,
       requestPasswordReset,
       resendConfirmationEmail,
