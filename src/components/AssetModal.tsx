@@ -165,7 +165,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className={`modal ${styles.modalWrap}`}>
+      <div className={`modal ${styles.modalWrap}`} role="dialog" aria-modal="true">
 
         {/* ── Header ── */}
         <div className={styles.header}>

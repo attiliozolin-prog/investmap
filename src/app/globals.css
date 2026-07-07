@@ -477,3 +477,55 @@ select option {
   background: var(--color-surface);
   color: var(--color-text);
 }
+
+/* ======================================================
+   Acessibilidade
+   ====================================================== */
+
+/*
+  Foco visível para navegação por TECLADO (:focus-visible).
+  Vale para todos os elementos interativos. Como usa :focus-visible,
+  o anel NÃO aparece em cliques de mouse — só quando o usuário navega
+  por Tab, que é exatamente quem precisa dessa pista visual.
+*/
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--color-primary-light);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm, 6px);
+}
+
+/* Remove o outline padrão apenas quando NÃO é foco por teclado */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Classe utilitária: conteúdo só para leitores de tela */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Respeita quem pediu menos movimento no sistema operacional */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

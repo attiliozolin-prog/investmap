@@ -285,7 +285,12 @@ export default function Navbar({ activeTab, onTabChange }: {
             <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportFile} />
 
             {/* Botão de menu mobile */}
-            <button className={styles.mobileActionBtn} onClick={() => setShowMobileMenu(!showMobileMenu)}>
+            <button
+              className={styles.mobileActionBtn}
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              aria-label={showMobileMenu ? 'Fechar menu' : 'Abrir menu'}
+              aria-expanded={showMobileMenu}
+            >
               {showMobileMenu ? <X size={20} /> : <Settings size={20} />}
             </button>
           </div>

@@ -232,7 +232,7 @@ export default function TransactionModal({ assetId, onClose }: TransactionModalP
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal">
+      <div className="modal" role="dialog" aria-modal="true">
         <div className={styles.header}>
           <h2>Nova Transação — {asset.ticker}</h2>
           <button type="button" className={`btn btn-ghost btn-sm`} onClick={onClose}>

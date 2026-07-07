@@ -255,7 +255,7 @@ export default function Profile() {
 
       {showDeleteModal && (
         <div className={styles.modalOverlay}>
-          <div className={styles.modal}>
+          <div className={styles.modal} role="dialog" aria-modal="true">
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
               <AlertTriangle color="#EF4444" size={32} />
               <h2 style={{ margin: 0 }}>Você tem certeza?</h2>
@@ -300,7 +300,7 @@ export default function Profile() {
       )}
       {pendingImportData && (
         <div className={styles.modalOverlay} onClick={() => setPendingImportData(null)}>
-          <div className={styles.modal} onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" style={{ maxWidth: 420 }}>
             <h3 style={{ margin: 0, fontSize: '1rem', padding: '1.25rem 1.5rem 0' }}>Confirmar Importação</h3>
             <div style={{ padding: '1.25rem 1.5rem' }}>
               <p style={{ margin: '0 0 0.75rem', color: 'var(--color-text-2)', fontSize: '0.9rem', lineHeight: 1.6 }}>

@@ -73,7 +73,7 @@ export default function PortfolioHistory({ onClose }: Props) {
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.drawer} onClick={e => e.stopPropagation()}>
+      <div className={styles.drawer} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Histórico geral">
 
         {/* ── Header ─────────────────────────────────── */}
         <div className={styles.header}>
@@ -81,7 +81,7 @@ export default function PortfolioHistory({ onClose }: Props) {
             <h2 className={styles.title}>Histórico Geral</h2>
             <p className={styles.subtitle}>Extrato completo de compras e vendas</p>
           </div>
-          <button className={styles.closeBtn} onClick={onClose}><X size={20} /></button>
+          <button className={styles.closeBtn} onClick={onClose} aria-label="Fechar"><X size={20} /></button>
         </div>
 
         {/* ── Tabs ───────────────────────────────────── */}

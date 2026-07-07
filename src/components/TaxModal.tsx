@@ -25,7 +25,7 @@ export default function TaxModal({ calc, ticker, onConfirm, onCancel }: Props) {
 
   return (
     <div className={styles.overlay} onClick={onCancel}>
-      <div className={styles.modal} onClick={e => e.stopPropagation()}>
+      <div className={styles.modal} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
 
         {/* ── Header ──────────────────────────────────────────── */}
         <div className={styles.header} style={{ borderColor: accentColor }}>

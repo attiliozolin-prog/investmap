@@ -340,7 +340,7 @@ export default function AssetsTable({ assets, onEdit, onDelete, onUpdateValue }:
       {/* Modal de confirmação de delete */}
       {confirmDeleteId && (
         <div className="modal-overlay" onClick={() => setConfirmDeleteId(null)}>
-          <div className={`modal ${styles.confirmModal}`} onClick={(e) => e.stopPropagation()}>
+          <div className={`modal ${styles.confirmModal}`} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
             <div className={styles.confirmIcon}>
               <Trash2 size={22} />
             </div>

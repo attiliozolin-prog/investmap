@@ -264,8 +264,8 @@ export default function Finances() {
                         <td data-label="Valor" className={styles.valueCell}>{fmt(tx.value)}</td>
                         <td data-label="Status"><button className={`${styles.statusBtn} ${STATUS_CSS[tx.paymentStatus||'pending']}`} onClick={()=>toggleStatus(tx)}>{STATUS_LABELS[tx.paymentStatus||'pending']}</button></td>
                         <td className={styles.actionCell}>
-                          <button className={styles.editBtn} onClick={()=>setEditTx(tx)} title="Editar"><Edit2 size={13}/></button>
-                          <button className={styles.delBtn} onClick={()=>{deleteTransaction(tx.id);toast('Lançamento removido');}} title="Apagar"><Trash2 size={13}/></button>
+                          <button className={styles.editBtn} onClick={()=>setEditTx(tx)} title="Editar" aria-label="Editar"><Edit2 size={13}/></button>
+                          <button className={styles.delBtn} onClick={()=>{deleteTransaction(tx.id);toast('Lançamento removido');}} title="Apagar" aria-label="Apagar"><Trash2 size={13}/></button>
                         </td>
                       </tr>
                     ))}
@@ -291,8 +291,8 @@ export default function Finances() {
                         <td data-label="Cartão"><span className={styles.tagCard}>{tx.card||'PF'}</span></td>
                         <td data-label="Valor" className={styles.valueCell}>{fmt(tx.value)}</td>
                         <td className={styles.actionCell}>
-                          <button className={styles.editBtn} onClick={()=>setEditTx(tx)} title="Editar"><Edit2 size={13}/></button>
-                          <button className={styles.delBtn} onClick={()=>{deleteTransaction(tx.id);toast('Lançamento removido');}} title="Apagar"><Trash2 size={13}/></button>
+                          <button className={styles.editBtn} onClick={()=>setEditTx(tx)} title="Editar" aria-label="Editar"><Edit2 size={13}/></button>
+                          <button className={styles.delBtn} onClick={()=>{deleteTransaction(tx.id);toast('Lançamento removido');}} title="Apagar" aria-label="Apagar"><Trash2 size={13}/></button>
                         </td>
                       </tr>
                     ))}
@@ -316,8 +316,8 @@ export default function Finances() {
                         <td data-label="Valor" className={styles.valueCell}>{fmt(tx.value)}</td>
                         <td data-label="Status"><button className={`${styles.statusBtn} ${STATUS_CSS[tx.paymentStatus||'pending']}`} onClick={()=>toggleStatus(tx)}>{STATUS_LABELS[tx.paymentStatus||'pending']}</button></td>
                         <td className={styles.actionCell}>
-                          <button className={styles.editBtn} onClick={()=>setEditTx(tx)} title="Editar"><Edit2 size={13}/></button>
-                          <button className={styles.delBtn} onClick={()=>{deleteTransaction(tx.id);toast('Lançamento removido');}} title="Apagar"><Trash2 size={13}/></button>
+                          <button className={styles.editBtn} onClick={()=>setEditTx(tx)} title="Editar" aria-label="Editar"><Edit2 size={13}/></button>
+                          <button className={styles.delBtn} onClick={()=>{deleteTransaction(tx.id);toast('Lançamento removido');}} title="Apagar" aria-label="Apagar"><Trash2 size={13}/></button>
                         </td>
                       </tr>
                     ))}
@@ -338,8 +338,8 @@ export default function Finances() {
                         <td className={styles.descCell}>{tx.description}</td>
                         <td data-label="Valor" className={`${styles.valueCell} ${styles.incomeValue}`}>{fmt(tx.value)}</td>
                         <td className={styles.actionCell}>
-                          <button className={styles.editBtn} onClick={()=>setEditTx(tx)} title="Editar"><Edit2 size={13}/></button>
-                          <button className={styles.delBtn} onClick={()=>{deleteTransaction(tx.id);toast('Lançamento removido');}} title="Apagar"><Trash2 size={13}/></button>
+                          <button className={styles.editBtn} onClick={()=>setEditTx(tx)} title="Editar" aria-label="Editar"><Edit2 size={13}/></button>
+                          <button className={styles.delBtn} onClick={()=>{deleteTransaction(tx.id);toast('Lançamento removido');}} title="Apagar" aria-label="Apagar"><Trash2 size={13}/></button>
                         </td>
                       </tr>
                     ))}
@@ -467,7 +467,7 @@ function Section({title,total,accent,onAdd,children}:{title:string;total:number|
         <div className={styles.sectionTitle}>{title}</div>
         <div className={styles.sectionHeaderRight}>
           {total!==null&&<span className={styles.sectionTotal}>{fmt(total)}</span>}
-          {onAdd && <button className={styles.addBtn} onClick={onAdd}><Plus size={15}/></button>}
+          {onAdd && <button className={styles.addBtn} onClick={onAdd} aria-label={`Adicionar em ${title}`}><Plus size={15}/></button>}
         </div>
       </div>
       <div className={styles.tableWrap}>{children}</div>
@@ -602,17 +602,17 @@ function MonthModal({
 
     return (
       <div className={styles.overlay} onClick={onClose}>
-        <div className={styles.modalFlex} onClick={e=>e.stopPropagation()}>
+        <div className={styles.modalFlex} onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true">
 
           {/* ── Header fixo ── */}
           <div className={styles.modalHead}>
             <div style={{display:'flex',alignItems:'center',gap:'0.6rem'}}>
-              <button className={styles.closeBtn} onClick={()=>setStep('config')} title="Voltar" style={{marginRight:0}}>
+              <button className={styles.closeBtn} onClick={()=>setStep('config')} title="Voltar" aria-label="Voltar" style={{marginRight:0}}>
                 <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
               </button>
               <h3 style={{margin:0}}>Selecionar Lançamentos</h3>
             </div>
-            <button className={styles.closeBtn} onClick={onClose}><X size={20}/></button>
+            <button className={styles.closeBtn} onClick={onClose} aria-label="Fechar"><X size={20}/></button>
           </div>
 
           {/* ── Lista rolável ── */}
@@ -730,10 +730,10 @@ function MonthModal({
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={e=>e.stopPropagation()}>
+      <div className={styles.modal} onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true">
         <div className={styles.modalHead}>
           <h3>Novo Mês de Controle</h3>
-          <button className={styles.closeBtn} onClick={onClose}><X size={20}/></button>
+          <button className={styles.closeBtn} onClick={onClose} aria-label="Fechar"><X size={20}/></button>
         </div>
         <form className={styles.modalBody} onSubmit={handleGoToSelect}>
           <div className={styles.formGroup}>
@@ -822,10 +822,10 @@ function CategoriesModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={e=>e.stopPropagation()} style={{maxHeight:'90vh',display:'flex',flexDirection:'column'}}>
+      <div className={styles.modal} onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true" style={{maxHeight:'90vh',display:'flex',flexDirection:'column'}}>
         <div className={styles.modalHead}>
           <h3>Categorias</h3>
-          <button className={styles.closeBtn} onClick={onClose}><X size={20}/></button>
+          <button className={styles.closeBtn} onClick={onClose} aria-label="Fechar"><X size={20}/></button>
         </div>
         <div className={styles.modalBody} style={{overflowY:'auto',padding:'1.5rem'}}>
           <form onSubmit={handleAdd} style={{display:'flex',gap:'0.5rem',marginBottom:'1.5rem'}}>
@@ -864,8 +864,8 @@ function DeleteMonthModal({monthName,onClose,onConfirm}:{monthName:string;onClos
   const [val,setVal] = useState('');
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={e=>e.stopPropagation()}>
-        <div className={styles.modalHead}><h3>Excluir Mês</h3><button className={styles.closeBtn} onClick={onClose}><X size={20}/></button></div>
+      <div className={styles.modal} onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true">
+        <div className={styles.modalHead}><h3>Excluir Mês</h3><button className={styles.closeBtn} onClick={onClose} aria-label="Fechar"><X size={20}/></button></div>
         <form className={styles.modalBody} onSubmit={e=>{e.preventDefault();if(val==='EXCLUIR')onConfirm();}}>
           <p style={{fontSize:'0.9rem',color:'var(--color-text)',lineHeight:'1.5'}}>
             Tem certeza que deseja excluir o mês <strong>{monthName}</strong> e TODOS os seus lançamentos?<br/>Esta ação é permanente.
@@ -929,10 +929,10 @@ function TxModal({section,monthId,existing,onClose,onSave}:{
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={e=>e.stopPropagation()}>
+      <div className={styles.modal} onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true">
         <div className={styles.modalHead}>
           <h3 style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>{SECTION_ICONS[section]}{isEdit?`Editar ${SECTION_LABELS[section].replace('Nov','Nov')}`:`${SECTION_LABELS[section]}`}</h3>
-          <button className={styles.closeBtn} onClick={onClose}><X size={20}/></button>
+          <button className={styles.closeBtn} onClick={onClose} aria-label="Fechar"><X size={20}/></button>
         </div>
         <form className={styles.modalBody} onSubmit={handleSubmit}>
           <div className={styles.formGroup}>
