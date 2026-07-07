@@ -1,5 +1,4 @@
 import LegalLayout from '@/components/legal/LegalLayout';
-import styles from '@/components/legal/LegalLayout.module.css';
 
 export const metadata = {
   title: 'Política de Privacidade — InvestMap',
@@ -8,12 +7,6 @@ export const metadata = {
 export default function PrivacidadePage() {
   return (
     <LegalLayout title="Política de Privacidade" updatedAt="julho de 2026">
-      <div className={styles.disclaimerBox}>
-        ⚠️ <strong>Modelo preliminar.</strong> Este texto é um rascunho de boa-fé e
-        deve ser revisado por um advogado antes do lançamento público, ajustando o
-        nome do controlador, o CNPJ/CPF responsável e o canal oficial de contato.
-      </div>
-
       <p>
         Esta Política descreve como o <strong>InvestMap</strong> (&quot;aplicativo&quot;) coleta,
         usa, armazena e protege seus dados pessoais, em conformidade com a Lei nº

@@ -1,5 +1,4 @@
 import LegalLayout from '@/components/legal/LegalLayout';
-import styles from '@/components/legal/LegalLayout.module.css';
 
 export const metadata = {
   title: 'Termos de Uso — InvestMap',
@@ -8,11 +7,6 @@ export const metadata = {
 export default function TermosPage() {
   return (
     <LegalLayout title="Termos de Uso" updatedAt="julho de 2026">
-      <div className={styles.disclaimerBox}>
-        ⚠️ <strong>Modelo preliminar.</strong> Este texto é um rascunho de boa-fé e
-        deve ser revisado por um advogado antes do lançamento público.
-      </div>
-
       <p>
         Ao criar uma conta e utilizar o <strong>InvestMap</strong>, você concorda com
         estes Termos de Uso. Leia com atenção.

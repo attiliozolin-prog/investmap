@@ -238,7 +238,7 @@ export default function Profile() {
           <p className={styles.helpText}>
             A exclusão removerá permanentemente seus ativos, estratégias, finanças, impostos e o seu login (e-mail e senha). Esta ação não pode ser desfeita. Se quiser guardar uma cópia, exporte o backup em JSON antes.
           </p>
-          <button 
+          <button
             className={styles.deleteBtn}
             onClick={() => setShowDeleteModal(true)}
           >
@@ -246,6 +246,12 @@ export default function Profile() {
           </button>
         </div>
       </div>
+
+      <footer className={styles.legalFooter}>
+        <a href="/privacidade">Política de Privacidade</a>
+        <span aria-hidden>·</span>
+        <a href="/termos">Termos de Uso</a>
+      </footer>
 
       {showDeleteModal && (
         <div className={styles.modalOverlay}>

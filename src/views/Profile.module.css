@@ -231,3 +231,20 @@
   border-radius: 8px;
   cursor: pointer;
 }
+
+/* ── Rodapé com links legais ── */
+.legalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  font-size: 0.8rem;
+  color: var(--color-text-3);
+}
+.legalFooter a {
+  color: var(--color-text-2);
+  text-decoration: none;
+}
+.legalFooter a:hover { color: var(--color-primary); text-decoration: underline; }
