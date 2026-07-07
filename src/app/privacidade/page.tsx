@@ -16,8 +16,8 @@ export default function PrivacidadePage() {
       <h2>1. Dados que coletamos</h2>
       <ul>
         <li><strong>Cadastro:</strong> e-mail e senha (a senha é armazenada de forma criptografada pelo provedor de autenticação).</li>
-        <li><strong>Login social (opcional):</strong> se você entrar com o Google, recebemos seu e-mail e nome associados à conta Google.</li>
         <li><strong>Dados financeiros que você cadastra:</strong> carteiras, ativos, valores, transações, metas e registros de impostos. Esses dados são inseridos por você e servem apenas para os cálculos exibidos no app.</li>
+        <li><strong>Métricas de uso do site:</strong> utilizamos o Vercel Analytics, que coleta estatísticas agregadas e anônimas de visitas (página acessada, país, tipo de dispositivo) sem cookies e sem identificar você individualmente.</li>
       </ul>
       <p>Não coletamos dados de navegação para publicidade nem compartilhamos seus dados com terceiros para marketing.</p>
 
