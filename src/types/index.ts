@@ -122,11 +122,16 @@ export interface FinanceCategory {
 
 export type FinanceTransactionType = 'income' | 'expense';
 
-// Seção na planilha a que pertence este lançamento
+// Seção na planilha a que pertence este lançamento.
+// 'assinatura' é um valor LEGADO: assinaturas deixaram de ser lançamentos
+// mensais e viraram FinanceSubscription (global, fora do mês) — mantido no
+// tipo apenas para não quebrar a leitura de linhas antigas já no banco.
 export type FinanceSection = 'boleto' | 'assinatura' | 'extra' | 'income';
 
 // Status de pagamento do lançamento
-export type FinancePaymentStatus = 'pending' | 'paid' | 'auto_debit' | 'scheduled' | 'overdue';
+// 'previsto' = valor estimado (ex.: fatura do cartão pela média dos últimos
+// meses) que ainda precisa ser confirmado quando o valor real for conhecido
+export type FinancePaymentStatus = 'pending' | 'paid' | 'auto_debit' | 'scheduled' | 'previsto' | 'overdue';
 
 // Pessoa física ou jurídica
 export type FinanceCpfCnpj = 'CPF' | 'CNPJ';
@@ -150,6 +155,17 @@ export interface FinanceTransaction {
 
   // Campo de assinaturas
   card?: string;              // Cartão onde é debitado
+}
+
+// Assinatura recorrente cobrada na fatura do cartão. Vive FORA do mês —
+// diferente de FinanceTransaction, não pertence a nenhum FinanceMonth e por
+// isso "persiste" automaticamente todo mês até o usuário adicionar/remover.
+export interface FinanceSubscription {
+  id: string;
+  description: string;
+  category?: string;
+  value: number;
+  createdAt: string;
 }
 
 // Computed finance interfaces

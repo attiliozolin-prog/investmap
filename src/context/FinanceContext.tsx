@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import { FinanceMonth, FinanceTransaction, FinanceCpfCnpj, FinancePaymentStatus, FinanceSection, FinanceCategory } from '@/types';
+import { FinanceMonth, FinanceTransaction, FinanceCpfCnpj, FinancePaymentStatus, FinanceSection, FinanceCategory, FinanceSubscription } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { reportSyncError } from '@/lib/syncStatus';
@@ -10,6 +10,7 @@ interface FinanceContextType {
   months: FinanceMonth[];
   transactions: FinanceTransaction[];
   categories: FinanceCategory[];
+  subscriptions: FinanceSubscription[];
   activeMonthId: string | null;
 
   setActiveMonthId: (id: string | null) => void;
@@ -25,6 +26,9 @@ interface FinanceContextType {
   addCategory: (name: string) => void;
   updateCategory: (id: string, name: string) => void;
   deleteCategory: (id: string) => void;
+
+  addSubscription: (data: Omit<FinanceSubscription, 'id' | 'createdAt'>) => void;
+  deleteSubscription: (id: string) => void;
 }
 
 const FinanceContext = createContext<FinanceContextType | null>(null);
@@ -38,8 +42,8 @@ const mapMonthFromDB = (m: any): FinanceMonth => ({
   id: m.id,
   month: m.month,
   createdAt: m.created_at,
-  status: 'open',
-  updatedAt: m.created_at,
+  status: (m.status as FinanceMonth['status']) ?? 'open',
+  updatedAt: m.updated_at ?? m.created_at,
 });
 
 const mapTxFromDB = (t: any): FinanceTransaction => ({
@@ -63,6 +67,14 @@ const mapCategoryFromDB = (c: any): FinanceCategory => ({
   name: c.name,
 });
 
+const mapSubscriptionFromDB = (s: any): FinanceSubscription => ({
+  id: s.id,
+  description: s.description,
+  category: s.category,
+  value: Number(s.value),
+  createdAt: s.created_at,
+});
+
 export const DEFAULT_CATEGORIES = [
   'Sobrevivência','Cartão Crédito','Telefonia','Esporte','Energia',
   'Limpeza e Manutenção','Saúde','Contabilidade','Impostos','Lazer',
@@ -75,6 +87,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [months, setMonths] = useState<FinanceMonth[]>([]);
   const [transactions, setTransactions] = useState<FinanceTransaction[]>([]);
   const [categories, setCategories] = useState<FinanceCategory[]>([]);
+  const [subscriptions, setSubscriptions] = useState<FinanceSubscription[]>([]);
   const [activeMonthId, setActiveMonthId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -83,6 +96,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       setMonths([]);
       setTransactions([]);
       setCategories([]);
+      setSubscriptions([]);
       setMounted(true);
       return;
     }
@@ -91,16 +105,61 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       try {
         const { data: dbMonths, error: errMonths } = await supabase.from('finance_months').select('*').eq('user_id', user.id);
         if (errMonths) throw errMonths;
-        
+
         const { data: dbTxs, error: errTxs } = await supabase.from('finance_transactions').select('*').eq('user_id', user.id);
         if (errTxs) throw errTxs;
 
         const { data: dbCats, error: errCats } = await supabase.from('finance_categories').select('*').eq('user_id', user.id);
         if (errCats) throw errCats;
 
+        const { data: dbSubs, error: errSubs } = await supabase.from('finance_subscriptions').select('*').eq('user_id', user.id);
+        // Tabela nova/opcional: se ainda não foi criada no banco (usuário não
+        // rodou a migração), degrada graciosamente em vez de quebrar o app.
+        if (errSubs) console.warn('finance_subscriptions indisponível (rode a migração SQL):', errSubs.message);
+
         let finalMonths = dbMonths?.map(mapMonthFromDB) || [];
         let finalTxs = dbTxs?.map(mapTxFromDB) || [];
         let finalCats = dbCats?.map(mapCategoryFromDB) || [];
+        let finalSubs = dbSubs?.map(mapSubscriptionFromDB) || [];
+
+        // ── Migração única: assinaturas antigas (lançamentos mensais com
+        // section='assinatura') viram assinaturas GLOBAIS. Não apaga as
+        // linhas antigas — só copia, deduplicando por descrição, a partir
+        // do mês mais recente que tiver alguma. Roda uma única vez porque
+        // condicionamos em finalSubs.length === 0.
+        if (finalSubs.length === 0 && !errSubs) {
+          const legacySubTxs = finalTxs.filter(t => t.section === 'assinatura');
+          if (legacySubTxs.length > 0) {
+            const mostRecentMonthId = [...finalMonths]
+              .sort((a, b) => b.month.localeCompare(a.month))[0]?.id;
+            const fromLatest = legacySubTxs.filter(t => t.monthId === mostRecentMonthId);
+            const source = fromLatest.length > 0 ? fromLatest : legacySubTxs;
+
+            const seen = new Set<string>();
+            const toMigrate = source.filter(t => {
+              const key = t.description.trim().toLowerCase();
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+
+            const newSubs: FinanceSubscription[] = toMigrate.map(t => ({
+              id: crypto.randomUUID(),
+              description: t.description,
+              category: t.category,
+              value: t.value,
+              createdAt: new Date().toISOString(),
+            }));
+
+            if (newSubs.length > 0) {
+              const { error: errMigrate } = await supabase.from('finance_subscriptions').insert(
+                newSubs.map(s => ({ id: s.id, user_id: user.id, description: s.description, category: s.category, value: s.value, created_at: s.createdAt }))
+              );
+              if (!errMigrate) finalSubs = newSubs;
+              else console.warn('Migração de assinaturas falhou:', errMigrate.message);
+            }
+          }
+        }
 
         // Inicializar categorias padrão se o usuário não tiver nenhuma
         if (finalCats.length === 0) {
@@ -170,7 +229,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         setMonths(finalMonths);
         setTransactions(finalTxs);
         setCategories(finalCats);
-        
+        setSubscriptions(finalSubs);
+
         const storedActive = localStorage.getItem(getStorageKey('activeMonthId', user.id));
         // Mapear o activeMonth caso tenha sido migrado (IDs mudaram)
         if (storedActive && finalMonths.some(m => m.id === storedActive)) {
@@ -229,12 +289,25 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     return newMonth;
   }, [user]);
 
+  // NOTA: closeMonth/reopenMonth exigem a coluna "status" em finance_months
+  // (ver migração SQL em scripts/create_finance_subscriptions.sql). Sem ela,
+  // o update falha silenciosamente no servidor mas o estado local não reverte
+  // — o mês aparece fechado na UI até a próxima sincronização. Rode a
+  // migração para persistência real.
   const closeMonth = useCallback((id: string) => {
-    setMonths(prev => prev.map(m => m.id === id ? { ...m, status: 'closed', updatedAt: new Date().toISOString() } : m));
+    const now = new Date().toISOString();
+    setMonths(prev => prev.map(m => m.id === id ? { ...m, status: 'closed', updatedAt: now } : m));
+    supabase.from('finance_months').update({ status: 'closed', updated_at: now }).eq('id', id).then(({ error }) => {
+      if (error) reportSyncError('Erro fechando mês', error);
+    });
   }, []);
 
   const reopenMonth = useCallback((id: string) => {
-    setMonths(prev => prev.map(m => m.id === id ? { ...m, status: 'open', updatedAt: new Date().toISOString() } : m));
+    const now = new Date().toISOString();
+    setMonths(prev => prev.map(m => m.id === id ? { ...m, status: 'open', updatedAt: now } : m));
+    supabase.from('finance_months').update({ status: 'open', updated_at: now }).eq('id', id).then(({ error }) => {
+      if (error) reportSyncError('Erro reabrindo mês', error);
+    });
   }, []);
 
   const deleteMonth = useCallback((id: string) => {
@@ -334,10 +407,33 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // Assinaturas são globais (não pertencem a um FinanceMonth) — por isso
+  // "persistem" automaticamente em todos os meses até serem adicionadas/removidas.
+  const addSubscription = useCallback((data: Omit<FinanceSubscription, 'id' | 'createdAt'>) => {
+    if (!user) return;
+    const now = new Date().toISOString();
+    const newSub: FinanceSubscription = { ...data, id: crypto.randomUUID(), createdAt: now };
+    setSubscriptions(prev => [...prev, newSub]);
+    supabase.from('finance_subscriptions').insert({
+      id: newSub.id, user_id: user.id, description: newSub.description,
+      category: newSub.category, value: newSub.value, created_at: now,
+    }).then(({ error }) => {
+      if (error) reportSyncError('Erro inserindo assinatura', error);
+    });
+  }, [user]);
+
+  const deleteSubscription = useCallback((id: string) => {
+    setSubscriptions(prev => prev.filter(s => s.id !== id));
+    supabase.from('finance_subscriptions').delete().eq('id', id).then(({ error }) => {
+      if (error) reportSyncError('Erro removendo assinatura', error);
+    });
+  }, []);
+
   const contextValue = useMemo(() => ({
     months,
     transactions,
     categories,
+    subscriptions,
     activeMonthId,
     setActiveMonthId,
     createMonth,
@@ -349,12 +445,15 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     deleteTransaction,
     addCategory,
     updateCategory,
-    deleteCategory
+    deleteCategory,
+    addSubscription,
+    deleteSubscription,
   }), [
-    months, transactions, categories, activeMonthId,
+    months, transactions, categories, subscriptions, activeMonthId,
     setActiveMonthId, createMonth, closeMonth, reopenMonth, deleteMonth,
     addTransaction, updateTransaction, deleteTransaction,
-    addCategory, updateCategory, deleteCategory
+    addCategory, updateCategory, deleteCategory,
+    addSubscription, deleteSubscription,
   ]);
 
   return (
