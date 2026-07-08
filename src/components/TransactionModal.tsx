@@ -9,13 +9,14 @@ import { TaxCalculation, AssetType } from '@/types';
 interface TransactionModalProps {
   assetId: string;
   onClose: () => void;
+  initialType?: 'buy' | 'sell';
 }
 
-export default function TransactionModal({ assetId, onClose }: TransactionModalProps) {
+export default function TransactionModal({ assetId, onClose, initialType = 'buy' }: TransactionModalProps) {
   const { assets, transactions, sellTaxRecords, strategies, addTransaction, updateAsset, addSellTaxRecord } = useApp();
   const asset = assets.find(a => a.id === assetId);
 
-  const [type, setType] = useState<'buy' | 'sell'>('buy');
+  const [type, setType] = useState<'buy' | 'sell'>(initialType);
   const [value, setValue] = useState('');
   const [date, setDate] = useState<string>(() => {
     const now = new Date();
