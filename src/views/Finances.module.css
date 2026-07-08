@@ -368,10 +368,11 @@
 
 .catRow { margin-bottom: 0.72rem; }
 .catRow:last-child { margin-bottom: 0; }
-.catLabelRow { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.76rem; margin-bottom: 0.3rem; }
-.catName { color: var(--color-text-2); font-weight: 600; display: inline-flex; align-items: center; }
-.catIcon { display: inline-flex; margin-right: 0.35rem; color: var(--color-text-3); }
-.catVal { color: var(--color-text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.catLabelRow { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; font-size: 0.76rem; margin-bottom: 0.3rem; }
+/* Nome encolhe com reticências; o VALOR nunca é cortado */
+.catName { color: var(--color-text-2); font-weight: 600; display: inline-flex; align-items: center; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.catIcon { display: inline-flex; margin-right: 0.35rem; color: var(--color-text-3); flex-shrink: 0; }
+.catVal { color: var(--color-text); font-weight: 700; font-variant-numeric: tabular-nums; flex-shrink: 0; white-space: nowrap; }
 .catPct { color: var(--color-text-3); font-weight: 500; margin-left: 0.35rem; }
 .catTrack { height: 8px; background: var(--color-primary-glow); border-radius: 0 4px 4px 0; overflow: hidden; }
 .catFill { height: 100%; background: var(--color-primary); border-radius: 0 4px 4px 0; }
@@ -562,28 +563,45 @@
 @media (min-width: 641px) and (max-width: 900px) {
   .hero { grid-template-columns: 1fr 1fr; }
   .hero .tile:first-child { grid-column: 1 / -1; }
-  .mainGrid { grid-template-columns: 1fr; }
+  /* minmax(0,1fr): impede que o conteúdo mínimo das linhas alargue a
+     coluna além da viewport (com "1fr" puro o track vira minmax(auto,1fr)
+     e a página inteira estoura na horizontal) */
+  .mainGrid { grid-template-columns: minmax(0, 1fr); }
   .heroValue { font-size: 2.1rem; }
 }
 
 @media (max-width: 640px) {
   .header { flex-direction: column; align-items: stretch; }
   .monthNav { justify-content: space-between; }
-  .headerActions { justify-content: stretch; }
-  .headerActions > * { flex: 1; justify-content: center; }
+
+  /* Ações do header em grade 2×2 (o botão primário ocupa a linha inteira) */
+  .headerActions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .headerActions > * { justify-content: center; }
+  .headerActions > *:last-child { grid-column: 1 / -1; }
 
   .hero { grid-template-columns: 1fr; }
   .heroValue { font-size: 2.1rem; }
 
-  .mainGrid { grid-template-columns: 1fr; }
+  /* Ver comentário no breakpoint de tablet — evita overflow horizontal */
+  .mainGrid { grid-template-columns: minmax(0, 1fr); }
 
   .toolbar { flex-direction: column; align-items: stretch; }
-  .filterGroups { justify-content: space-between; }
+
+  /* Filtros empilhados: SAÍDAS e ENTRADAS cada um em largura total,
+     com os botões dividindo o espaço igualmente */
+  .filterGroups { flex-direction: column; align-items: stretch; gap: 0.6rem; }
+  .filterGroup { width: 100%; }
+  .segmented { width: 100%; }
+  .segBtn { flex: 1; }
   .search { width: 100%; }
 
-  .rowValue { min-width: 74px; font-size: 0.82rem; }
-  .statusPill { min-width: 0; padding: 0.24rem 0.5rem; font-size: 0.68rem; }
-  .rowActions { opacity: 1; }
+  /* Linha em dois andares: título+meta em cima; ações | valor+status embaixo.
+     Resolve descrição espremida, pílula cortada e botões disputando espaço. */
+  .row { flex-wrap: wrap; row-gap: 0.45rem; }
+  .rowRight { width: 100%; justify-content: flex-end; gap: 0.5rem; }
+  .rowActions { opacity: 1; margin-right: auto; }
+  .rowValue { min-width: 0; font-size: 0.85rem; }
+  .statusPill { min-width: 0; padding: 0.26rem 0.6rem; font-size: 0.7rem; white-space: nowrap; }
 
   .newMonthCard { padding: 1.75rem 1rem; }
 }
