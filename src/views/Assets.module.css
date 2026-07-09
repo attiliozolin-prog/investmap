@@ -329,10 +329,16 @@
 .plGood { color: #34D399; }
 .plBad  { color: #F87171; }
 
+.rowActionCol {
+  flex: 0 0 160px;
+  display: flex;
+  justify-content: flex-end;
+}
 .actionBadge {
-  flex-shrink: 0; min-width: 128px; text-align: center;
+  text-align: center;
   font-size: 0.7rem; font-weight: 700; border-radius: 999px; padding: 0.3rem 0.6rem;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .actBuy  { background: rgba(245, 158, 11, 0.14); color: #FBBF24; }
 .actSell { background: rgba(239, 68, 68, 0.14); color: #F87171; }

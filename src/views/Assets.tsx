@@ -528,9 +528,11 @@ export default function Assets() {
                           {a.profitLoss >= 0 ? '▲' : '▼'} {pct(Math.abs(a.profitLossPercent))}
                         </div>
                       </div>
-                      <span className={`${styles.actionBadge} ${a.action === 'buy' ? styles.actBuy : a.action === 'sell' ? styles.actSell : styles.actOk}`}>
-                        {a.action === 'buy' ? `▲ Comprar +${formatCurrency(a.rebalanceAmount)}` : a.action === 'sell' ? `▼ Reduzir −${formatCurrency(Math.abs(a.rebalanceAmount))}` : '✓ Na meta'}
-                      </span>
+                      <div className={styles.rowActionCol}>
+                        <span className={`${styles.actionBadge} ${a.action === 'buy' ? styles.actBuy : a.action === 'sell' ? styles.actSell : styles.actOk}`}>
+                          {a.action === 'buy' ? `▲ Comprar +${formatCurrency(a.rebalanceAmount)}` : a.action === 'sell' ? `▼ Reduzir −${formatCurrency(Math.abs(a.rebalanceAmount))}` : '✓ Na meta'}
+                        </span>
+                      </div>
                       <div className={styles.rowActions} onClick={e => e.stopPropagation()}>
                         <button className={styles.iconBtn} onClick={() => setTransactionAssetId(a.id)} title="Nova transação" aria-label={`Nova transação para ${a.ticker}`}><Plus size={13} /></button>
                         <button className={styles.iconBtn} onClick={() => handleEdit(a)} title="Editar" aria-label={`Editar ${a.ticker}`}><Pencil size={13} /></button>
