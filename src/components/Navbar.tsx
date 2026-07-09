@@ -260,16 +260,6 @@ export default function Navbar({ activeTab, onTabChange }: {
                     <span>Tema {theme === 'dark' ? 'Claro' : 'Escuro'}</span>
                   </button>
 
-                  <button className={styles.profileItem} onClick={() => { handleExport(); setShowProfileMenu(false); }}>
-                    <Download size={15} />
-                    <span>Exportar Backup</span>
-                  </button>
-
-                  <button className={styles.profileItem} onClick={() => { importRef.current?.click(); setShowProfileMenu(false); }}>
-                    <Upload size={15} />
-                    <span>Importar Backup</span>
-                  </button>
-
                   <div className={styles.profileDivider} />
 
                   <button className={`${styles.profileItem} ${styles.profileItemDanger}`} onClick={handleSignOut}>
@@ -311,18 +301,6 @@ export default function Navbar({ activeTab, onTabChange }: {
                 <div className={styles.menuItemInner}>
                   {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                   <span>Tema {theme === 'dark' ? 'Claro' : 'Escuro'}</span>
-                </div>
-              </button>
-              <button className={styles.strategyItem} onClick={() => { handleExport(); setShowMobileMenu(false); }}>
-                <div className={styles.menuItemInner}>
-                  <Download size={18} />
-                  <span>Exportar Backup (JSON)</span>
-                </div>
-              </button>
-              <button className={styles.strategyItem} onClick={() => { importRef.current?.click(); setShowMobileMenu(false); }}>
-                <div className={styles.menuItemInner}>
-                  <Upload size={18} />
-                  <span>Importar Backup (JSON)</span>
                 </div>
               </button>
               <button className={styles.strategyItem} onClick={() => { onTabChange?.('profile'); setShowMobileMenu(false); }}>

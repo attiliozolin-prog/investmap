@@ -22,7 +22,8 @@ import styles from '@/app/page.module.css';
  */
 
 // Rotas acessíveis sem login (páginas legais linkadas na tela de autenticação)
-const PUBLIC_ROUTES = ['/privacidade', '/termos'];
+// '/prototipo/dashboard' é um protótipo local de layout — remover antes de commitar
+const PUBLIC_ROUTES = ['/privacidade', '/termos', '/prototipo/dashboard'];
 
 function Gate({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();

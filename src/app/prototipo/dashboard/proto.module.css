@@ -1,0 +1,221 @@
+/* ════════════════════════════════════════════════════════════
+   PROTÓTIPO — Novo Dashboard (não é código de produção)
+   ════════════════════════════════════════════════════════════ */
+
+.page {
+  min-height: 100vh;
+  background: var(--color-bg, #0B0B14);
+  color: var(--color-text, #E5E7EB);
+  padding-bottom: 4rem;
+}
+
+.protoBar {
+  display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+  padding: 0.45rem 1rem;
+  background: rgba(139, 92, 246, 0.12);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.35);
+  font-size: 0.75rem; color: var(--color-text-2, #9CA3AF);
+}
+.protoBadge {
+  background: #8B5CF6; color: #fff; font-weight: 700; font-size: 0.68rem;
+  letter-spacing: 0.08em; padding: 0.15rem 0.55rem; border-radius: 999px;
+}
+
+.container {
+  max-width: 1180px; margin: 0 auto;
+  padding: 1.4rem 1.25rem 0;
+  display: flex; flex-direction: column; gap: 1.1rem;
+}
+
+/* ── Saudação ── */
+.greetRow { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.greeting { font-size: 1.45rem; font-weight: 750; margin: 0; letter-spacing: -0.01em; }
+.greetSub { font-size: 0.78rem; color: var(--color-text-3, #6B7280); margin-top: 0.15rem; }
+.syncChip {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  background: transparent; border: 1px solid var(--color-border, #252538);
+  border-radius: 999px; color: var(--color-text-2, #9CA3AF);
+  font-size: 0.72rem; font-weight: 600; padding: 0.24rem 0.7rem; cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.syncChip:hover { border-color: #8B5CF6; color: var(--color-text, #E5E7EB); }
+.syncSpin { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Hero: patrimônio + gráfico + coluna de stats ── */
+.heroGrid { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(230px, 1fr); gap: 0.9rem; }
+
+.heroCard {
+  background: var(--color-surface, #12121D);
+  border: 1px solid var(--color-border, #252538);
+  border-radius: 16px;
+  padding: 1.2rem 1.4rem 0.9rem;
+  display: flex; flex-direction: column; gap: 0.15rem;
+  min-width: 0;
+}
+.heroLabel { font-size: 0.75rem; font-weight: 600; color: var(--color-text-2, #9CA3AF); }
+.heroTopRow { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.heroValue { font-size: 2.5rem; font-weight: 780; line-height: 1.05; letter-spacing: -0.02em; }
+.delta { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.8rem; font-weight: 600; flex-wrap: wrap; }
+.deltaGood { color: #34D399; }
+.deltaBad  { color: #F87171; }
+.deltaRef  { color: var(--color-text-3, #6B7280); font-weight: 500; }
+
+.rangeTabs { display: flex; gap: 0.2rem; background: var(--color-bg, #0B0B14); border: 1px solid var(--color-border, #252538); border-radius: 999px; padding: 0.18rem; }
+.rangeBtn {
+  border: none; background: transparent; color: var(--color-text-3, #6B7280);
+  font-size: 0.7rem; font-weight: 700; padding: 0.24rem 0.6rem; border-radius: 999px; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.rangeBtn:hover { color: var(--color-text, #E5E7EB); }
+.rangeActive { background: #8B5CF6; color: #fff; }
+
+.chartWrap { position: relative; margin-top: 0.5rem; }
+.chartSvg { width: 100%; height: 190px; display: block; }
+.chartTooltip {
+  position: absolute; pointer-events: none; transform: translate(-50%, -110%);
+  background: var(--color-bg, #0B0B14); border: 1px solid var(--color-border, #252538);
+  border-radius: 8px; padding: 0.35rem 0.6rem; white-space: nowrap;
+  font-size: 0.72rem; color: var(--color-text-2, #9CA3AF);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.45); z-index: 5;
+}
+.chartTooltip strong { display: block; color: var(--color-text, #E5E7EB); font-variant-numeric: tabular-nums; font-size: 0.8rem; }
+
+/* Coluna lateral de stats */
+.sideCol { display: flex; flex-direction: column; gap: 0.9rem; min-width: 0; }
+.statCard {
+  flex: 1;
+  background: var(--color-surface, #12121D);
+  border: 1px solid var(--color-border, #252538);
+  border-radius: 16px;
+  padding: 0.85rem 1.05rem;
+  display: flex; flex-direction: column; gap: 0.25rem; justify-content: center;
+  cursor: pointer; text-align: left;
+  transition: border-color 0.15s;
+  /* <button> não herda color do body por padrão (fica com a cor nativa do
+     SO, preta em muitos temas) — sem isso, todo texto sem cor explícita
+     dentro do botão fica ilegível no dark mode. */
+  color: inherit; font: inherit;
+}
+.statCard:hover { border-color: #8B5CF6; }
+.statLabel { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-text-3, #6B7280); display: flex; align-items: center; gap: 0.35rem; }
+.statValue { font-size: 1.15rem; font-weight: 750; font-variant-numeric: tabular-nums; color: var(--color-text, #E5E7EB); }
+.statSub { font-size: 0.7rem; color: var(--color-text-3, #6B7280); }
+.statMeter { height: 6px; border-radius: 999px; background: rgba(139, 92, 246, 0.15); overflow: hidden; margin-top: 0.25rem; }
+.statMeterFill { height: 100%; border-radius: 999px; background: #8B5CF6; }
+
+/* ── Central de Ações ── */
+.actionCard {
+  background: var(--color-surface, #12121D);
+  border: 1px solid var(--color-border, #252538);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.actionHead {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.85rem 1.15rem;
+  border-bottom: 1px solid var(--color-border, #252538);
+  font-size: 0.85rem; font-weight: 700;
+}
+.actionCount {
+  background: rgba(139, 92, 246, 0.15); color: #A78BFA;
+  font-size: 0.7rem; font-weight: 700; border-radius: 999px; padding: 0.1rem 0.5rem;
+}
+.actionRow {
+  width: 100%;
+  display: flex; align-items: center; gap: 0.8rem;
+  padding: 0.7rem 1.15rem;
+  border: none; border-top: 1px solid rgba(37, 37, 56, 0.55);
+  background: transparent; cursor: pointer; text-align: left;
+  color: var(--color-text, #E5E7EB);
+  transition: background 0.12s;
+}
+.actionRow:first-of-type { border-top: none; }
+.actionRow:hover { background: rgba(139, 92, 246, 0.05); }
+.actionIcon {
+  width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+  display: grid; place-items: center;
+}
+.aiUrgent  { background: rgba(239, 68, 68, 0.14); color: #F87171; }
+.aiWarn    { background: rgba(245, 158, 11, 0.14); color: #FBBF24; }
+.aiInfo    { background: rgba(139, 92, 246, 0.14); color: #A78BFA; }
+.actionBody { flex: 1; min-width: 0; }
+.actionTitle { font-size: 0.84rem; font-weight: 650; }
+.actionTitle strong { font-variant-numeric: tabular-nums; }
+.actionSub { font-size: 0.71rem; color: var(--color-text-3, #6B7280); }
+.actionGo {
+  display: inline-flex; align-items: center; gap: 0.3rem; flex-shrink: 0;
+  font-size: 0.74rem; font-weight: 700; color: #A78BFA;
+}
+.actionEmpty {
+  display: flex; align-items: center; gap: 0.7rem;
+  padding: 1rem 1.15rem;
+  font-size: 0.84rem; color: var(--color-text-2, #9CA3AF);
+}
+.actionEmpty svg { color: #34D399; }
+
+/* ── Pilares (4 cards navegáveis) ── */
+.pillars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.9rem; }
+.pillar {
+  background: var(--color-surface, #12121D);
+  border: 1px solid var(--color-border, #252538);
+  border-radius: 16px;
+  padding: 1rem 1.1rem;
+  display: flex; flex-direction: column; gap: 0.55rem;
+  cursor: pointer; text-align: left; min-width: 0;
+  transition: border-color 0.15s, transform 0.15s;
+  color: inherit; font: inherit; /* idem .statCard — <button> não herda color por padrão */
+}
+.pillar:hover { border-color: #8B5CF6; transform: translateY(-2px); }
+.pillarHead { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.pillarTitle { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; font-weight: 700; color: var(--color-text-2, #9CA3AF); }
+.pillarArrow { color: var(--color-text-3, #6B7280); transition: transform 0.15s, color 0.15s; }
+.pillar:hover .pillarArrow { transform: translateX(2px); color: #A78BFA; }
+.pillarValue { font-size: 1.25rem; font-weight: 750; font-variant-numeric: tabular-nums; color: var(--color-text, #E5E7EB); }
+.pillarSub { font-size: 0.71rem; color: var(--color-text-3, #6B7280); line-height: 1.4; }
+.pillarSub strong { color: var(--color-text-2, #9CA3AF); }
+
+/* mini alocação (barra segmentada) dentro do pilar Carteira */
+.miniAlloc { display: flex; height: 8px; border-radius: 999px; overflow: hidden; gap: 2px; }
+.miniAllocSeg { min-width: 3px; }
+/* mini medidor (burn) do pilar Finanças */
+.miniMeter { height: 8px; border-radius: 999px; background: rgba(16, 185, 129, 0.15); overflow: hidden; }
+.miniMeterFill { height: 100%; border-radius: 999px; background: #10B981; }
+/* progresso da meta */
+.goalRing { display: flex; align-items: center; gap: 0.6rem; }
+
+/* badges de status usados nos pilares */
+.pillBadge { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.66rem; font-weight: 700; border-radius: 999px; padding: 0.12rem 0.5rem; width: fit-content; }
+.pbGood { background: rgba(16, 185, 129, 0.12); color: #34D399; }
+.pbWarn { background: rgba(245, 158, 11, 0.14); color: #FBBF24; }
+.pbBad  { background: rgba(239, 68, 68, 0.14); color: #F87171; }
+
+/* ── Insights ── */
+.insightsCard {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(139, 92, 246, 0.02));
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 16px;
+  padding: 1rem 1.2rem;
+}
+.insightsHead { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; font-weight: 700; margin-bottom: 0.6rem; color: #A78BFA; }
+.insightRow { display: flex; gap: 0.6rem; padding: 0.35rem 0; font-size: 0.8rem; color: var(--color-text-2, #9CA3AF); line-height: 1.55; }
+.insightRow strong { color: var(--color-text, #E5E7EB); font-variant-numeric: tabular-nums; }
+.insightDot { color: #A78BFA; flex-shrink: 0; margin-top: 0.1rem; }
+
+.footNote { text-align: center; font-size: 0.72rem; color: var(--color-text-3, #6B7280); padding-top: 0.5rem; }
+
+/* ── Responsivo ── */
+@media (max-width: 940px) {
+  .heroGrid { grid-template-columns: 1fr; }
+  .sideCol { flex-direction: row; }
+  .pillars { grid-template-columns: 1fr 1fr; }
+  .heroValue { font-size: 2.1rem; }
+}
+
+@media (max-width: 640px) {
+  .sideCol { flex-direction: column; }
+  .pillars { grid-template-columns: 1fr; }
+  .greetRow { flex-direction: column; align-items: flex-start; }
+  .chartSvg { height: 150px; }
+  .actionGo span { display: none; } /* só a seta no mobile */
+}
