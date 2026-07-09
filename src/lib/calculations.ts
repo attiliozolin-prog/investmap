@@ -179,6 +179,45 @@ export function calculatePortfolio(
   };
 }
 
+export interface IdealContribution {
+  categoryId: string;
+  subclassName: string;
+  className: string;
+  amount: number;
+}
+
+/**
+ * Aporte único (sem vender nada) que recoloca a subclasse mais defasada da
+ * estratégia dentro da meta. Resolve X tal que X/(totalValue + X) = target%:
+ * X = (target% * totalValue - valorAtual) / (1 - target%).
+ * Fonte única usada tanto em Ativos quanto no Dashboard, para os dois nunca
+ * divergirem.
+ */
+export function idealSingleContribution(
+  categorySummaries: CategorySummary[],
+  totalValue: number,
+): IdealContribution | null {
+  const withTarget = categorySummaries.filter((cs) => cs.targetPercent > 0);
+  if (withTarget.length === 0) return null;
+
+  const worst = [...withTarget].sort(
+    (a, b) => (a.currentPercent - a.targetPercent) - (b.currentPercent - b.targetPercent),
+  )[0];
+  const dev = worst.currentPercent - worst.targetPercent;
+  if (dev >= 0) return null;
+
+  const target = Math.min(worst.targetPercent, 99) / 100;
+  const amount = Math.max(0, (target * totalValue - worst.currentValue) / (1 - target));
+  if (amount <= 0.01) return null;
+
+  return {
+    categoryId: worst.category.id,
+    subclassName: worst.category.subclassName,
+    className: worst.category.className,
+    amount,
+  };
+}
+
 // ============================================
 // ID Generation
 // ============================================

@@ -4,7 +4,7 @@ import { useMemo, useEffect, useRef, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import { useFinance } from '@/context/FinanceContext';
-import { calculatePortfolio, formatCurrency, CHART_COLORS } from '@/lib/calculations';
+import { calculatePortfolio, formatCurrency, CHART_COLORS, idealSingleContribution } from '@/lib/calculations';
 import GoalWidget from '@/components/GoalWidget';
 import AiAnalysisCard from '@/components/AiAnalysisCard';
 import FirstUseTip from '@/components/FirstUseTip';
@@ -261,6 +261,11 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
     ? categorySummaries.filter(cs => Math.abs(cs.currentPercent - cs.targetPercent) > activeStrategy.deviationTolerance)
     : [];
 
+  // Aporte único que resolve o rebalanceamento sem vender nada — mesmo motor
+  // usado na página de Ativos (src/lib/calculations.ts), para os dois nunca
+  // divergirem.
+  const idealContribution = summary ? idealSingleContribution(categorySummaries, summary.totalValue) : null;
+
   const goalProgressPct = activeGoal && activeGoal.targetValue > 0 && summary
     ? Math.min(100, (summary.totalValue / activeGoal.targetValue) * 100)
     : 0;
@@ -355,8 +360,12 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
   if (needsRebalancing) {
     actions.push({
       key: 'rebalance', icon: <Zap size={16} />, cls: styles.aiInfo,
-      title: <><strong>{buyAssets.length}</strong> ativo{buyAssets.length !== 1 ? 's' : ''} para comprar · <strong>{sellAssets.length}</strong> para reduzir</>,
-      sub: `${outOfTolerance.length} de ${categorySummaries.length} subclasses fora da tolerância de ${activeStrategy.deviationTolerance}%`,
+      title: idealContribution
+        ? <>Aporte de <strong>{formatCurrency(idealContribution.amount)}</strong> em {idealContribution.subclassName} recoloca a carteira na meta</>
+        : <><strong>{buyAssets.length}</strong> ativo{buyAssets.length !== 1 ? 's' : ''} para comprar · <strong>{sellAssets.length}</strong> para reduzir</>,
+      sub: idealContribution
+        ? `${outOfTolerance.length} de ${categorySummaries.length} subclasses fora da tolerância — este aporte único resolve sem vender nada`
+        : `${outOfTolerance.length} de ${categorySummaries.length} subclasses fora da tolerância de ${activeStrategy.deviationTolerance}%`,
       go: 'Rebalancear', dest: 'assets',
     });
   }

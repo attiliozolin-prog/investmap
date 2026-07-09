@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { calculatePortfolio, formatCurrency } from '@/lib/calculations';
+import { calculatePortfolio, formatCurrency, idealSingleContribution } from '@/lib/calculations';
 import AssetModal from '@/components/AssetModal';
 import AssetDetailDrawer from '@/components/AssetDetailDrawer';
 import PortfolioHistory from '@/components/PortfolioHistory';
@@ -142,17 +142,11 @@ export default function Assets() {
   const outOfTolerance = activeStrategy ? subGroups.filter(g => Math.abs(g.dev) > activeStrategy.deviationTolerance) : [];
 
   // Aporte único que recoloca a subclasse mais defasada na meta sem vender
-  const worstUnder = useMemo(() => {
-    const withTarget = subGroups.filter(g => g.target > 0);
-    if (withTarget.length === 0) return null;
-    return [...withTarget].sort((a, b) => a.dev - b.dev)[0];
-  }, [subGroups]);
-
-  const aporteIdeal = useMemo(() => {
-    if (!worstUnder || !summary || worstUnder.dev >= 0) return 0;
-    const target = Math.min(worstUnder.target, 99) / 100;
-    return Math.max(0, (target * summary.totalValue - worstUnder.cur) / (1 - target));
-  }, [worstUnder, summary]);
+  // (mesmo motor usado no Dashboard — src/lib/calculations.ts)
+  const idealContribution = useMemo(
+    () => summary ? idealSingleContribution(summary.categorySummaries, summary.totalValue) : null,
+    [summary],
+  );
 
   const buys = summary ? summary.assetsWithCalcs.filter(a => !a.isArchived && a.action === 'buy') : [];
   const sells = summary ? summary.assetsWithCalcs.filter(a => !a.isArchived && a.action === 'sell') : [];
@@ -328,11 +322,11 @@ export default function Assets() {
 
             <div className={styles.tile}>
               <span className={styles.tileLabel}>Próxima ação sugerida</span>
-              {worstUnder && aporteIdeal > 0.01 ? (
+              {idealContribution ? (
                 <>
-                  <span className={styles.tileValue} style={{ color: 'var(--color-primary-light)' }}>{formatCurrency(aporteIdeal)}</span>
+                  <span className={styles.tileValue} style={{ color: 'var(--color-primary-light)' }}>{formatCurrency(idealContribution.amount)}</span>
                   <span className={styles.tileSub}>
-                    Um aporte único em <strong>{worstUnder.subclassName}</strong> recoloca a carteira dentro da meta — sem vender nada.
+                    Um aporte único em <strong>{idealContribution.subclassName}</strong> recoloca a carteira dentro da meta — sem vender nada.
                   </span>
                 </>
               ) : (
@@ -417,8 +411,8 @@ export default function Assets() {
               <Sparkles size={18} color="var(--color-primary)" style={{ flexShrink: 0 }} />
               <div className={styles.rebalHead}>
                 <span className={styles.rebalTitle}>Para voltar à estratégia</span>
-                {worstUnder && aporteIdeal > 0.01 && (
-                  <span className={styles.rebalSub}>ou aporte {formatCurrency(aporteIdeal)} direto em {worstUnder.subclassName}</span>
+                {idealContribution && (
+                  <span className={styles.rebalSub}>ou aporte {formatCurrency(idealContribution.amount)} direto em {idealContribution.subclassName}</span>
                 )}
               </div>
               <div className={styles.rebalChips}>
