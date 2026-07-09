@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { calculatePortfolio, formatCurrency, CHART_COLORS } from '@/lib/calculations';
+import { calculatePortfolio, formatCurrency } from '@/lib/calculations';
 import AssetModal from '@/components/AssetModal';
 import AssetDetailDrawer from '@/components/AssetDetailDrawer';
 import PortfolioHistory from '@/components/PortfolioHistory';
@@ -10,7 +10,7 @@ import { AssetWithCalcs, Asset } from '@/types';
 import styles from './Assets.module.css';
 import {
   Plus, BookOpen, RefreshCw, ChevronDown, X, Pencil,
-  TrendingUp, TrendingDown, Target, Sparkles, Zap, Wallet,
+  Target, Sparkles, Zap, Wallet,
 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 
@@ -20,10 +20,16 @@ type SortKey = 'posicao' | 'desvio' | 'pl' | 'ticker';
 const initials = (ticker: string) => ticker.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase();
 const pct = (v: number) => `${v.toFixed(1).replace('.', ',')}%`;
 
+// Cores por CLASSE (não por subclasse): 4 cores validadas no verificador de
+// daltonismo/contraste (CVD, lightness band e contraste vs superfície dark).
+// Com 11+ subclasses, colorir cada uma vira um arco-íris ilegível — e as
+// cores cicladas colidiam com a semântica de lucro/prejuízo (verde/vermelho).
+const CLASS_COLORS = ['#8B5CF6', '#0891B2', '#D97706', '#DB2777'];
+
 export default function Assets() {
   const {
     activeStrategy, activeAssets, activeStrategyId,
-    addAsset, updateAsset, deleteAsset,
+    addAsset, updateAsset,
     syncPrices, isSyncingPrices, lastPriceSyncAt,
   } = useApp();
   const { toast } = useToast();
@@ -34,7 +40,8 @@ export default function Assets() {
   const [detailAsset, setDetailAsset] = useState<AssetWithCalcs | null>(null);
 
   const [filter, setFilter] = useState<Filter>('all');
-  const [subFilter, setSubFilter] = useState<string | null>(null);
+  const [classFilter, setClassFilter] = useState<string | null>(null);
+  const [subFilter, setSubFilter] = useState<string | null>(null); // category.id
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('posicao');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -48,15 +55,26 @@ export default function Assets() {
     }
   }, [activeStrategy, activeAssets]);
 
-  const colorFor = (categoryId: string) => {
-    const idx = activeStrategy?.categories.findIndex(c => c.id === categoryId) ?? -1;
-    return idx >= 0 ? CHART_COLORS[idx % CHART_COLORS.length] : '#6B7280';
+  // Classes na ordem da estratégia (primeira aparição define a ordem/cor)
+  const classOrder = useMemo(() => {
+    if (!activeStrategy) return [] as string[];
+    const seen = new Set<string>();
+    const order: string[] = [];
+    activeStrategy.categories.forEach(c => {
+      if (!seen.has(c.className)) { seen.add(c.className); order.push(c.className); }
+    });
+    return order;
+  }, [activeStrategy]);
+
+  const colorForClass = (className: string) => {
+    const idx = classOrder.indexOf(className);
+    return idx >= 0 ? CLASS_COLORS[idx % CLASS_COLORS.length] : '#6B7280';
   };
 
-  // ── Grupos por subclasse (mesma granularidade da estratégia/meta) ──
-  const groups = useMemo(() => {
+  // ── Nível 1: subclasses (granularidade da meta) ──
+  const subGroups = useMemo(() => {
     if (!summary || !activeStrategy) return [];
-    const map = new Map<string, { id: string; subclassName: string; className: string; target: number; color: string; assets: AssetWithCalcs[] }>();
+    const map = new Map<string, { id: string; subclassName: string; className: string; target: number; assets: AssetWithCalcs[] }>();
     summary.assetsWithCalcs.filter(a => !a.isArchived).forEach(a => {
       const key = a.category.id;
       if (!map.has(key)) {
@@ -65,7 +83,6 @@ export default function Assets() {
           subclassName: a.category.subclassName,
           className: a.category.className,
           target: a.category.targetPercent,
-          color: colorFor(key),
           assets: [],
         });
       }
@@ -86,20 +103,48 @@ export default function Assets() {
         if (ib === -1) return -1;
         return ia - ib;
       });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summary, activeStrategy]);
 
-  const outOfTolerance = activeStrategy ? groups.filter(g => Math.abs(g.dev) > activeStrategy.deviationTolerance) : [];
+  // ── Nível 2: classes (agrupam as subclasses — junta os "irmãos") ──
+  const classGroups = useMemo(() => {
+    const map = new Map<string, { className: string; color: string; subs: typeof subGroups; cur: number; pct: number; target: number }>();
+    subGroups.forEach(g => {
+      if (!map.has(g.className)) {
+        map.set(g.className, { className: g.className, color: colorForClass(g.className), subs: [], cur: 0, pct: 0, target: 0 });
+      }
+      const c = map.get(g.className)!;
+      c.subs.push(g);
+      c.cur += g.cur;
+      c.pct += g.pct;
+      c.target += g.target;
+    });
+    return Array.from(map.values()).sort((a, b) => {
+      const ia = classOrder.indexOf(a.className), ib = classOrder.indexOf(b.className);
+      if (ia === -1 && ib === -1) return 0;
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subGroups, classOrder]);
+
+  // Escala comum das bullet bars: todas comparáveis entre si
+  const bulletMax = useMemo(
+    () => Math.max(1, ...subGroups.map(g => Math.max(g.pct, g.target))) * 1.15,
+    [subGroups]
+  );
+
+  const outOfTolerance = activeStrategy ? subGroups.filter(g => Math.abs(g.dev) > activeStrategy.deviationTolerance) : [];
 
   // Aporte único que recoloca a subclasse mais defasada na meta sem vender
   const worstUnder = useMemo(() => {
-    const withTarget = groups.filter(g => g.target > 0);
+    const withTarget = subGroups.filter(g => g.target > 0);
     if (withTarget.length === 0) return null;
     return [...withTarget].sort((a, b) => a.dev - b.dev)[0];
-  }, [groups]);
+  }, [subGroups]);
 
   const aporteIdeal = useMemo(() => {
-    if (!worstUnder || !summary) return 0;
+    if (!worstUnder || !summary || worstUnder.dev >= 0) return 0;
     const target = Math.min(worstUnder.target, 99) / 100;
     return Math.max(0, (target * summary.totalValue - worstUnder.cur) / (1 - target));
   }, [worstUnder, summary]);
@@ -113,15 +158,20 @@ export default function Assets() {
     return f === 'all' ? active.length : active.filter(a => a.action === f).length;
   };
 
-  const visibleGroups = useMemo(() => {
+  // ── Lista visível: classes → ativos (com subclasse identificada na linha) ──
+  const visibleClasses = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return groups
-      .filter(g => !subFilter || g.id === subFilter)
-      .map(g => ({
-        ...g,
-        assets: g.assets
+    return classGroups
+      .filter(c => !classFilter || c.className === classFilter)
+      .map(c => {
+        const subs = c.subs.filter(g => !subFilter || g.id === subFilter);
+        const assets = subs
+          .flatMap(g => g.assets)
           .filter(a => filter === 'all' || a.action === filter)
-          .filter(a => !q || a.ticker.toLowerCase().includes(q) || (a.info || '').toLowerCase().includes(q))
+          .filter(a => !q ||
+            a.ticker.toLowerCase().includes(q) ||
+            (a.info || '').toLowerCase().includes(q) ||
+            a.category.subclassName.toLowerCase().includes(q))
           .sort((a, b) => {
             switch (sortKey) {
               case 'posicao': return b.currentValue - a.currentValue;
@@ -129,19 +179,21 @@ export default function Assets() {
               case 'pl': return (b.investedValue > 0 ? b.currentValue / b.investedValue : 0) - (a.investedValue > 0 ? a.currentValue / a.investedValue : 0);
               case 'ticker': return a.ticker.localeCompare(b.ticker);
             }
-          }),
-      }))
-      .filter(g => g.assets.length > 0);
-  }, [groups, filter, subFilter, query, sortKey]);
+          });
+        return { ...c, assets };
+      })
+      .filter(c => c.assets.length > 0);
+  }, [classGroups, classFilter, subFilter, filter, query, sortKey]);
 
-  const toggleGroup = (id: string) =>
+  const toggleGroup = (name: string) =>
     setCollapsed(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(name)) next.delete(name); else next.add(name);
       return next;
     });
 
-  const isFiltering = filter !== 'all' || !!subFilter || !!query.trim();
+  const isFiltering = filter !== 'all' || !!classFilter || !!subFilter || !!query.trim();
+  const clearFilters = () => { setFilter('all'); setClassFilter(null); setSubFilter(null); setQuery(''); };
 
   const handleEdit = (asset: AssetWithCalcs) => {
     setEditingAsset(asset);
@@ -262,7 +314,7 @@ export default function Assets() {
               <span className={styles.tileSub}>
                 {outOfTolerance.length === 0
                   ? 'Todas as subclasses dentro da tolerância'
-                  : `${outOfTolerance.length} de ${groups.length} subclasses fora da tolerância`}
+                  : `${outOfTolerance.length} de ${subGroups.length} subclasses fora da tolerância`}
               </span>
             </div>
 
@@ -284,36 +336,58 @@ export default function Assets() {
             </div>
           </section>
 
-          {/* ── Alocação vs meta ── */}
-          {groups.length > 0 && (
+          {/* ── Alocação vs meta (2 níveis: classes na barra, subclasses em bullets) ── */}
+          {classGroups.length > 0 && (
             <section className={styles.allocCard} aria-label="Alocação atual vs meta">
               <div className={styles.allocHead}>
                 <h2 className={styles.allocTitle}><Target size={14} style={{ marginRight: 6 }} />Alocação atual × meta</h2>
-                <span className={styles.allocHint}>clique numa classe para filtrar a lista</span>
+                <span className={styles.allocHint}>clique numa classe ou subclasse para filtrar a lista</span>
               </div>
 
-              <div className={styles.allocBar} role="img" aria-label="Distribuição da carteira por subclasse">
-                {groups.map(g => (
-                  <button key={g.id} className={`${styles.allocSeg} ${subFilter && subFilter !== g.id ? styles.allocSegDim : ''}`}
-                    style={{ width: `${g.pct}%`, background: g.color }}
-                    onClick={() => setSubFilter(prev => prev === g.id ? null : g.id)}
-                    title={`${g.subclassName}: ${pct(g.pct)} (meta ${g.target}%)`}>
-                    {g.pct >= 10 ? pct(g.pct) : ''}
+              {/* Nível 1: barra empilhada por CLASSE (3-4 segmentos legíveis) */}
+              <div className={styles.allocBar} role="img" aria-label="Distribuição da carteira por classe">
+                {classGroups.map(c => (
+                  <button key={c.className}
+                    className={`${styles.allocSeg} ${classFilter && classFilter !== c.className ? styles.allocSegDim : ''}`}
+                    style={{ width: `${c.pct}%`, background: c.color }}
+                    onClick={() => { setClassFilter(prev => prev === c.className ? null : c.className); setSubFilter(null); }}
+                    title={`${c.className}: ${pct(c.pct)} (meta ${pct(c.target)})`}>
+                    {c.pct >= 12 ? `${c.className} ${pct(c.pct)}` : c.pct >= 6 ? pct(c.pct) : ''}
                   </button>
                 ))}
               </div>
 
-              <div className={styles.allocLegend}>
-                {groups.map(g => (
-                  <button key={g.id} className={`${styles.legendItem} ${subFilter === g.id ? styles.legendItemActive : ''}`}
-                    onClick={() => setSubFilter(prev => prev === g.id ? null : g.id)}>
-                    <span className={styles.legendDot} style={{ background: g.color }} />
-                    <span className={styles.legendName}>{g.subclassName}</span>
-                    <span className={styles.legendNums}>{pct(g.pct)} <span className={styles.legendMeta}>/ meta {g.target}%</span></span>
-                    <span className={`${styles.devBadge} ${Math.abs(g.dev) <= activeStrategy.deviationTolerance ? styles.devOk : g.dev > 0 ? styles.devUp : styles.devDown}`}>
-                      {Math.abs(g.dev) <= activeStrategy.deviationTolerance ? '✓ na meta' : `${g.dev > 0 ? '▲' : '▼'} ${Math.abs(g.dev).toFixed(1).replace('.', ',')}pp`}
-                    </span>
-                  </button>
+              {/* Nível 2: subclasses como bullet bars (atual = barra, meta = marcador) */}
+              <div className={styles.subBullets}>
+                {classGroups.map(c => (
+                  <div key={c.className} className={styles.bulletClassBlock}>
+                    <button
+                      className={`${styles.bulletClassLabel} ${classFilter === c.className ? styles.bulletClassActive : ''}`}
+                      onClick={() => { setClassFilter(prev => prev === c.className ? null : c.className); setSubFilter(null); }}
+                    >
+                      <span className={styles.legendDot} style={{ background: c.color }} />
+                      {c.className}
+                      <span className={styles.bulletClassNums}>{pct(c.pct)} / meta {pct(c.target)}</span>
+                    </button>
+                    {c.subs.map(g => (
+                      <button key={g.id}
+                        className={`${styles.bulletRow} ${subFilter === g.id ? styles.bulletRowActive : ''}`}
+                        onClick={() => { setSubFilter(prev => prev === g.id ? null : g.id); setClassFilter(null); }}
+                        title={`${g.subclassName}: ${pct(g.pct)} atual · meta ${g.target}%`}>
+                        <span className={styles.bulletName}>{g.subclassName}</span>
+                        <span className={styles.bulletTrack}>
+                          <span className={styles.bulletFill} style={{ width: `${Math.min(100, (g.pct / bulletMax) * 100)}%`, background: c.color }} />
+                          <span className={styles.bulletTarget} style={{ left: `${Math.min(100, (g.target / bulletMax) * 100)}%` }} />
+                        </span>
+                        <span className={styles.bulletNums}>
+                          {pct(g.pct)} <span className={styles.legendMeta}>/ {g.target}%</span>
+                        </span>
+                        <span className={`${styles.devBadge} ${Math.abs(g.dev) <= activeStrategy.deviationTolerance ? styles.devOk : g.dev > 0 ? styles.devUp : styles.devDown}`}>
+                          {Math.abs(g.dev) <= activeStrategy.deviationTolerance ? '✓' : `${g.dev > 0 ? '▲' : '▼'} ${Math.abs(g.dev).toFixed(1).replace('.', ',')}pp`}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 ))}
               </div>
             </section>
@@ -346,7 +420,7 @@ export default function Assets() {
             </section>
           )}
 
-          {/* ── Lista de ativos ── */}
+          {/* ── Lista de ativos (agrupada por CLASSE, subclasse na linha) ── */}
           <section className={styles.card} aria-label="Ativos da carteira">
             <div className={styles.toolbar}>
               <div className={styles.segmented} role="tablist" aria-label="Filtrar por diagnóstico">
@@ -364,7 +438,7 @@ export default function Assets() {
                 ))}
               </div>
               <div className={styles.toolbarRight}>
-                <input className={styles.search} placeholder="Buscar ticker ou nome…" value={query}
+                <input className={styles.search} placeholder="Buscar ticker, nome ou subclasse…" value={query}
                   onChange={e => setQuery(e.target.value)} aria-label="Buscar ativo" />
                 <select className={styles.sortSelect} value={sortKey} onChange={e => setSortKey(e.target.value as SortKey)} aria-label="Ordenar por">
                   <option value="posicao">Maior posição</option>
@@ -377,36 +451,38 @@ export default function Assets() {
 
             {isFiltering && (
               <div className={styles.filterNotice}>
-                Mostrando {visibleGroups.reduce((a, g) => a + g.assets.length, 0)} de {activeAssets.length} ativos
-                <button className={styles.filterClear} onClick={() => { setFilter('all'); setSubFilter(null); setQuery(''); }}>
+                Mostrando {visibleClasses.reduce((a, c) => a + c.assets.length, 0)} de {activeAssets.length} ativos
+                {subFilter && <> · subclasse: <strong>{subGroups.find(g => g.id === subFilter)?.subclassName}</strong></>}
+                {classFilter && <> · classe: <strong>{classFilter}</strong></>}
+                <button className={styles.filterClear} onClick={clearFilters}>
                   <X size={11} /> limpar filtros
                 </button>
               </div>
             )}
 
-            {visibleGroups.length === 0 && (
+            {visibleClasses.length === 0 && (
               <p className={styles.emptyList}>Nenhum ativo encontrado{query ? ` para "${query}"` : ''}.</p>
             )}
 
-            {visibleGroups.map(g => (
-              <div key={g.id} className={styles.group}>
-                <button className={styles.groupHead} onClick={() => toggleGroup(g.id)} aria-expanded={!collapsed.has(g.id)}>
-                  <ChevronDown size={15} className={`${styles.groupChevron} ${collapsed.has(g.id) ? styles.groupChevronClosed : ''}`} />
-                  <span className={styles.legendDot} style={{ background: g.color }} />
-                  <span className={styles.groupName}>{g.subclassName}</span>
-                  <span className={styles.groupCount}>{g.assets.length} ativo{g.assets.length !== 1 ? 's' : ''}</span>
+            {visibleClasses.map(c => (
+              <div key={c.className} className={styles.group}>
+                <button className={styles.groupHead} onClick={() => toggleGroup(c.className)} aria-expanded={!collapsed.has(c.className)}>
+                  <ChevronDown size={15} className={`${styles.groupChevron} ${collapsed.has(c.className) ? styles.groupChevronClosed : ''}`} />
+                  <span className={styles.legendDot} style={{ background: c.color }} />
+                  <span className={styles.groupName}>{c.className}</span>
+                  <span className={styles.groupCount}>{c.assets.length} ativo{c.assets.length !== 1 ? 's' : ''}</span>
                   <span className={styles.groupRight}>
-                    <span className={styles.groupAlloc}>{pct(g.pct)} / meta {g.target}%</span>
-                    <span className={styles.groupTotal}>{formatCurrency(g.cur)}</span>
+                    <span className={styles.groupAlloc}>{pct(c.pct)} / meta {pct(c.target)}</span>
+                    <span className={styles.groupTotal}>{formatCurrency(c.cur)}</span>
                   </span>
                 </button>
 
-                {!collapsed.has(g.id) && g.assets.map(a => {
+                {!collapsed.has(c.className) && c.assets.map(a => {
                   const aPct = summary.totalValue > 0 ? (a.currentValue / summary.totalValue) * 100 : 0;
                   return (
                     <div key={a.id} className={styles.row} onClick={() => setDetailAsset(a)} role="button" tabIndex={0}
                       onKeyDown={e => { if (e.key === 'Enter') setDetailAsset(a); }}>
-                      <div className={styles.avatar} style={{ background: g.color }} aria-hidden>{initials(a.ticker)}</div>
+                      <div className={styles.avatar} style={{ background: c.color }} aria-hidden>{initials(a.ticker)}</div>
                       <div className={styles.rowBody}>
                         <div className={styles.rowTicker}>
                           {a.ticker}
@@ -416,7 +492,10 @@ export default function Assets() {
                           </span>
                         </div>
                         <div className={styles.rowInfo}>
-                          {a.quantity && a.customPrice ? `${a.quantity} × ${formatCurrency(a.customPrice)}${a.avgPrice ? ` · PM ${formatCurrency(a.avgPrice)}` : ''}` : (a.info || '—')}
+                          <span className={styles.rowSubclass}>{a.category.subclassName}</span>
+                          {a.quantity && a.customPrice
+                            ? <> · {a.quantity} × {formatCurrency(a.customPrice)}{a.avgPrice ? ` · PM ${formatCurrency(a.avgPrice)}` : ''}</>
+                            : a.info ? <> · {a.info}</> : null}
                         </div>
                       </div>
                       <div className={styles.rowPos}>
@@ -460,7 +539,7 @@ export default function Assets() {
       {detailAsset && (
         <AssetDetailDrawer
           asset={detailAsset}
-          color={colorFor(detailAsset.category.id)}
+          color={colorForClass(detailAsset.category.className)}
           onClose={() => setDetailAsset(null)}
           onEdit={() => handleEdit(detailAsset)}
           onArchive={() => handleArchive(detailAsset.id)}

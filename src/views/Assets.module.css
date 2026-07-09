@@ -120,23 +120,57 @@
 .allocSeg:hover { filter: brightness(1.15); }
 .allocSegDim { opacity: 0.3; }
 
-.allocLegend { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 0.5rem 1rem; margin-top: 0.85rem; }
-.legendItem {
-  display: flex; align-items: center; gap: 0.5rem;
-  background: transparent; border: 1px solid transparent; border-radius: 10px;
-  padding: 0.35rem 0.5rem; cursor: pointer; text-align: left;
-  transition: border-color 0.15s, background 0.15s; min-width: 0;
-}
-.legendItem:hover { background: rgba(139, 92, 246, 0.06); }
-.legendItemActive { border-color: var(--color-primary); background: rgba(139, 92, 246, 0.08); }
 .legendDot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
-.legendName { flex: 1; font-size: 0.78rem; font-weight: 600; color: var(--color-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.legendNums { font-size: 0.76rem; font-variant-numeric: tabular-nums; color: var(--color-text); font-weight: 700; white-space: nowrap; }
 .legendMeta { color: var(--color-text-3); font-weight: 500; }
-.devBadge { font-size: 0.66rem; font-weight: 700; border-radius: 999px; padding: 0.1rem 0.4rem; white-space: nowrap; }
+.devBadge { font-size: 0.66rem; font-weight: 700; border-radius: 999px; padding: 0.1rem 0.4rem; white-space: nowrap; flex-shrink: 0; }
 .devUp   { background: rgba(239, 68, 68, 0.14); color: #F87171; }
 .devDown { background: rgba(245, 158, 11, 0.14); color: #FBBF24; }
 .devOk   { background: rgba(16, 185, 129, 0.12); color: #34D399; }
+
+/* ── Nível 2: subclasses como "bullet bars" (Stephen Few) ──
+   Formato correto para comparar atual×meta em muitos itens: uma barra fina
+   preenchida até o valor atual + um marcador vertical na meta. Escala para
+   11+ subclasses sem truncar nome nem virar arco-íris — todas usam a cor
+   da classe-mãe, agrupadas visualmente por ela. */
+.subBullets { margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+.bulletClassBlock { display: flex; flex-direction: column; gap: 0.3rem; }
+.bulletClassLabel {
+  display: flex; align-items: center; gap: 0.5rem;
+  border: none; background: transparent; cursor: pointer; text-align: left;
+  padding: 0.2rem 0.3rem; border-radius: 8px;
+  font-size: 0.76rem; font-weight: 700; color: var(--color-text);
+  transition: background 0.12s;
+}
+.bulletClassLabel:hover { background: rgba(139, 92, 246, 0.06); }
+.bulletClassActive { background: rgba(139, 92, 246, 0.1); }
+.bulletClassNums { margin-left: auto; font-weight: 500; color: var(--color-text-3); font-variant-numeric: tabular-nums; }
+
+.bulletRow {
+  display: flex; align-items: center; gap: 0.6rem;
+  border: none; background: transparent; cursor: pointer; text-align: left;
+  padding: 0.3rem 0.5rem 0.3rem 1.6rem; border-radius: 8px;
+  transition: background 0.12s;
+}
+.bulletRow:hover { background: rgba(139, 92, 246, 0.05); }
+.bulletRowActive { background: rgba(139, 92, 246, 0.09); }
+.bulletName {
+  flex: 0 0 clamp(120px, 22%, 220px);
+  font-size: 0.78rem; font-weight: 600; color: var(--color-text-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bulletTrack {
+  flex: 1; position: relative; height: 8px; min-width: 60px;
+  background: var(--color-surface-2); border-radius: 999px; overflow: visible;
+}
+.bulletFill { position: absolute; inset: 0 auto 0 0; height: 100%; border-radius: 999px; transition: width 0.3s ease; }
+.bulletTarget {
+  position: absolute; top: -3px; bottom: -3px; width: 2px;
+  background: var(--color-text); border-radius: 1px;
+}
+.bulletNums {
+  flex: 0 0 auto; min-width: 92px; text-align: right;
+  font-size: 0.76rem; font-variant-numeric: tabular-nums; color: var(--color-text); font-weight: 700;
+}
 
 /* ── Faixa de rebalanceamento ── */
 .rebalStrip {
@@ -270,6 +304,7 @@
 .priceAuto   { background: rgba(16, 185, 129, 0.10); color: #34D399; }
 .priceManual { background: rgba(156, 163, 175, 0.12); color: #9CA3AF; }
 .rowInfo { font-size: 0.71rem; color: var(--color-text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rowSubclass { color: var(--color-text-2); font-weight: 600; }
 
 .rowPos { flex: 1; min-width: 0; text-align: right; }
 .rowPosVal { font-size: 0.88rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--color-text); }
@@ -394,8 +429,14 @@
 
   .hero { grid-template-columns: 1fr; }
 
-  .allocLegend { grid-template-columns: 1fr; }
-  .allocSeg { font-size: 0; }
+  /* Barra de classe: só o %, sem o nome (os bullets abaixo já nomeiam) */
+  .allocSeg { font-size: 0.66rem; }
+
+  /* Bullet bars: nome empilha acima da barra em vez de dividir a largura */
+  .bulletRow { flex-wrap: wrap; row-gap: 0.25rem; padding-left: 0.5rem; }
+  .bulletName { flex: 1 1 100%; }
+  .bulletTrack { flex: 1 1 auto; }
+  .bulletNums { min-width: 0; }
 
   .toolbar { flex-direction: column; align-items: stretch; }
   .segmented { width: 100%; }
