@@ -1,7 +1,7 @@
 'use client';
 
 import { SellTaxRecord } from '@/types';
-import styles from '@/components/PortfolioHistory.module.css';
+import styles from './TaxRecordCard.module.css';
 import { CheckCircle, Clock, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

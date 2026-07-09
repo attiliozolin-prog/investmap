@@ -4,32 +4,21 @@ import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
 import { StrategyCategory } from '@/types';
 import { CHART_COLORS } from '@/lib/calculations';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import styles from './Strategy.module.css';
-import { Plus, Trash2, Save, AlertCircle, CheckCircle, Pencil, Check, X } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, ChevronDown } from 'lucide-react';
 import HelpTip from '@/components/HelpTip';
 import DeleteStrategyModal from '@/components/DeleteStrategyModal';
 
 export default function Strategy() {
   const {
-    activeStrategy,
-    activeStrategyId,
-    updateStrategy,
-    addCategory,
-    updateCategory,
-    deleteCategory,
-    createStrategy,
-    strategies,
-    setActiveStrategy,
-    deleteStrategy,
+    activeStrategy, activeStrategyId, updateStrategy, addCategory, updateCategory, deleteCategory, createStrategy, strategies, setActiveStrategy, deleteStrategy,
   } = useApp();
 
   const [strategyToDelete, setStrategyToDelete] = useState<{ id: string; name: string } | null>(null);
   const [stratName, setStratName] = useState(activeStrategy?.name ?? '');
   const [stratDesc, setStratDesc] = useState(activeStrategy?.description ?? '');
   const [tolerance, setTolerance] = useState(activeStrategy?.deviationTolerance ?? 3);
-  const [saved, setSaved] = useState(false);
-
+  
   // Sincroniza campos locais quando a estratégia ativa muda
   useEffect(() => {
     if (activeStrategy) {
@@ -37,19 +26,14 @@ export default function Strategy() {
       setStratDesc(activeStrategy.description ?? '');
       setTolerance(activeStrategy.deviationTolerance ?? 3);
     }
-  }, [activeStrategy?.id]);
+  }, [activeStrategy]);
 
-  // Estado do formulário de nova subclasse (linha global / nova classe)
-  const [newClassName, setNewClassName] = useState('');
-  const [newSubclass, setNewSubclass] = useState('');
-  const [newTarget, setNewTarget] = useState('');
+  // Accordions
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
-  // Confirmação de exclusão inline
-  const [confirmDeleteCatId, setConfirmDeleteCatId] = useState<string | null>(null);
-
-  // Edição do nome do grupo (renomear classe inteira)
-  const [editingClass, setEditingClass] = useState<string | null>(null);
-  const [editingClassName, setEditingClassName] = useState('');
+  const toggleGroup = (className: string) => {
+    setOpenGroups(p => ({ ...p, [className]: !p[className] }));
+  };
 
   // Add inline por grupo
   const [inlineAddClass, setInlineAddClass] = useState<string | null>(null);
@@ -58,11 +42,6 @@ export default function Strategy() {
 
   // Micro-animação ao salvar %
   const [savedCatId, setSavedCatId] = useState<string | null>(null);
-
-  const existingClasses = useMemo(() => {
-    if (!activeStrategy) return [];
-    return Array.from(new Set(activeStrategy.categories.map(c => c.className))).sort();
-  }, [activeStrategy?.categories]);
 
   const categories = activeStrategy?.categories ?? [];
   const totalTarget = categories.reduce((s, c) => s + c.targetPercent, 0);
@@ -79,7 +58,8 @@ export default function Strategy() {
     );
   }, [categories]);
 
-  const chartData = useMemo(() => {
+  // Chart data for Stacked Bar
+  const classTotals = useMemo(() => {
     return Object.entries(groupedCategories).map(([className, cats], i) => {
       const targetVal = cats.reduce((sum, c) => sum + c.targetPercent, 0);
       return {
@@ -90,9 +70,6 @@ export default function Strategy() {
     }).filter(d => d.value > 0).sort((a, b) => b.value - a.value);
   }, [groupedCategories]);
 
-  const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => setIsMounted(true), []);
-
   const handleSaveStrategy = () => {
     if (!activeStrategy) return;
     updateStrategy(activeStrategyId, {
@@ -100,25 +77,8 @@ export default function Strategy() {
       description: stratDesc.trim(),
       deviationTolerance: Number(tolerance),
     });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
   };
 
-  // Adiciona subclasse usando o formulário inferior (nova classe ou classe existente via chip)
-  const handleAddCategory = () => {
-    const target = parseFloat(newTarget.replace(',', '.'));
-    if (!newSubclass.trim() || isNaN(target) || target <= 0 || target > 100) return;
-    addCategory({
-      className: newClassName.trim() || 'Geral',
-      subclassName: newSubclass.trim(),
-      targetPercent: target,
-    });
-    setNewClassName('');
-    setNewSubclass('');
-    setNewTarget('');
-  };
-
-  // Adiciona subclasse inline dentro de um grupo existente
   const handleInlineAdd = () => {
     if (!inlineAddClass) return;
     const target = parseFloat(inlineTarget.replace(',', '.'));
@@ -131,15 +91,6 @@ export default function Strategy() {
     setInlineSubclass('');
     setInlineTarget('');
     setInlineAddClass(null);
-  };
-
-  // Renomeia todas as categorias de uma classe de uma vez
-  const handleRenameClass = (oldName: string) => {
-    const trimmed = editingClassName.trim();
-    setEditingClass(null);
-    if (!trimmed || trimmed === oldName) return;
-    const cats = groupedCategories[oldName] ?? [];
-    cats.forEach(cat => updateCategory(cat.id, { className: trimmed }));
   };
 
   const handleConfirmDeleteStrategy = (id: string) => {
@@ -159,14 +110,21 @@ export default function Strategy() {
       setTimeout(() => setSavedCatId(null), 1200);
     }
   };
+  
+  const handleUpdateSubclassName = (id: string, val: string) => {
+    const trimmed = val.trim();
+    if (trimmed) {
+      updateCategory(id, { subclassName: trimmed });
+    }
+  };
 
   if (!activeStrategy) {
     return (
-      <div className="empty-state">
+      <div className={styles.emptyState}>
         <h3>Nenhuma estratégia</h3>
         <p>Crie uma estratégia para começar.</p>
         <button
-          className="btn btn-primary"
+          className={styles.btnPrimary}
           style={{ marginTop: 16 }}
           onClick={() => {
             const s = createStrategy({ name: 'Minha Carteira', deviationTolerance: 3 });
@@ -180,398 +138,193 @@ export default function Strategy() {
   }
 
   return (
-    <div className={styles.wrapper}>
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <h2 className={styles.title}>Configuração da Estratégia</h2>
+        <div className={styles.headerActions}>
+          {strategies.length > 1 && (
+            <button className={styles.btnGhost} onClick={() => setStrategyToDelete({ id: activeStrategy.id, name: activeStrategy.name })}>
+              <Trash2 size={15} /> Excluir Estratégia
+            </button>
+          )}
+          <button className={styles.btnPrimary} onClick={() => {
+             const s = createStrategy({ name: 'Nova Carteira', deviationTolerance: 3 });
+             setActiveStrategy(s.id);
+          }}>
+            <Plus size={15} /> Nova Estratégia
+          </button>
+        </div>
+      </div>
 
-      {/* ── Seção 1: Informações da Carteira ── */}
-      <div className={`card ${styles.section}`}>
-        <h3 className={styles.secTitle}>Informações da Carteira</h3>
-        <div className={styles.grid2}>
-          <div className="form-group">
-            <label className="label" htmlFor="strat-name">Nome da carteira</label>
+      <div className={styles.splitView}>
+        {/* Esquerda: Configurações Gerais */}
+        <div className={styles.card}>
+          <h3 className={styles.cardTitle}>Preferências</h3>
+          <div className={styles.formGroup}>
+            <label className={styles.label} htmlFor="strat-name">Nome da carteira</label>
             <input
               id="strat-name"
-              className="input"
+              className={styles.input}
               value={stratName}
               onChange={(e) => setStratName(e.target.value)}
+              onBlur={handleSaveStrategy}
               placeholder="Ex: Minha Carteira Diversificada"
             />
           </div>
-          <div className="form-group">
-            <label className="label" htmlFor="strat-tolerance">Tolerância de desvio (%) <HelpTip text="Quando qualquer subclasse se desviar mais do que este percentual da meta, o Dashboard mostrará um alerta de rebalanceamento." /></label>
-            <input
-              id="strat-tolerance"
-              className="input"
-              type="number"
-              min="0"
-              max="20"
-              step="0.5"
-              value={tolerance}
-              onChange={(e) => setTolerance(Number(e.target.value))}
-            />
-            <div className={styles.hint}>Desvios acima deste valor disparam alertas de rebalanceamento.</div>
+          <div className={styles.inputGrid}>
+            <div className={styles.formGroup}>
+              <label className={styles.label} htmlFor="strat-tolerance">Tolerância de desvio (%) <HelpTip text="Quando qualquer subclasse desviar mais que este valor, você verá alertas de rebalanceamento." /></label>
+              <input
+                id="strat-tolerance"
+                type="number"
+                step="0.5"
+                min="0"
+                className={styles.input}
+                value={tolerance}
+                onChange={(e) => setTolerance(Number(e.target.value))}
+                onBlur={handleSaveStrategy}
+              />
+            </div>
           </div>
         </div>
-        <div className="form-group">
-          <label className="label" htmlFor="strat-desc">Descrição (opcional)</label>
-          <input
-            id="strat-desc"
-            className="input"
-            value={stratDesc}
-            onChange={(e) => setStratDesc(e.target.value)}
-            placeholder="Ex: Foco em dividendos e crescimento de longo prazo"
-          />
-        </div>
-        <div className={styles.saveRow}>
-          {saved && (
-            <span className={styles.savedMsg}>
-              <CheckCircle size={14} /> Salvo com sucesso
-            </span>
-          )}
-          <button id="save-strategy-btn" className="btn btn-primary" onClick={handleSaveStrategy} disabled={!isValid && categories.length > 0} title={!isValid && categories.length > 0 ? `Total est\u00e1 em ${totalTarget.toFixed(1)}%. Ajuste para 100% antes de salvar.` : ''}>
-            <Save size={15} /> Salvar
-          </button>
+
+        {/* Direita: Progresso da Meta */}
+        <div className={styles.targetCard}>
+          <div className={`${styles.targetTotal} ${isValid ? styles.ok : styles.error}`}>
+            <span className={styles.targetVal}>{totalTarget.toFixed(1)}%</span>
+            <span className={styles.targetLbl}>Alocação Total</span>
+          </div>
+          
+          <div className={styles.allocBar}>
+            {classTotals.map((c, i) => {
+              const pct = (c.value / totalTarget) * 100;
+              return (
+                <div key={c.name} className={styles.allocSeg} style={{ width: `${pct}%`, background: c.color }} title={`${c.name} - ${c.value.toFixed(1)}%`} />
+              );
+            })}
+          </div>
+
+          <div className={styles.allocLegend}>
+            {classTotals.map(c => (
+              <div key={c.name} className={styles.legendItem}>
+                <div className={styles.legendColor} style={{ background: c.color }} />
+                <span>{c.name} ({c.value.toFixed(1)}%)</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* ── Seção 2: Subclasses e Metas ── */}
-      <div className={`card ${styles.section}`}>
-        <div className={styles.catHeader}>
-          <h3>Subclasses e Metas de Alocação</h3>
-          <div className={`${styles.totalBadge} ${isValid ? styles.totalOk : styles.totalError}`}>
-            {isValid ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
-            Total: {totalTarget.toFixed(1)}% {isValid ? '✓' : `(faltam ${(100 - totalTarget).toFixed(1)}%)`}
-          </div>
-        </div>
+      {/* Accordions de Classes e Subclasses */}
+      <div className={styles.listContainer}>
+        {Object.entries(groupedCategories).map(([className, cats]) => {
+          const isOpen = openGroups[className] !== false; // aberto por padrão
+          const classTotal = cats.reduce((s, c) => s + c.targetPercent, 0);
 
-        {/* Gráfico de pizza */}
-        {categories.length > 0 && isMounted && (
-          <div className={styles.chartContainer}>
-            <div className={styles.chartArea}>
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={chartData}
-                    cx="50%" cy="50%"
-                    outerRadius={80} innerRadius={50}
-                    dataKey="value" strokeWidth={0}
-                    isAnimationActive={false}
-                  >
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value: number) => [`${value.toFixed(1)}%`, 'Alvo']}
-                    contentStyle={{
-                      borderRadius: 8,
-                      background: 'var(--color-surface)',
-                      border: '1px solid var(--color-border)',
-                      color: 'var(--color-text)',
-                      fontSize: '0.82rem',
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className={styles.chartLegend}>
-              {chartData.map(d => (
-                <div key={d.name} className={styles.legendItem}>
-                  <div className={styles.legendDot} style={{ background: d.color }} />
-                  <span className={styles.legendName}>{d.name}</span>
-                  <span className={styles.legendVal}>{d.value.toFixed(1)}%</span>
+          return (
+            <div key={className} className={styles.group}>
+              <button className={styles.groupHead} onClick={() => toggleGroup(className)}>
+                <ChevronDown size={16} className={`${styles.groupChevron} ${!isOpen ? styles.groupChevronClosed : ''}`} />
+                <span className={styles.groupName}>{className}</span>
+                <span className={styles.groupCount}>{cats.length} {cats.length === 1 ? 'ativo' : 'ativos'}</span>
+                <div className={styles.groupRight}>
+                  <span className={styles.groupTotal}>{classTotal.toFixed(1)}%</span>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Lista de categorias agrupadas por classe */}
-        <div className={styles.catList}>
-          {Object.entries(groupedCategories).map(([className, cats]) => {
-            const groupTotal = cats.reduce((s, c) => s + c.targetPercent, 0);
-            const isEditingThisClass = editingClass === className;
-            return (
-              <div key={className} className={styles.classGroupContainer}>
-
-                {/* Cabeçalho do grupo — editável com clique */}
-                <div className={styles.classGroupHeader}>
-                  {isEditingThisClass ? (
-                    <div className={styles.classNameEdit}>
+              </button>
+              
+              {isOpen && (
+                <div className={styles.groupContent}>
+                  {cats.map(cat => (
+                    <div key={cat.id} className={styles.row}>
                       <input
-                        className={`input ${styles.classNameInput}`}
-                        value={editingClassName}
-                        autoFocus
-                        onChange={(e) => setEditingClassName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleRenameClass(className);
-                          if (e.key === 'Escape') setEditingClass(null);
-                        }}
-                        onBlur={() => handleRenameClass(className)}
+                        className={styles.input}
+                        style={{ padding: '0.2rem 0.4rem', border: 'none', background: 'transparent', flex: 1, fontWeight: 600, color: 'var(--color-text-2)' }}
+                        defaultValue={cat.subclassName}
+                        onBlur={(e) => handleUpdateSubclassName(cat.id, e.target.value)}
+                        title="Clique para renomear"
                       />
-                      <button className={`btn btn-ghost btn-sm ${styles.iconBtn}`} onClick={() => handleRenameClass(className)} title="Confirmar">
-                        <Check size={13} />
-                      </button>
-                      <button className={`btn btn-ghost btn-sm ${styles.iconBtn}`} onClick={() => setEditingClass(null)} title="Cancelar">
-                        <X size={13} />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      className={styles.classNameBtn}
-                      title="Clique para renomear a classe"
-                      onClick={() => { setEditingClass(className); setEditingClassName(className); }}
-                    >
-                      {className}
-                      <Pencil size={11} className={styles.classEditIcon} />
-                    </button>
-                  )}
-                  <span className={styles.classGroupTotal}>({groupTotal.toFixed(1)}%)</span>
-                  <button
-                    className={`btn btn-ghost btn-sm ${styles.addSubBtn}`}
-                    onClick={() => {
-                      setInlineAddClass(inlineAddClass === className ? null : className);
-                      setInlineSubclass('');
-                      setInlineTarget('');
-                    }}
-                    title="Adicionar subclasse neste grupo"
-                  >
-                    <Plus size={13} /> Adicionar
-                  </button>
-                </div>
-
-                {/* Linhas de subclasse */}
-                <div className={styles.classGroupItems}>
-                  {cats.map((cat) => (
-                    <div key={cat.id}>
-                      {confirmDeleteCatId === cat.id ? (
-                        <div className={styles.deleteConfirm}>
-                          <Trash2 size={13} />
-                          <span>Remover <strong>{cat.subclassName}</strong>?</span>
-                          <button
-                            className={styles.deleteConfirmYes}
-                            onClick={() => { deleteCategory(cat.id); setConfirmDeleteCatId(null); }}
-                          >
-                            Sim
-                          </button>
-                          <button className={styles.deleteConfirmNo} onClick={() => setConfirmDeleteCatId(null)}>
-                            Não
-                          </button>
-                        </div>
-                      ) : (
-                        <div className={`${styles.catRow} ${savedCatId === cat.id ? styles.catRowSaved : ''}`}>
-                          <div className={styles.catNames}>
-                            <input
-                              key={`${cat.id}-sub`}
-                              className={`input ${styles.catInput}`}
-                              defaultValue={cat.subclassName}
-                              onBlur={(e) => updateCategory(cat.id, { subclassName: e.target.value })}
-                              placeholder="Nome da subclasse"
-                            />
-                          </div>
-                          <div className={styles.catRight}>
-                            <div className={styles.percentInput}>
-                              <input
-                                key={`${cat.id}-pct`}
-                                className={`input ${styles.pctField}`}
-                                defaultValue={cat.targetPercent}
-                                onBlur={(e) => handleUpdateCategoryPercent(cat.id, e.target.value)}
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.5"
-                              />
-                              <span className={styles.pctSymbol}>%</span>
-                            </div>
-                            <button
-                              id={`delete-cat-${cat.id}`}
-                              className="btn btn-danger btn-sm"
-                              onClick={() => setConfirmDeleteCatId(cat.id)}
-                              title="Remover subclasse"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                      <div className={styles.rowInputContainer}>
+                        <input
+                          type="number"
+                          step="0.5"
+                          className={styles.rowInput}
+                          defaultValue={cat.targetPercent}
+                          onBlur={(e) => handleUpdateCategoryPercent(cat.id, e.target.value)}
+                        />
+                        <span className={styles.rowInputPercent}>%</span>
+                        {savedCatId === cat.id && <CheckCircle size={14} className={styles.savedIcon} />}
+                      </div>
+                      <div className={styles.rowActions}>
+                        <button className={styles.iconBtn} onClick={() => deleteCategory(cat.id)} title="Excluir subclasse"><Trash2 size={14}/></button>
+                      </div>
                     </div>
                   ))}
 
-                  {/* Formulário de adição inline dentro do grupo */}
-                  {inlineAddClass === className && (
-                    <div className={styles.inlineAddRow}>
-                      <input
-                        autoFocus
-                        className={`input ${styles.catInput}`}
-                        value={inlineSubclass}
-                        onChange={(e) => setInlineSubclass(e.target.value)}
-                        placeholder="Nome da subclasse..."
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleInlineAdd();
-                          if (e.key === 'Escape') setInlineAddClass(null);
-                        }}
-                      />
-                      <div className={styles.percentInput}>
-                        <input
-                          className={`input ${styles.pctField}`}
-                          value={inlineTarget}
-                          onChange={(e) => setInlineTarget(e.target.value)}
-                          placeholder="0"
-                          type="number"
-                          min="0"
-                          max="100"
-                          onKeyDown={(e) => { if (e.key === 'Enter') handleInlineAdd(); }}
+                  {inlineAddClass === className ? (
+                    <div className={styles.addRow}>
+                      <div className={styles.addFormInline}>
+                        <input 
+                          autoFocus
+                          className={styles.input} 
+                          placeholder="Ex: FIIs de Papel" 
+                          value={inlineSubclass} 
+                          onChange={e => setInlineSubclass(e.target.value)} 
+                          onKeyDown={e => e.key === 'Enter' && handleInlineAdd()}
                         />
-                        <span className={styles.pctSymbol}>%</span>
+                        <input 
+                          className={`${styles.input} ${styles.inputTarget}`} 
+                          placeholder="%" 
+                          type="number" 
+                          value={inlineTarget} 
+                          onChange={e => setInlineTarget(e.target.value)} 
+                          onKeyDown={e => e.key === 'Enter' && handleInlineAdd()}
+                        />
+                        <button className={styles.btnAddInline} onClick={handleInlineAdd}>Salvar</button>
+                        <button className={styles.btnCancelInline} onClick={() => { setInlineAddClass(null); setInlineSubclass(''); setInlineTarget(''); }}>Cancelar</button>
                       </div>
-                      <button
-                        className="btn btn-primary btn-sm"
-                        onClick={handleInlineAdd}
-                        disabled={!inlineSubclass.trim() || !inlineTarget}
-                        title="Confirmar"
-                      >
-                        <Check size={14} />
-                      </button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => setInlineAddClass(null)} title="Cancelar">
-                        <X size={14} />
+                    </div>
+                  ) : (
+                    <div className={styles.addRow} style={{ padding: '0.4rem 1.1rem 0.6rem 2.8rem' }}>
+                      <button className={styles.addBtnGhost} onClick={() => { setInlineAddClass(className); setInlineSubclass(''); setInlineTarget(''); }}>
+                        <Plus size={13}/> Adicionar Subclasse
                       </button>
                     </div>
                   )}
                 </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Formulário de adição de nova classe / subclasse */}
-        <div className={styles.newClassSection}>
-          <p className={styles.newClassLabel}>
-            <Plus size={13} />
-            {existingClasses.length > 0 ? 'Adicionar em nova classe' : 'Adicionar primeira subclasse'}
-          </p>
-
-          {/* Chips das classes existentes para seleção rápida */}
-          {existingClasses.length > 0 && (
-            <div className={styles.classChips}>
-              <span className={styles.chipsHint}>Usar classe existente:</span>
-              {existingClasses.map(cls => (
-                <button
-                  key={cls}
-                  className={`${styles.classChip} ${newClassName === cls ? styles.classChipActive : ''}`}
-                  onClick={() => setNewClassName(prev => prev === cls ? '' : cls)}
-                >
-                  {cls}
-                </button>
-              ))}
+              )}
             </div>
-          )}
+          );
+        })}
 
-          <div className={styles.addRow}>
-            <input
-              id="new-classname"
-              className={`input ${styles.catInput}`}
-              value={newClassName}
-              onChange={(e) => setNewClassName(e.target.value)}
-              placeholder="Nome da classe (ex: Renda Variável)"
-            />
-            <input
-              id="new-subclass"
-              className={`input ${styles.catInput}`}
-              value={newSubclass}
-              onChange={(e) => setNewSubclass(e.target.value)}
-              placeholder="Subclasse (ex: ETF)"
-              onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory(); }}
-            />
-            <div className={styles.percentInput}>
-              <input
-                id="new-target"
-                className={`input ${styles.pctField}`}
-                value={newTarget}
-                onChange={(e) => setNewTarget(e.target.value)}
-                placeholder="0"
-                type="number"
-                min="0"
-                max="100"
-                onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory(); }}
-              />
-              <span className={styles.pctSymbol}>%</span>
+        {/* Global Add (Nova Classe) */}
+        {!inlineAddClass && (
+          <div className={styles.group} style={{ padding: '1rem', background: 'var(--color-surface-2)' }}>
+            <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: 'var(--color-text)' }}>Criar Nova Macro-Classe</h4>
+            <div className={styles.addFormInline}>
+              <input className={styles.input} placeholder="Nova Macro (Ex: Renda Fixa)" id="newMacro" />
+              <input className={styles.input} placeholder="Subclasse" id="newSub" />
+              <input className={`${styles.input} ${styles.inputTarget}`} placeholder="%" id="newTarget" type="number" />
+              <button className={styles.btnAddInline} onClick={() => {
+                const macro = (document.getElementById('newMacro') as HTMLInputElement).value;
+                const sub = (document.getElementById('newSub') as HTMLInputElement).value;
+                const tgt = parseFloat((document.getElementById('newTarget') as HTMLInputElement).value.replace(',','.'));
+                if (macro && sub && tgt > 0) {
+                  addCategory({ className: macro, subclassName: sub, targetPercent: tgt });
+                  (document.getElementById('newMacro') as HTMLInputElement).value = '';
+                  (document.getElementById('newSub') as HTMLInputElement).value = '';
+                  (document.getElementById('newTarget') as HTMLInputElement).value = '';
+                }
+              }}>Adicionar</button>
             </div>
-            <button
-              id="add-category-btn"
-              className="btn btn-primary"
-              onClick={handleAddCategory}
-              disabled={!newSubclass.trim() || !newTarget}
-            >
-              <Plus size={15} /> Adicionar
-            </button>
-          </div>
-        </div>
-
-        {!isValid && categories.length > 0 && (
-          <div className={styles.warning}>
-            <AlertCircle size={14} />
-            A soma dos percentuais deve ser exatamente 100%. Atual: {totalTarget.toFixed(1)}%
           </div>
         )}
-      </div>
-
-      {/* ── Seção 3: Outras Carteiras ── */}
-      <div className={`card ${styles.section}`}>
-        <h3>Outras Carteiras</h3>
-        <p style={{ marginTop: 8 }}>Você pode criar múltiplas carteiras com estratégias diferentes.</p>
-        <div style={{ marginTop: 16 }}>
-          {strategies.map((s) => {
-            const subclassCount = s.categories?.length ?? 0;
-            return (
-              <div key={s.id} className={`${styles.stratRow} ${s.id === activeStrategyId ? styles.stratActive : ''}`}>
-                <div>
-                  <div className={styles.stratName}>{s.name}</div>
-                  <div className={styles.stratMeta}>
-                    {s.description && <span className={styles.stratDesc}>{s.description} · </span>}
-                    <span className={styles.stratCount}>{subclassCount} subclasse{subclassCount !== 1 ? 's' : ''}</span>
-                  </div>
-                </div>
-                <div className={styles.stratActions}>
-                  {s.id !== activeStrategyId && (
-                    <button className="btn btn-ghost btn-sm" onClick={() => setActiveStrategy(s.id)}>
-                      Selecionar
-                    </button>
-                  )}
-                  {s.id === activeStrategyId && (
-                    <span className="badge badge-success">Ativa</span>
-                  )}
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    style={{ color: 'var(--color-danger)' }}
-                    title="Excluir Carteira"
-                    onClick={() => setStrategyToDelete({ id: s.id, name: s.name })}
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-          <button
-            id="new-strategy-btn"
-            className="btn btn-ghost"
-            style={{ marginTop: 12 }}
-            onClick={() => {
-              const s = createStrategy({ name: 'Nova Carteira', deviationTolerance: 3 });
-              setActiveStrategy(s.id);
-              setStratName('Nova Carteira');
-              setStratDesc('');
-            }}
-          >
-            <Plus size={15} /> Nova Carteira
-          </button>
-        </div>
       </div>
 
       {strategyToDelete && (
         <DeleteStrategyModal
-          strategy={strategyToDelete}
+          strategy={{ id: strategyToDelete.id, name: strategyToDelete.name }}
           onClose={() => setStrategyToDelete(null)}
-          onConfirm={handleConfirmDeleteStrategy}
+          onConfirm={(id) => handleConfirmDeleteStrategy(id)}
         />
       )}
     </div>
