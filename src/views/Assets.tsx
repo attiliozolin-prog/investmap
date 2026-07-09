@@ -45,6 +45,7 @@ export default function Assets() {
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('posicao');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [showSubBullets, setShowSubBullets] = useState(false);
 
   const summary = useMemo(() => {
     if (!activeStrategy) return null;
@@ -341,7 +342,15 @@ export default function Assets() {
             <section className={styles.allocCard} aria-label="Alocação atual vs meta">
               <div className={styles.allocHead}>
                 <h2 className={styles.allocTitle}><Target size={14} style={{ marginRight: 6 }} />Alocação atual × meta</h2>
-                <span className={styles.allocHint}>clique numa classe ou subclasse para filtrar a lista</span>
+                <button
+                  className={`${styles.allocToggle} ${showSubBullets ? styles.allocToggleOpen : ''}`}
+                  onClick={() => setShowSubBullets(prev => !prev)}
+                  aria-expanded={showSubBullets}
+                  aria-label={showSubBullets ? 'Ocultar detalhes das subclasses' : 'Mostrar detalhes das subclasses'}
+                >
+                  <ChevronDown size={14} />
+                  {showSubBullets ? 'Ocultar detalhes' : 'Ver subclasses'}
+                </button>
               </div>
 
               {/* Nível 1: barra empilhada por CLASSE (3-4 segmentos legíveis) */}
@@ -358,38 +367,40 @@ export default function Assets() {
               </div>
 
               {/* Nível 2: subclasses como bullet bars (atual = barra, meta = marcador) */}
-              <div className={styles.subBullets}>
-                {classGroups.map(c => (
-                  <div key={c.className} className={styles.bulletClassBlock}>
-                    <button
-                      className={`${styles.bulletClassLabel} ${classFilter === c.className ? styles.bulletClassActive : ''}`}
-                      onClick={() => { setClassFilter(prev => prev === c.className ? null : c.className); setSubFilter(null); }}
-                    >
-                      <span className={styles.legendDot} style={{ background: c.color }} />
-                      {c.className}
-                      <span className={styles.bulletClassNums}>{pct(c.pct)} / meta {pct(c.target)}</span>
-                    </button>
-                    {c.subs.map(g => (
-                      <button key={g.id}
-                        className={`${styles.bulletRow} ${subFilter === g.id ? styles.bulletRowActive : ''}`}
-                        onClick={() => { setSubFilter(prev => prev === g.id ? null : g.id); setClassFilter(null); }}
-                        title={`${g.subclassName}: ${pct(g.pct)} atual · meta ${g.target}%`}>
-                        <span className={styles.bulletName}>{g.subclassName}</span>
-                        <span className={styles.bulletTrack}>
-                          <span className={styles.bulletFill} style={{ width: `${Math.min(100, (g.pct / bulletMax) * 100)}%`, background: c.color }} />
-                          <span className={styles.bulletTarget} style={{ left: `${Math.min(100, (g.target / bulletMax) * 100)}%` }} />
-                        </span>
-                        <span className={styles.bulletNums}>
-                          {pct(g.pct)} <span className={styles.legendMeta}>/ {g.target}%</span>
-                        </span>
-                        <span className={`${styles.devBadge} ${Math.abs(g.dev) <= activeStrategy.deviationTolerance ? styles.devOk : g.dev > 0 ? styles.devUp : styles.devDown}`}>
-                          {Math.abs(g.dev) <= activeStrategy.deviationTolerance ? '✓' : `${g.dev > 0 ? '▲' : '▼'} ${Math.abs(g.dev).toFixed(1).replace('.', ',')}pp`}
-                        </span>
+              {showSubBullets && (
+                <div className={styles.subBullets}>
+                  {classGroups.map(c => (
+                    <div key={c.className} className={styles.bulletClassBlock}>
+                      <button
+                        className={`${styles.bulletClassLabel} ${classFilter === c.className ? styles.bulletClassActive : ''}`}
+                        onClick={() => { setClassFilter(prev => prev === c.className ? null : c.className); setSubFilter(null); }}
+                      >
+                        <span className={styles.legendDot} style={{ background: c.color }} />
+                        {c.className}
+                        <span className={styles.bulletClassNums}>{pct(c.pct)} / meta {pct(c.target)}</span>
                       </button>
-                    ))}
-                  </div>
-                ))}
-              </div>
+                      {c.subs.map(g => (
+                        <button key={g.id}
+                          className={`${styles.bulletRow} ${subFilter === g.id ? styles.bulletRowActive : ''}`}
+                          onClick={() => { setSubFilter(prev => prev === g.id ? null : g.id); setClassFilter(null); }}
+                          title={`${g.subclassName}: ${pct(g.pct)} atual · meta ${g.target}%`}>
+                          <span className={styles.bulletName}>{g.subclassName}</span>
+                          <span className={styles.bulletTrack}>
+                            <span className={styles.bulletFill} style={{ width: `${Math.min(100, (g.pct / bulletMax) * 100)}%`, background: c.color }} />
+                            <span className={styles.bulletTarget} style={{ left: `${Math.min(100, (g.target / bulletMax) * 100)}%` }} />
+                          </span>
+                          <span className={styles.bulletNums}>
+                            {pct(g.pct)} <span className={styles.legendMeta}>/ {g.target}%</span>
+                          </span>
+                          <span className={`${styles.devBadge} ${Math.abs(g.dev) <= activeStrategy.deviationTolerance ? styles.devOk : g.dev > 0 ? styles.devUp : styles.devDown}`}>
+                            {Math.abs(g.dev) <= activeStrategy.deviationTolerance ? '✓' : `${g.dev > 0 ? '▲' : '▼'} ${Math.abs(g.dev).toFixed(1).replace('.', ',')}pp`}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
           )}
 
