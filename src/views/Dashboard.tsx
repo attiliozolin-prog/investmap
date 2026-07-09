@@ -356,7 +356,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
     actions.push({
       key: 'rebalance', icon: <Zap size={16} />, cls: styles.aiInfo,
       title: <><strong>{buyAssets.length}</strong> ativo{buyAssets.length !== 1 ? 's' : ''} para comprar · <strong>{sellAssets.length}</strong> para reduzir</>,
-      sub: `${outOfTolerance.length} de ${categorySummaries.length} subclasses fora da tolerância de ${activeStrategy.deviationTolerance}pp`,
+      sub: `${outOfTolerance.length} de ${categorySummaries.length} subclasses fora da tolerância de ${activeStrategy.deviationTolerance}%`,
       go: 'Rebalancear', dest: 'assets',
     });
   }
@@ -565,7 +565,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
             <ArrowRight size={14} className={styles.pillarArrow} />
           </div>
           <span className={styles.pillarValue}>{Math.round(summary.healthScore)}<span style={{ fontSize: '0.8rem', color: 'var(--color-text-3)' }}> /100</span></span>
-          <span className={styles.pillarSub}>{outOfTolerance.length} de {categorySummaries.length} subclasses fora da tolerância de {activeStrategy.deviationTolerance}pp</span>
+          <span className={styles.pillarSub}>{outOfTolerance.length} de {categorySummaries.length} subclasses fora da tolerância de {activeStrategy.deviationTolerance}%</span>
           <span className={`${styles.pillBadge} ${outOfTolerance.length === 0 ? styles.pbGood : styles.pbWarn}`}>
             {outOfTolerance.length === 0 ? '✓ tudo na meta' : `✓ plano definido · ${categorySummaries.length} metas`}
           </span>

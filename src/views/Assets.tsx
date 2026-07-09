@@ -261,7 +261,7 @@ export default function Assets() {
         <div className={styles.headerLeft}>
           <h1 className={styles.pageTitle}>Minha Carteira</h1>
           <div className={styles.pageMeta}>
-            {activeAssets.length} ativo{activeAssets.length !== 1 ? 's' : ''} · tolerância de {activeStrategy.deviationTolerance}pp
+            {activeAssets.length} ativo{activeAssets.length !== 1 ? 's' : ''} · tolerância de {activeStrategy.deviationTolerance}%
             <button className={styles.syncChip} onClick={() => syncPrices()} disabled={isSyncingPrices} title="Sincronizar cotações agora (Brapi)">
               <RefreshCw size={11} className={isSyncingPrices ? styles.syncSpin : undefined} />
               {lastSyncLabel()}
@@ -400,7 +400,7 @@ export default function Assets() {
                             {pct(g.pct)} <span className={styles.legendMeta}>/ {g.target}%</span>
                           </span>
                           <span className={`${styles.devBadge} ${Math.abs(g.dev) <= activeStrategy.deviationTolerance ? styles.devOk : g.dev > 0 ? styles.devUp : styles.devDown}`}>
-                            {Math.abs(g.dev) <= activeStrategy.deviationTolerance ? '✓' : `${g.dev > 0 ? '▲' : '▼'} ${Math.abs(g.dev).toFixed(1).replace('.', ',')}pp`}
+                            {Math.abs(g.dev) <= activeStrategy.deviationTolerance ? '✓' : `${g.dev > 0 ? '▲' : '▼'} ${Math.abs(g.dev).toFixed(1).replace('.', ',')}%`}
                           </span>
                         </button>
                       ))}
