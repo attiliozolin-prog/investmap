@@ -428,6 +428,425 @@
   width: 100%;
 }
 
+.importB3Button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px dashed rgba(139, 92, 246, 0.35);
+  color: #C4B5FD;
+  padding: 0.8rem 1.25rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  font-family: inherit;
+}
+
+.importB3Button:hover {
+  background: rgba(139, 92, 246, 0.14);
+  border-color: rgba(139, 92, 246, 0.55);
+}
+
+/* ──────────────────────────────────────────────────────────
+   Passo 1 — Pills de módulos
+────────────────────────────────────────────────────────── */
+
+.pillRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #9CA3AF;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.35rem 0.7rem;
+  border-radius: 99px;
+}
+
+/* ──────────────────────────────────────────────────────────
+   Passo 2 — Tour em carrossel
+────────────────────────────────────────────────────────── */
+
+.tourSlide {
+  animation: fadeUp 0.3s ease-out both;
+}
+
+.tourHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.tourIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tourTag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 1px solid;
+  padding: 0.25rem 0.6rem;
+  border-radius: 99px;
+}
+
+.tourCounter {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: #4B5563;
+  font-variant-numeric: tabular-nums;
+}
+
+.tourTitle {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.tourDesc {
+  color: #9CA3AF;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin-bottom: 1.25rem;
+}
+
+.tourBullets {
+  list-style: none;
+  padding: 0;
+  margin: 1.25rem 0 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tourBullets li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #D1D5DB;
+  font-size: 0.85rem;
+  animation: fadeUp 0.3s ease-out both;
+}
+
+.tourDots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.tourDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.tourDotActive {
+  width: 22px;
+  border-radius: 99px;
+}
+
+.skipButton {
+  background: transparent;
+  border: none;
+  color: #6B7280;
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-top: 0.75rem;
+  padding: 0.4rem;
+  width: 100%;
+  transition: color 0.2s;
+}
+
+.skipButton:hover {
+  color: #D1D5DB;
+}
+
+/* ──────────────────────────────────────────────────────────
+   Mini-previews do tour
+────────────────────────────────────────────────────────── */
+
+.previewBox {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.pvRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pvTicker {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #E5E7EB;
+  width: 56px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.pvLabel {
+  font-size: 0.72rem;
+  color: #9CA3AF;
+  width: auto;
+  flex: 1;
+}
+
+.pvRow .pvLabel {
+  flex: 0 0 auto;
+  width: 76px;
+}
+
+.pvBarTrack {
+  position: relative;
+  flex: 1;
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: visible;
+}
+
+.pvBarFill {
+  height: 100%;
+  border-radius: 99px;
+  background: #8B5CF6;
+  animation: growBar 0.8s ease-out both;
+  transform-origin: left;
+}
+
+@keyframes growBar {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+.pvTargetMark {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 12px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.pvUp   { color: #10B981; font-size: 0.72rem; font-weight: 600; width: 44px; text-align: right; }
+.pvDown { color: #EF4444; font-size: 0.72rem; font-weight: 600; width: 44px; text-align: right; }
+
+.pvDelta {
+  color: #A78BFA;
+  font-size: 0.68rem;
+  font-weight: 600;
+  width: 76px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pvChart {
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 0.5rem;
+  height: 110px;
+}
+
+.pvChartBar {
+  flex: 1;
+  border-radius: 6px 6px 3px 3px;
+  background: linear-gradient(180deg, #8B5CF6 0%, rgba(139, 92, 246, 0.35) 100%);
+  animation: growUp 0.6s ease-out both;
+  transform-origin: bottom;
+}
+
+@keyframes growUp {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+
+.pvGoalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+  color: #E5E7EB;
+}
+
+.pvGoalHeader strong { color: #EC4899; }
+
+.pvGoalFill {
+  background: linear-gradient(90deg, #EC4899, #A78BFA);
+}
+
+.pvGoalFooter {
+  font-size: 0.72rem;
+  color: #6B7280;
+}
+
+.pvDarfRow {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.pvDarfBadgeOk,
+.pvDarfBadgeDue {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 99px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pvDarfBadgeOk  { background: rgba(16, 185, 129, 0.15); color: #10B981; }
+.pvDarfBadgeDue { background: rgba(245, 158, 11, 0.15); color: #F59E0B; }
+
+.pvDarfRow .pvLabel {
+  flex: 1;
+  width: auto;
+}
+
+.pvAiCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  color: #22D3EE;
+}
+
+.pvAiCard p {
+  margin: 0;
+  color: #C7D2DE;
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.pvAiCard strong { color: #fff; }
+
+/* ──────────────────────────────────────────────────────────
+   Passo 3 — Objetivos
+────────────────────────────────────────────────────────── */
+
+.objectivesGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.objectiveCard {
+  position: relative;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1.5px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  padding: 1rem 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.objectiveCard:hover {
+  border-color: rgba(139, 92, 246, 0.35);
+  background: rgba(139, 92, 246, 0.03);
+}
+
+.objectiveSelected {
+  border-color: #8B5CF6;
+  box-shadow: 0 0 0 1px #8B5CF6, 0 4px 20px rgba(139, 92, 246, 0.13);
+  background: rgba(139, 92, 246, 0.05);
+}
+
+.objectiveEmoji {
+  font-size: 1.4rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.objectiveCard h3 {
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+
+.objectiveCard p {
+  color: #6B7280;
+  font-size: 0.75rem;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.objectiveCheck {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  color: #8B5CF6;
+}
+
+/* ──────────────────────────────────────────────────────────
+   Passo 5 — Conclusão (extras)
+────────────────────────────────────────────────────────── */
+
+.successBadges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.successChecklist {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1.25rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.successChecklist div {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #9CA3AF;
+  font-size: 0.8rem;
+}
+
+.successChecklist svg {
+  color: #10B981;
+  flex-shrink: 0;
+}
+
 /* ──────────────────────────────────────────────────────────
    Responsividade
 ────────────────────────────────────────────────────────── */
@@ -448,5 +867,14 @@
 
   .actions .ghostButton {
     width: 100%;
+  }
+
+  .objectivesGrid,
+  .successChecklist {
+    grid-template-columns: 1fr;
+  }
+
+  .tourTitle {
+    font-size: 1.2rem;
   }
 }

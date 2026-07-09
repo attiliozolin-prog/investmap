@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import { StrategyCategory } from '@/types';
 import {
   TrendingUp, Wallet, Receipt, Sparkles,
-  PlusCircle, ArrowRight, Check, ChevronLeft,
-  Shield, Scale, Rocket, PartyPopper
+  PlusCircle, ArrowRight, Check, ChevronLeft, ChevronRight,
+  Shield, Scale, Rocket, PartyPopper, Target, PieChart,
+  LineChart, Landmark, Umbrella, Coins, FileSpreadsheet
 } from 'lucide-react';
 import styles from './OnboardingFlow.module.css';
 
@@ -62,6 +64,195 @@ const PROFILES = [
 
 const SEG_COLORS = ['#8B5CF6', '#3B82F6', '#10B981', '#F59E0B'];
 
+// ─── Tour de funcionalidades (carrossel) ─────────────────────────────────────
+
+interface FeatureSlide {
+  id: string;
+  Icon: React.ElementType;
+  color: string;
+  tag: string;
+  title: string;
+  desc: string;
+  bullets: string[];
+  preview: React.ReactNode;
+}
+
+/** Mini-preview: carteira com ativos em tempo real */
+function PreviewPortfolio() {
+  const rows = [
+    { t: 'PETR4', v: '+2,4%', up: true, w: '72%' },
+    { t: 'IVVB11', v: '+1,1%', up: true, w: '56%' },
+    { t: 'MXRF11', v: '-0,6%', up: false, w: '38%' },
+  ];
+  return (
+    <div className={styles.previewBox}>
+      {rows.map(r => (
+        <div key={r.t} className={styles.pvRow}>
+          <span className={styles.pvTicker}>{r.t}</span>
+          <div className={styles.pvBarTrack}>
+            <div className={styles.pvBarFill} style={{ width: r.w }} />
+          </div>
+          <span className={r.up ? styles.pvUp : styles.pvDown}>{r.v}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Mini-preview: rebalanceamento (atual vs alvo) */
+function PreviewRebalance() {
+  const cats = [
+    { n: 'Renda Fixa', cur: 42, tgt: 50, c: '#8B5CF6' },
+    { n: 'Ações', cur: 34, tgt: 30, c: '#3B82F6' },
+    { n: 'FIIs', cur: 24, tgt: 20, c: '#10B981' },
+  ];
+  return (
+    <div className={styles.previewBox}>
+      {cats.map(c => (
+        <div key={c.n} className={styles.pvRow}>
+          <span className={styles.pvLabel}>{c.n}</span>
+          <div className={styles.pvBarTrack}>
+            <div className={styles.pvBarFill} style={{ width: `${c.cur}%`, background: c.c }} />
+            <div className={styles.pvTargetMark} style={{ left: `${c.tgt}%` }} />
+          </div>
+          <span className={styles.pvDelta}>{c.cur < c.tgt ? `aportar +${c.tgt - c.cur}%` : 'ok'}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Mini-preview: evolução do patrimônio */
+function PreviewFinances() {
+  const bars = [28, 36, 33, 45, 52, 64, 78];
+  return (
+    <div className={`${styles.previewBox} ${styles.pvChart}`}>
+      {bars.map((h, i) => (
+        <div key={i} className={styles.pvChartBar} style={{ height: `${h}%`, animationDelay: `${i * 60}ms` }} />
+      ))}
+    </div>
+  );
+}
+
+/** Mini-preview: meta com progresso */
+function PreviewGoal() {
+  return (
+    <div className={styles.previewBox}>
+      <div className={styles.pvGoalHeader}>
+        <span>🏖️ Independência financeira</span>
+        <strong>62%</strong>
+      </div>
+      <div className={styles.pvBarTrack} style={{ height: 8 }}>
+        <div className={`${styles.pvBarFill} ${styles.pvGoalFill}`} style={{ width: '62%' }} />
+      </div>
+      <div className={styles.pvGoalFooter}>R$ 620 mil de R$ 1 milhão · projeção: 6,2 anos</div>
+    </div>
+  );
+}
+
+/** Mini-preview: DARF */
+function PreviewTaxes() {
+  return (
+    <div className={styles.previewBox}>
+      <div className={styles.pvDarfRow}>
+        <span className={styles.pvDarfBadgeOk}>Isento</span>
+        <span className={styles.pvLabel}>Vendas de ações no mês: R$ 14.300 / R$ 20.000</span>
+      </div>
+      <div className={styles.pvDarfRow}>
+        <span className={styles.pvDarfBadgeDue}>DARF R$ 187,50</span>
+        <span className={styles.pvLabel}>FIIs · vence dia 31 — código 6015</span>
+      </div>
+    </div>
+  );
+}
+
+/** Mini-preview: insight de IA */
+function PreviewAi() {
+  return (
+    <div className={styles.previewBox}>
+      <div className={styles.pvAiCard}>
+        <Sparkles size={14} />
+        <p>
+          Sua exposição ao exterior está 8% abaixo do alvo. Considere direcionar
+          os próximos aportes para <strong>IVVB11</strong> antes de novas compras em FIIs.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+const FEATURES: FeatureSlide[] = [
+  {
+    id: 'portfolio',
+    Icon: LineChart,
+    color: '#8B5CF6',
+    tag: 'Carteira',
+    title: 'Todos os seus ativos, em tempo real',
+    desc: 'Ações, FIIs, ETFs, renda fixa e exterior em um só lugar, com cotações atualizadas automaticamente.',
+    bullets: ['Cotações e variação em tempo real', 'Histórico completo de cada ativo', 'Rentabilidade por ativo e por classe'],
+    preview: <PreviewPortfolio />
+  },
+  {
+    id: 'rebalance',
+    Icon: PieChart,
+    color: '#3B82F6',
+    tag: 'Estratégia',
+    title: 'Rebalanceamento sem planilha',
+    desc: 'Defina sua alocação-alvo e o InvestMap calcula exatamente quanto aportar em cada categoria.',
+    bullets: ['Alocação atual vs. alvo, sempre visível', 'Sugestão de aporte por categoria', 'Estratégia ajustável a qualquer momento'],
+    preview: <PreviewRebalance />
+  },
+  {
+    id: 'finances',
+    Icon: Wallet,
+    color: '#10B981',
+    tag: 'Finanças',
+    title: 'Suas finanças pessoais conectadas',
+    desc: 'Registre aportes e retiradas e acompanhe a evolução do patrimônio mês a mês.',
+    bullets: ['Evolução patrimonial em gráficos', 'Aportes e retiradas organizados', 'Visão consolidada de tudo que você tem'],
+    preview: <PreviewFinances />
+  },
+  {
+    id: 'goals',
+    Icon: Target,
+    color: '#EC4899',
+    tag: 'Metas',
+    title: 'Metas com projeção de chegada',
+    desc: 'Defina objetivos financeiros e veja em quanto tempo você chega lá no seu ritmo atual de aportes.',
+    bullets: ['Progresso visual de cada meta', 'Projeção de prazo com juros compostos', 'Simule aportes maiores e veja o impacto'],
+    preview: <PreviewGoal />
+  },
+  {
+    id: 'taxes',
+    Icon: Receipt,
+    color: '#F59E0B',
+    tag: 'Impostos',
+    title: 'Imposto de renda no piloto automático',
+    desc: 'O app monitora suas vendas, controla a isenção de R$ 20 mil em ações e calcula o DARF por você.',
+    bullets: ['Cálculo automático do DARF mensal', 'Controle da isenção de R$ 20 mil', 'Compensação de prejuízos acumulados'],
+    preview: <PreviewTaxes />
+  },
+  {
+    id: 'ai',
+    Icon: Sparkles,
+    color: '#22D3EE',
+    tag: 'Inteligência Artificial',
+    title: 'Um analista de IA na sua carteira',
+    desc: 'Receba análises personalizadas sobre concentração, diversificação e oportunidades de melhoria.',
+    bullets: ['Insights sob medida para a sua carteira', 'Alertas de concentração e desvios', 'Linguagem simples, sem jargão'],
+    preview: <PreviewAi />
+  },
+];
+
+// ─── Objetivos financeiros ────────────────────────────────────────────────────
+
+const OBJECTIVES = [
+  { id: 'aposentadoria', Icon: Umbrella, emoji: '🏖️', title: 'Aposentadoria', desc: 'Construir liberdade para o futuro' },
+  { id: 'renda-passiva', Icon: Coins, emoji: '💸', title: 'Renda passiva', desc: 'Viver de dividendos e rendimentos' },
+  { id: 'multiplicar', Icon: TrendingUp, emoji: '📈', title: 'Multiplicar patrimônio', desc: 'Crescer o capital no longo prazo' },
+  { id: 'seguranca', Icon: Landmark, emoji: '🧱', title: 'Segurança financeira', desc: 'Reserva sólida e tranquilidade' },
+];
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface OnboardingFlowProps {
@@ -88,17 +279,24 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
 export default function OnboardingFlow({ onFinish }: OnboardingFlowProps) {
   const { completeOnboarding } = useApp();
   const { user } = useAuth();
+  const router = useRouter();
   const [step, setStep] = useState(1);
+  const [featureIndex, setFeatureIndex] = useState(0);
+  const [selectedObjective, setSelectedObjective] = useState<string | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
   const [hintDismissed, setHintDismissed] = useState(false);
 
-  const TOTAL_STEPS = 4;
+  const TOTAL_STEPS = 5;
 
   const firstName = user?.user_metadata?.full_name?.split(' ')[0]
     ?? user?.email?.split('@')[0]
     ?? 'Investidor';
 
   const selectedProfileData = PROFILES.find(p => p.id === selectedProfile);
+  const selectedObjectiveData = OBJECTIVES.find(o => o.id === selectedObjective);
+
+  const feature = FEATURES[featureIndex];
+  const isLastFeature = featureIndex === FEATURES.length - 1;
 
   const handleNext = () => setStep(s => s + 1);
   const handlePrev = () => setStep(s => s - 1);
@@ -116,11 +314,32 @@ export default function OnboardingFlow({ onFinish }: OnboardingFlowProps) {
     if (!isTestMode) {
       const profile = PROFILES.find(p => p.id === selectedProfile) ?? PROFILES[1];
       completeOnboarding(profile.categories);
+      if (selectedObjective && typeof window !== 'undefined') {
+        localStorage.setItem('investmap_objective', selectedObjective);
+      }
     } else {
       localStorage.removeItem('investmap_test_onboarding');
     }
 
     onFinish?.(action);
+  };
+
+  const handleImportB3 = () => {
+    const isTestMode =
+      typeof window !== 'undefined' &&
+      localStorage.getItem('investmap_test_onboarding') === '1';
+
+    if (!isTestMode) {
+      const profile = PROFILES.find(p => p.id === selectedProfile) ?? PROFILES[1];
+      completeOnboarding(profile.categories);
+      if (selectedObjective && typeof window !== 'undefined') {
+        localStorage.setItem('investmap_objective', selectedObjective);
+      }
+    } else {
+      localStorage.removeItem('investmap_test_onboarding');
+    }
+
+    router.push('/perfil');
   };
 
   return (
@@ -143,86 +362,143 @@ export default function OnboardingFlow({ onFinish }: OnboardingFlowProps) {
               Olá, {firstName}! Bem-vindo ao InvestMap
             </h2>
             <p className={styles.desc}>
-              Sua central de controle financeiro. Vamos configurar seu perfil
-              para que o app trabalhe por você desde o primeiro dia.
+              Carteira, rebalanceamento, finanças, metas, impostos e análise com IA —
+              tudo em um só lugar. Vamos conhecer o app e configurar seu perfil
+              para que ele trabalhe por você desde o primeiro dia.{' '}
+              <span className={styles.mutável}>Já investe? Você pode importar seu extrato da B3 em vez de cadastrar tudo manualmente.</span>
             </p>
 
+            <div className={styles.pillRow}>
+              <span className={styles.pill}><LineChart size={13} /> Carteira</span>
+              <span className={styles.pill}><PieChart size={13} /> Estratégia</span>
+              <span className={styles.pill}><Wallet size={13} /> Finanças</span>
+              <span className={styles.pill}><Target size={13} /> Metas</span>
+              <span className={styles.pill}><Receipt size={13} /> Impostos</span>
+              <span className={styles.pill}><Sparkles size={13} /> IA</span>
+            </div>
+
             <button className={styles.primaryButton} onClick={handleNext}>
-              Começar configuração <ArrowRight size={18} />
+              Conhecer o InvestMap <ArrowRight size={18} />
             </button>
           </div>
         )}
 
-        {/* ── Passo 2: Tour de funcionalidades ─────────────────────────── */}
+        {/* ── Passo 2: Tour interativo (carrossel) ─────────────────────── */}
         {step === 2 && (
           <div className={styles.stepContent} key="step-2">
-            <h2 className={styles.title}>O que você vai encontrar aqui</h2>
+            <div className={styles.tourSlide} key={feature.id}>
+              <div className={styles.tourHeader}>
+                <div className={styles.tourIcon} style={{ color: feature.color, background: `${feature.color}1F` }}>
+                  <feature.Icon size={24} />
+                </div>
+                <span className={styles.tourTag} style={{ color: feature.color, borderColor: `${feature.color}44` }}>
+                  {feature.tag}
+                </span>
+                <span className={styles.tourCounter}>{featureIndex + 1} / {FEATURES.length}</span>
+              </div>
+
+              <h2 className={styles.tourTitle}>{feature.title}</h2>
+              <p className={styles.tourDesc}>{feature.desc}</p>
+
+              {feature.preview}
+
+              <ul className={styles.tourBullets}>
+                {feature.bullets.map((b, i) => (
+                  <li key={i} style={{ animationDelay: `${i * 70}ms` }}>
+                    <Check size={14} style={{ color: feature.color }} /> {b}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Dots de navegação */}
+            <div className={styles.tourDots}>
+              {FEATURES.map((f, i) => (
+                <button
+                  key={f.id}
+                  className={`${styles.tourDot} ${i === featureIndex ? styles.tourDotActive : ''}`}
+                  style={i === featureIndex ? { background: feature.color } : {}}
+                  onClick={() => setFeatureIndex(i)}
+                  aria-label={f.tag}
+                />
+              ))}
+            </div>
+
+            <div className={styles.actions}>
+              <button
+                className={styles.ghostButton}
+                onClick={() => featureIndex === 0 ? handlePrev() : setFeatureIndex(i => i - 1)}
+              >
+                <ChevronLeft size={18} /> Voltar
+              </button>
+              <button
+                className={styles.primaryButton}
+                onClick={() => isLastFeature ? handleNext() : setFeatureIndex(i => i + 1)}
+              >
+                {isLastFeature ? 'Continuar' : 'Próximo recurso'}
+                {isLastFeature ? <ArrowRight size={18} /> : <ChevronRight size={18} />}
+              </button>
+            </div>
+
+            {!isLastFeature && (
+              <button className={styles.skipButton} onClick={handleNext}>
+                Pular tour
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ── Passo 3: Objetivo financeiro ─────────────────────────────── */}
+        {step === 3 && (
+          <div className={styles.stepContent} key="step-3">
+            <h2 className={styles.title}>O que te traz ao InvestMap?</h2>
             <p className={styles.desc}>
-              Tudo o que você precisa para investir com inteligência, em um só lugar.
+              Seu objetivo principal nos ajuda a destacar o que importa para você.{' '}
+              <span className={styles.mutável}>Você pode criar metas detalhadas depois.</span>
             </p>
 
-            <div className={styles.featuresList}>
-              <div className={styles.featureItem} style={{ animationDelay: '0ms' }}>
-                <div className={styles.featureIcon} style={{ color: '#8B5CF6', background: 'rgba(139,92,246,0.12)' }}>
-                  <TrendingUp size={22} />
-                </div>
-                <div>
-                  <h4>Carteira & Rebalanceamento</h4>
-                  <p>Veja todos seus ativos em tempo real e saiba exatamente quanto aportar em cada categoria.</p>
-                </div>
-              </div>
-
-              <div className={styles.featureItem} style={{ animationDelay: '80ms' }}>
-                <div className={styles.featureIcon} style={{ color: '#3B82F6', background: 'rgba(59,130,246,0.12)' }}>
-                  <Wallet size={22} />
-                </div>
-                <div>
-                  <h4>Controle Financeiro</h4>
-                  <p>Registre aportes, retiradas e acompanhe a evolução do seu patrimônio ao longo do tempo.</p>
-                </div>
-              </div>
-
-              <div className={styles.featureItem} style={{ animationDelay: '160ms' }}>
-                <div className={styles.featureIcon} style={{ color: '#F59E0B', background: 'rgba(245,158,11,0.12)' }}>
-                  <Receipt size={22} />
-                </div>
-                <div>
-                  <h4>Assistente de Impostos</h4>
-                  <p>Calcule o DARF automaticamente e nunca perca o prazo. Controla a isenção de R$20k em ações.</p>
-                </div>
-              </div>
-
-              <div className={styles.featureItem} style={{ animationDelay: '240ms' }}>
-                <div className={styles.featureIcon} style={{ color: '#10B981', background: 'rgba(16,185,129,0.12)' }}>
-                  <Sparkles size={22} />
-                </div>
-                <div>
-                  <div className={styles.featureTitleRow}>
-                    <h4>Análise com IA</h4>
-                    <span className={styles.featureBadge}>Destaque</span>
-                  </div>
-                  <p>Receba insights personalizados sobre sua carteira gerados por Inteligência Artificial.</p>
-                </div>
-              </div>
+            <div className={styles.objectivesGrid}>
+              {OBJECTIVES.map(o => {
+                const isSelected = selectedObjective === o.id;
+                return (
+                  <button
+                    key={o.id}
+                    className={`${styles.objectiveCard} ${isSelected ? styles.objectiveSelected : ''}`}
+                    onClick={() => setSelectedObjective(o.id)}
+                  >
+                    <span className={styles.objectiveEmoji}>{o.emoji}</span>
+                    <h3>{o.title}</h3>
+                    <p>{o.desc}</p>
+                    {isSelected && <Check className={styles.objectiveCheck} size={16} />}
+                  </button>
+                );
+              })}
             </div>
 
             <div className={styles.actions}>
               <button className={styles.ghostButton} onClick={handlePrev}>
                 <ChevronLeft size={18} /> Voltar
               </button>
-              <button className={styles.primaryButton} onClick={handleNext}>
-                Continuar <ArrowRight size={18} />
+              <button
+                className={styles.primaryButton}
+                onClick={handleNext}
+                disabled={!selectedObjective}
+              >
+                {selectedObjective ? 'Continuar' : 'Escolha um objetivo'} <ArrowRight size={18} />
               </button>
             </div>
+            <button className={styles.skipButton} onClick={handleNext}>
+              Prefiro não dizer agora
+            </button>
           </div>
         )}
 
-        {/* ── Passo 3: Seleção de perfil ───────────────────────────────── */}
-        {step === 3 && (
-          <div className={styles.stepContent} key="step-3">
+        {/* ── Passo 4: Seleção de perfil ───────────────────────────────── */}
+        {step === 4 && (
+          <div className={styles.stepContent} key="step-4">
             <h2 className={styles.title}>Qual é o seu perfil de investidor?</h2>
             <p className={styles.desc}>
-              Isso define sua estratégia inicial de alocação.{' '}
+              Isso define sua estratégia inicial de alocação — a base do rebalanceamento.{' '}
               <span className={styles.mutável}>Você pode alterar depois.</span>
             </p>
 
@@ -295,34 +571,48 @@ export default function OnboardingFlow({ onFinish }: OnboardingFlowProps) {
               </button>
             </div>
             <button
-              className={styles.ghostButton}
+              className={styles.skipButton}
               onClick={() => { setSelectedProfile('moderado'); handleNext(); }}
-              style={{ marginTop: '0.5rem', fontSize: '0.8rem', opacity: 0.7, width: '100%', justifyContent: 'center' }}
             >
               Pular e configurar depois
             </button>
           </div>
         )}
 
-        {/* ── Passo 4: Conclusão ───────────────────────────────────────── */}
-        {step === 4 && (
-          <div className={`${styles.stepContent} ${styles.successStep}`} key="step-4">
+        {/* ── Passo 5: Conclusão ───────────────────────────────────────── */}
+        {step === 5 && (
+          <div className={`${styles.stepContent} ${styles.successStep}`} key="step-5">
             <div className={styles.successIconWrapper}>
               <PartyPopper size={40} />
             </div>
 
             <h2 className={styles.title}>
-              Tudo configurado!
+              Tudo pronto, {firstName}!
             </h2>
 
-            <div className={styles.successProfile}>
-              <span className={styles.successProfileEmoji}>{selectedProfileData?.emoji}</span>
-              <span>Perfil <strong>{selectedProfileData?.title}</strong> ativado</span>
+            <div className={styles.successBadges}>
+              <span className={styles.successProfile}>
+                <span className={styles.successProfileEmoji}>{selectedProfileData?.emoji ?? '⚖️'}</span>
+                Perfil <strong>&nbsp;{selectedProfileData?.title ?? 'Moderado'}</strong>
+              </span>
+              {selectedObjectiveData && (
+                <span className={styles.successProfile}>
+                  <span className={styles.successProfileEmoji}>{selectedObjectiveData.emoji}</span>
+                  Foco em <strong>&nbsp;{selectedObjectiveData.title}</strong>
+                </span>
+              )}
+            </div>
+
+            <div className={styles.successChecklist}>
+              <div><Check size={15} /> Estratégia de alocação criada</div>
+              <div><Check size={15} /> Rebalanceamento configurado</div>
+              <div><Check size={15} /> Monitoramento de impostos ativo</div>
+              <div><Check size={15} /> Análise com IA disponível</div>
             </div>
 
             <p className={styles.desc}>
-              Agora adicione seu primeiro ativo e veja o InvestMap
-              começar a trabalhar por você em tempo real.
+              Falta só uma coisa: seus ativos. Cadastre-os e veja o
+              InvestMap começar a trabalhar por você em tempo real.
             </p>
 
             <div className={styles.successActions}>
@@ -332,6 +622,14 @@ export default function OnboardingFlow({ onFinish }: OnboardingFlowProps) {
               >
                 <PlusCircle size={20} />
                 Adicionar meu primeiro ativo
+              </button>
+
+              <button
+                className={styles.importB3Button}
+                onClick={handleImportB3}
+              >
+                <FileSpreadsheet size={18} />
+                Já invisto — importar extrato da B3
               </button>
 
               <button
