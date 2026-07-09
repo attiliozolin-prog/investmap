@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { calculatePortfolio, formatCurrency } from '@/lib/calculations';
 import AssetModal from '@/components/AssetModal';
@@ -10,7 +11,7 @@ import { AssetWithCalcs, Asset } from '@/types';
 import styles from './Assets.module.css';
 import {
   Plus, BookOpen, RefreshCw, ChevronDown, X, Pencil,
-  Target, Sparkles, Zap, Wallet,
+  Target, Sparkles, Zap, Wallet, Landmark,
 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 
@@ -27,6 +28,7 @@ const pct = (v: number) => `${v.toFixed(1).replace('.', ',')}%`;
 const CLASS_COLORS = ['#8B5CF6', '#0891B2', '#D97706', '#DB2777'];
 
 export default function Assets() {
+  const router = useRouter();
   const {
     activeStrategy, activeAssets, activeStrategyId,
     addAsset, updateAsset,
@@ -267,6 +269,9 @@ export default function Assets() {
         <div className={styles.headerActions}>
           <button className={styles.btnGhost} onClick={() => setShowHistory(true)} title="Extrato completo de compras e vendas">
             <BookOpen size={15} /> Histórico
+          </button>
+          <button className={styles.btnGhost} onClick={() => router.push('/impostos')} title="Gerenciamento de impostos e DARF">
+            <Landmark size={15} /> Impostos
           </button>
           <button id="add-asset-btn" className={styles.btnPrimary} onClick={() => { setEditingAsset(null); setShowModal(true); }}>
             <Plus size={16} /> Novo ativo

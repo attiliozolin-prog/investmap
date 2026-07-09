@@ -15,7 +15,6 @@ const TABS = [
   { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
   { id: 'assets',    label: 'Ativos',    Icon: Briefcase },
   { id: 'finances',  label: 'Finanças',  Icon: Wallet },
-  { id: 'taxes',     label: 'Impostos',  Icon: Landmark },
 ];
 
 export default function Navbar({ activeTab, onTabChange }: {
