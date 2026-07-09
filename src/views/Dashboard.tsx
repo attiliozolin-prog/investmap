@@ -1,18 +1,18 @@
 'use client';
 
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useRef, useState } from 'react';
 import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
 import { useFinance } from '@/context/FinanceContext';
 import { calculatePortfolio, formatCurrency, CHART_COLORS } from '@/lib/calculations';
-import EvolutionChart from '@/components/EvolutionChart';
 import GoalWidget from '@/components/GoalWidget';
 import AiAnalysisCard from '@/components/AiAnalysisCard';
 import FirstUseTip from '@/components/FirstUseTip';
 import styles from './Dashboard.module.css';
 import {
   TrendingUp, RefreshCw, AlertTriangle, CalendarClock,
-  Landmark, ShieldAlert, ArrowRight, Wallet, ArrowUpRight,
-  ArrowDownRight, Target, Zap, CheckCircle2, X, Briefcase,
+  Landmark, ShieldAlert, ArrowRight, Wallet, Pencil,
+  Target, Zap, CheckCircle2, X, Briefcase, Lightbulb,
 } from 'lucide-react';
 
 /**
@@ -20,15 +20,16 @@ import {
  *
  * Hierarquia (redesenhada a partir do protótipo em /prototipo/dashboard,
  * validado com o usuário):
- * 1. QUANTO EU TENHO — hero (patrimônio, saúde) + evolução do patrimônio
- *    (EvolutionChart existente) + coluna de contexto (sobra do mês,
- *    sobrevivência, meta — reaproveitando o GoalWidget real num modal).
+ * 1. QUANTO EU TENHO — hero com patrimônio + gráfico de evolução integrado
+ *    (hover com crosshair, períodos 3M/6M/1A/Tudo) e, ao lado, os 3 números
+ *    de contexto: sobra do mês, sobrevivência e meta (abre o GoalWidget
+ *    real num modal).
  * 2. O QUE PRECISA DE MIM — Central de Ações: inbox priorizada (DARF
  *    atrasado > pendente > boletos vencendo > rebalanceamento > fatura
  *    prevista a confirmar), com "tudo em dia" quando vazia.
  * 3. COMO ESTÃO OS PILARES — Carteira / Finanças / Impostos / Estratégia,
  *    cada um com 2-3 números reais e link direto.
- * 4. Análise por IA (AiAnalysisCard, já existente) fecha a página.
+ * 4. Insight da carteira + Análise por IA fecham a página.
  */
 
 function tickerColor(t: string): string {
@@ -43,15 +44,90 @@ const fmtMonth = (m: string) => {
   const [y, mo] = m.split('-');
   return `${MONTH_NAMES[parseInt(mo) - 1]} ${y}`;
 };
+const pctFmt = (v: number) => `${v.toFixed(1).replace('.', ',')}%`;
+
+// ─── Gráfico de área com hover (linha 2px, wash, crosshair, ponto final) ────
+
+const RANGES = [
+  { id: '3m', label: '3M', days: 92 },
+  { id: '6m', label: '6M', days: 183 },
+  { id: '1a', label: '1A', days: 366 },
+  { id: 'all', label: 'Tudo', days: Infinity },
+] as const;
+type RangeId = typeof RANGES[number]['id'];
+
+interface SeriesPoint { label: string; value: number }
+
+function AreaChart({ data }: { data: SeriesPoint[] }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  const W = 720, H = 190, PX = 6, PT = 14, PB = 20;
+  const min = Math.min(...data.map(d => d.value));
+  const max = Math.max(...data.map(d => d.value));
+  const span = max - min || 1;
+  const x = (i: number) => PX + (i / Math.max(1, data.length - 1)) * (W - PX * 2);
+  const y = (v: number) => PT + (1 - (v - min) / span) * (H - PT - PB);
+
+  const line = data.map((d, i) => `${x(i)},${y(d.value)}`).join(' ');
+  const area = `${PX},${H - PB} ${line} ${W - PX},${H - PB}`;
+  const lastI = data.length - 1;
+
+  const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const rel = ((e.clientX - rect.left) / rect.width) * W;
+    const i = Math.round(((rel - PX) / (W - PX * 2)) * (data.length - 1));
+    setHover(Math.max(0, Math.min(data.length - 1, i)));
+  };
+
+  const h = hover != null ? data[hover] : null;
+  const first = data[0].value;
+  const deltaPct = first !== 0 ? ((data[lastI].value - first) / first) * 100 : 0;
+
+  return (
+    <div className={styles.chartWrap}>
+      <svg
+        ref={svgRef} className={styles.chartSvg} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
+        onMouseMove={onMove} onMouseLeave={() => setHover(null)}
+        role="img" aria-label={`Evolução do patrimônio: ${deltaPct >= 0 ? 'alta' : 'queda'} de ${pctFmt(Math.abs(deltaPct))} no período`}
+      >
+        <defs>
+          <linearGradient id="dashAreaFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        <polygon points={area} fill="url(#dashAreaFill)" />
+        <polyline points={line} fill="none" stroke="#8B5CF6" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        <circle cx={x(lastI)} cy={y(data[lastI].value)} r={4.5} fill="#8B5CF6" stroke="var(--color-surface)" strokeWidth={2} />
+        {h && hover != null && (
+          <>
+            <line x1={x(hover)} y1={PT} x2={x(hover)} y2={H - PB} stroke="var(--color-border)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+            <circle cx={x(hover)} cy={y(h.value)} r={4.5} fill="#8B5CF6" stroke="var(--color-surface)" strokeWidth={2} />
+          </>
+        )}
+      </svg>
+      {h && hover != null && (
+        <div className={styles.chartTooltip} style={{ left: `${(x(hover) / W) * 100}%`, top: `${(y(h.value) / H) * 100}%` }}>
+          {h.label}
+          <strong>{formatCurrency(h.value)}</strong>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void }) {
   const {
     activeStrategy, activeAssets, saveSnapshot, snapshots, syncPrices,
     isSyncingPrices, lastPriceSyncAt, sellTaxRecords, activeGoal,
   } = useApp();
+  const { user } = useAuth();
   const { transactions, months, activeMonthId, subscriptions } = useFinance();
 
   const [showGoalModal, setShowGoalModal] = useState(false);
+  const [range, setRange] = useState<RangeId>('1a');
 
   const summary = useMemo(() => {
     if (!activeStrategy || activeAssets.length === 0) return null;
@@ -72,6 +148,26 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
       });
     }
   }, [summary, activeStrategy, saveSnapshot, snapshots]);
+
+  // Série de evolução (snapshots da estratégia ativa, ordenados por data)
+  const fullSeries = useMemo(() => {
+    if (!activeStrategy) return [] as (SeriesPoint & { date: string })[];
+    return snapshots
+      .filter(s => s.strategyId === activeStrategy.id)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(s => {
+        const [y, mo, d] = s.date.split('-');
+        return { date: s.date, label: `${d}/${mo}/${y.slice(2)}`, value: s.totalValue };
+      });
+  }, [snapshots, activeStrategy]);
+
+  const chartData = useMemo(() => {
+    const r = RANGES.find(x => x.id === range)!;
+    if (!isFinite(r.days)) return fullSeries;
+    const cutoff = new Date(Date.now() - r.days * 86400000).toISOString().slice(0, 10);
+    const sliced = fullSeries.filter(p => p.date >= cutoff);
+    return sliced.length >= 2 ? sliced : fullSeries;
+  }, [fullSeries, range]);
 
   // Boletos próximos (≤7 dias)
   const upcomingBoletos = useMemo(() => {
@@ -130,10 +226,14 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
   const monthlyCost = monthSummary.expense;
   const activeMonth = months.find(m => m.id === activeMonthId);
   const survivalMonths = monthlyCost > 0 && summary ? summary.totalValue / monthlyCost : 0;
+  const burnPct = monthSummary.income > 0 ? Math.round((monthSummary.expense / monthSummary.income) * 100) : 0;
 
   // Greeting
   const hour = new Date().getHours();
   const greetText = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+  const meta = (user?.user_metadata ?? {}) as Record<string, string | undefined>;
+  const firstName = (meta.full_name || meta.name || '').split(' ')[0];
+  const todayLong = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
 
   // Pre-compute derived values (hooks must vir antes dos early returns)
   const categorySummaries = summary?.categorySummaries ?? [];
@@ -163,6 +263,22 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
   const goalProgressPct = activeGoal && activeGoal.targetValue > 0 && summary
     ? Math.min(100, (summary.totalValue / activeGoal.targetValue) * 100)
     : 0;
+
+  // ETA da meta no ritmo atual (crescimento médio observado nos snapshots)
+  const goalEtaYear = useMemo(() => {
+    if (!activeGoal || !summary || fullSeries.length < 2) return null;
+    const first = fullSeries[0];
+    const last = fullSeries[fullSeries.length - 1];
+    const days = (new Date(last.date).getTime() - new Date(first.date).getTime()) / 86400000;
+    if (days < 14) return null;
+    const perDay = (last.value - first.value) / days;
+    if (perDay <= 0) return null;
+    const remaining = activeGoal.targetValue - summary.totalValue;
+    if (remaining <= 0) return null;
+    const etaDays = remaining / perDay;
+    if (etaDays > 365 * 60) return null;
+    return new Date(Date.now() + etaDays * 86400000).getFullYear();
+  }, [activeGoal, summary, fullSeries]);
 
   // ── Empty states ──
   if (!activeStrategy) {
@@ -194,6 +310,10 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
   const buyAssets = assetsWithCalcs.filter(a => a.action === 'buy');
   const sellAssets = assetsWithCalcs.filter(a => a.action === 'sell');
 
+  // Delta do período selecionado no gráfico
+  const rangeFirst = chartData.length > 0 ? chartData[0].value : 0;
+  const rangeDeltaPct = rangeFirst > 0 ? ((summary.totalValue - rangeFirst) / rangeFirst) * 100 : 0;
+
   // Melhor/pior performer do ano — único insight cross-domínio incluído
   // nesta primeira versão (sem duplicar cálculos de rebalanceamento que já
   // vivem na página de Ativos, para as duas páginas não divergirem).
@@ -219,7 +339,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
     actions.push({
       key: 'darf-due', icon: <Landmark size={16} />, cls: styles.aiWarn,
       title: <>{dueDarfs.length} DARF{dueDarfs.length > 1 ? 's' : ''} pendente{dueDarfs.length > 1 ? 's' : ''} · <strong>{formatCurrency(total)}</strong></>,
-      sub: 'IR sobre vendas do mês — vence no dia 30',
+      sub: 'IR sobre vendas do mês — vence no último dia útil do mês seguinte',
       go: 'Ver', dest: 'taxes',
     });
   }
@@ -252,89 +372,122 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
     <div className={styles.container}>
       {assetsWithCalcs.length > 0 && <FirstUseTip />}
 
-      {/* ── Greeting ── */}
+      {/* ── Saudação ── */}
       <div className={styles.greeting}>
         <div className={styles.greetLeft}>
-          <h1 className={styles.greetTitle}>{greetText} 👋</h1>
+          <h1 className={styles.greetTitle}>{greetText}{firstName ? `, ${firstName}` : ''} 👋</h1>
           <span className={styles.greetSub}>
-            {activeStrategy.name}
-            {lastPriceSyncAt && ` · Preços atualizados ${lastPriceSyncAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
+            {todayLong.charAt(0).toUpperCase() + todayLong.slice(1)} · aqui está o retrato do seu dinheiro
           </span>
         </div>
         <div className={styles.greetActions}>
-          <button className={styles.syncChip} onClick={syncPrices} disabled={isSyncingPrices}>
-            <RefreshCw size={13} className={isSyncingPrices ? styles.syncSpin : ''}/> {isSyncingPrices ? 'Atualizando…' : 'Atualizar cotações'}
+          <button className={styles.syncChip} onClick={syncPrices} disabled={isSyncingPrices} title="Sincronizar cotações">
+            <RefreshCw size={11} className={isSyncingPrices ? styles.syncSpin : ''}/>
+            {isSyncingPrices
+              ? 'Sincronizando…'
+              : lastPriceSyncAt
+                ? `Preços às ${lastPriceSyncAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                : 'Atualizar cotações'}
           </button>
         </div>
       </div>
 
-      {/* ── Hero: patrimônio + contexto ── */}
-      <div className={styles.heroGrid}>
-        <div className={`${styles.tile} ${styles.tileHighlight}`}>
-          <span className={styles.tileLabel}>Patrimônio Total</span>
-          <span className={styles.heroValue}>{formatCurrency(summary.totalValue)}</span>
-          <div className={styles.delta}>
-            <span className={summary.profitLoss >= 0 ? styles.deltaGood : styles.deltaBad}>
-              {summary.profitLoss >= 0 ? <ArrowUpRight size={14}/> : <ArrowDownRight size={14}/>}
-              {formatCurrency(Math.abs(summary.profitLoss))}
-              {' '}({summary.totalProfitLossPercent >= 0 ? '+' : ''}{summary.totalProfitLossPercent.toFixed(2)}%)
-            </span>
-            <span className={styles.deltaRef}>vs. investido</span>
+      {/* ── Hero: patrimônio + evolução + stats laterais ── */}
+      <section className={styles.heroGrid} aria-label="Resumo do patrimônio">
+        <div className={styles.heroCard}>
+          <div className={styles.heroTopRow}>
+            <div>
+              <span className={styles.heroLabel}>Patrimônio total</span>
+              <div className={styles.heroValue}>{formatCurrency(summary.totalValue)}</div>
+              <span className={styles.delta}>
+                <span className={summary.profitLoss >= 0 ? styles.deltaGood : styles.deltaBad}>
+                  {summary.profitLoss >= 0 ? '▲' : '▼'} {formatCurrency(Math.abs(summary.profitLoss))} ({pctFmt(Math.abs(summary.totalProfitLossPercent))})
+                </span>
+                <span className={styles.deltaRef}>desde o início</span>
+                {chartData.length >= 2 && (
+                  <>
+                    <span className={rangeDeltaPct >= 0 ? styles.deltaGood : styles.deltaBad} style={{ marginLeft: 8 }}>
+                      {rangeDeltaPct >= 0 ? '▲' : '▼'} {pctFmt(Math.abs(rangeDeltaPct))}
+                    </span>
+                    <span className={styles.deltaRef}>no período</span>
+                  </>
+                )}
+              </span>
+            </div>
+            <div className={styles.rangeTabs} role="tablist" aria-label="Período do gráfico">
+              {RANGES.map(r => (
+                <button key={r.id} role="tab" aria-selected={range === r.id}
+                  className={`${styles.rangeBtn} ${range === r.id ? styles.rangeActive : ''}`}
+                  onClick={() => setRange(r.id)}>
+                  {r.label}
+                </button>
+              ))}
+            </div>
           </div>
-          <span className={styles.tileSub}>
-            Investido: <strong>{formatCurrency(summary.totalInvested)}</strong> · {activeAssets.length} ativos
-          </span>
+          {chartData.length >= 2 ? (
+            <AreaChart data={chartData} />
+          ) : (
+            <div className={styles.chartEmpty}>
+              O gráfico de evolução aparece aqui conforme o app registra snapshots diários do seu patrimônio.
+            </div>
+          )}
         </div>
 
         <div className={styles.sideCol}>
-          <div className={styles.statCardStack}>
-            <span className={styles.tileLabel}><Wallet size={11}/> Sobra {activeMonth ? fmtMonth(activeMonth.month) : 'do mês'}</span>
-            <span className={styles.tileValue} style={{ color: monthSummary.balance >= 0 ? '#34D399' : '#F87171' }}>
+          <button className={styles.statCard} onClick={() => onNavigate('finances')} title="Ir para Finanças">
+            <span className={styles.statLabel}><Wallet size={11}/> Sobra {activeMonth ? `de ${fmtMonth(activeMonth.month)}` : 'do mês'}</span>
+            <span className={styles.statValue} style={{ color: monthSummary.balance >= 0 ? '#34D399' : '#F87171' }}>
               {formatCurrency(monthSummary.balance)}
             </span>
-            <span className={styles.tileSub}>
-              Receitas <strong>{formatCurrency(monthSummary.income)}</strong> · Saídas <strong>{formatCurrency(monthSummary.expense)}</strong>
-            </span>
-          </div>
-
-          {monthlyCost > 0 && (
-            <div className={styles.statCardStack}>
-              <span className={styles.tileLabel}><ShieldAlert size={11}/> Sobrevivência</span>
-              <span className={styles.tileValue}>{survivalMonths.toFixed(0)} meses</span>
-              <span className={styles.tileSub}>
-                {survivalMonths >= 12 ? `≈ ${(survivalMonths / 12).toFixed(1)} anos no seu padrão de vida` : 'patrimônio ÷ custo mensal'}
-              </span>
-            </div>
-          )}
-
-          <button className={styles.statCardStack} onClick={() => setShowGoalModal(true)} title="Ver detalhes da meta" style={{ cursor: 'pointer', textAlign: 'left', width: '100%', border: '1px solid var(--color-border)' }}>
-            <span className={styles.tileLabel}><Target size={11}/> {activeGoal ? `Meta: ${activeGoal.emoji} ${activeGoal.title}` : 'Meta financeira'}</span>
-            {activeGoal ? (
+            {monthSummary.income > 0 ? (
               <>
-                <span className={styles.tileValue} style={{ color: '#A78BFA' }}>{goalProgressPct.toFixed(1)}%</span>
-                <div className={styles.meterTrack} style={{ marginTop: '0.3rem' }}>
-                  <div className={styles.meterFill} style={{ width: `${goalProgressPct}%`, background: '#8B5CF6' }}/>
-                </div>
+                <span className={styles.statSub}>Você usou {burnPct}% das entradas</span>
+                <div className={styles.miniMeter}><div className={styles.miniMeterFill} style={{ width: `${Math.min(100, burnPct)}%` }} /></div>
               </>
             ) : (
-              <span className={styles.tileSub}>Defina um objetivo e acompanhe o progresso automaticamente</span>
+              <span className={styles.statSub}>Registre as receitas do mês em Finanças</span>
+            )}
+          </button>
+
+          <button className={styles.statCard} onClick={() => onNavigate('finances')} title="Patrimônio ÷ custo mensal">
+            <span className={styles.statLabel}><ShieldAlert size={11}/> Sobrevivência</span>
+            <span className={styles.statValue}>{monthlyCost > 0 ? `${survivalMonths.toFixed(0)} meses` : '—'}</span>
+            <span className={styles.statSub}>
+              {monthlyCost > 0
+                ? `≈ ${(survivalMonths / 12).toFixed(1).replace('.', ',')} anos no seu padrão de vida`
+                : 'patrimônio ÷ custo mensal'}
+            </span>
+          </button>
+
+          <button className={styles.statCard} onClick={() => setShowGoalModal(true)} title="Ver detalhes da meta">
+            <span className={styles.statLabel}>
+              <Target size={11}/> {activeGoal ? `Meta: ${formatCurrency(activeGoal.targetValue)}` : 'Meta financeira'}
+              <Pencil size={10} className={styles.goalEditHint} />
+            </span>
+            {activeGoal ? (
+              <>
+                <span className={styles.statValue} style={{ color: '#A78BFA' }}>{pctFmt(goalProgressPct)}</span>
+                <span className={styles.statSub}>
+                  {goalEtaYear ? `ETA ~${goalEtaYear} no ritmo atual de aportes` : activeGoal.title}
+                </span>
+                <div className={styles.statMeter}><div className={styles.statMeterFill} style={{ width: `${goalProgressPct}%` }} /></div>
+              </>
+            ) : (
+              <span className={styles.statSub}>Defina um objetivo e acompanhe o progresso automaticamente</span>
             )}
           </button>
         </div>
-      </div>
-
-      {/* ── Evolução do patrimônio ── */}
-      <EvolutionChart snapshots={snapshots.filter(s => s.strategyId === activeStrategy.id)} />
+      </section>
 
       {/* ── Central de Ações ── */}
-      <div className={styles.actionCard}>
+      <section className={styles.actionCard} aria-label="Ações pendentes">
         <div className={styles.actionHead}>
           <Zap size={15} color="#A78BFA" /> Precisa de você
           {actions.length > 0 && <span className={styles.actionCount}>{actions.length}</span>}
         </div>
         {actions.length === 0 ? (
           <div className={styles.actionEmpty}>
-            <CheckCircle2 size={18} color="#34D399" /> Tudo em dia — nenhuma ação pendente. Bom trabalho!
+            <CheckCircle2 size={18} /> Tudo em dia — nenhuma ação pendente. Bom trabalho!
           </div>
         ) : (
           actions.map(a => (
@@ -344,14 +497,14 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
                 <div className={styles.actionTitle}>{a.title}</div>
                 <div className={styles.actionSub}>{a.sub}</div>
               </span>
-              <span className={styles.actionGo}>{a.go} <ArrowRight size={13} /></span>
+              <span className={styles.actionGo}><span>{a.go}</span> <ArrowRight size={13} /></span>
             </button>
           ))
         )}
-      </div>
+      </section>
 
       {/* ── Pilares ── */}
-      <div className={styles.pillars}>
+      <section className={styles.pillars} aria-label="Áreas do app">
         <button className={styles.pillar} onClick={() => onNavigate('assets')}>
           <div className={styles.pillarHead}>
             <span className={styles.pillarTitle}><Briefcase size={13}/> Carteira</span>
@@ -361,11 +514,11 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
           {classTotals.length > 0 && (
             <div className={styles.miniAlloc}>
               {classTotals.map(c => (
-                <span key={c.name} style={{ width: `${c.value}%`, background: c.color, height: '100%', flexShrink: 0 }} title={`${c.name}: ${c.value.toFixed(1)}%`} />
+                <span key={c.name} className={styles.miniAllocSeg} style={{ width: `${c.value}%`, background: c.color }} title={`${c.name}: ${c.value.toFixed(1)}%`} />
               ))}
             </div>
           )}
-          <span className={styles.pillarSub}>{activeAssets.length} ativos · saúde <strong>{Math.round(summary.healthScore)}/100</strong></span>
+          <span className={styles.pillarSub}>{activeAssets.length} ativos em {classTotals.length} classes · saúde <strong>{Math.round(summary.healthScore)}/100</strong></span>
           <span className={`${styles.pillBadge} ${needsRebalancing ? styles.pbWarn : styles.pbGood}`}>
             {needsRebalancing ? `▲ ${buyAssets.length} comprar · ▼ ${sellAssets.length} reduzir` : '✓ carteira equilibrada'}
           </span>
@@ -413,15 +566,15 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
           <span className={styles.pillarValue}>{Math.round(summary.healthScore)}<span style={{ fontSize: '0.8rem', color: 'var(--color-text-3)' }}> /100</span></span>
           <span className={styles.pillarSub}>{outOfTolerance.length} de {categorySummaries.length} subclasses fora da tolerância de {activeStrategy.deviationTolerance}pp</span>
           <span className={`${styles.pillBadge} ${outOfTolerance.length === 0 ? styles.pbGood : styles.pbWarn}`}>
-            {outOfTolerance.length === 0 ? '✓ tudo na meta' : `plano com ${categorySummaries.length} metas`}
+            {outOfTolerance.length === 0 ? '✓ tudo na meta' : `✓ plano definido · ${categorySummaries.length} metas`}
           </span>
         </button>
-      </div>
+      </section>
 
-      {/* ── Insight cross-domínio (melhor/pior ativo do ano) ── */}
+      {/* ── Insight cross-domínio (melhor/pior ativo) ── */}
       {bestPerformer && worstPerformer && (
-        <div className={styles.insightsCard}>
-          <div className={styles.insightsHead}>💡 Destaques da carteira</div>
+        <section className={styles.insightsCard} aria-label="Insights automáticos">
+          <div className={styles.insightsHead}><Lightbulb size={15} /> Destaques da carteira</div>
           <div className={styles.insightRow}>
             <div className={styles.perfAvatar} style={{ background: tickerColor(bestPerformer.ticker) }}>{bestPerformer.ticker.slice(0, 3)}</div>
             <span>
@@ -430,7 +583,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
               {((worstPerformer.currentValue / summary.totalValue) * 100).toFixed(1)}% da carteira.
             </span>
           </div>
-        </div>
+        </section>
       )}
 
       {/* ── Análise por IA ── */}
