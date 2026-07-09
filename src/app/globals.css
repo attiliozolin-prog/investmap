@@ -382,7 +382,11 @@ tr:hover td {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  /* Modais (ex.: TransactionModal) podem abrir de dentro de drawers como o
+     AssetDetailDrawer (z-index 1000/1001) ou o AssetHistoryDrawer (1002/1003)
+     — este overlay precisa ficar sempre por cima, no mesmo patamar do
+     GoalModal (1100). */
+  z-index: 1100;
   padding: var(--space-4);
   animation: fadeIn 0.15s ease;
 }

@@ -6,7 +6,9 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
-  z-index: 200;
+  /* Acima do AssetDetailDrawer (z-index 1000/1001 em Assets.module.css) —
+     este drawer é aberto de dentro dele e precisa sempre ficar por cima. */
+  z-index: 1002;
   backdrop-filter: blur(2px);
   animation: fadeIn 0.2s ease;
 }
@@ -26,7 +28,7 @@
   border-left: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  z-index: 201;
+  z-index: 1003;
   animation: slideIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
 }
