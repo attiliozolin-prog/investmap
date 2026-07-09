@@ -7,6 +7,7 @@ import { calculatePortfolio, formatCurrency } from '@/lib/calculations';
 import AssetModal from '@/components/AssetModal';
 import AssetDetailDrawer from '@/components/AssetDetailDrawer';
 import PortfolioHistory from '@/components/PortfolioHistory';
+import TransactionModal from '@/components/TransactionModal';
 import { AssetWithCalcs, Asset } from '@/types';
 import styles from './Assets.module.css';
 import {
@@ -38,6 +39,7 @@ export default function Assets() {
 
   const [showModal, setShowModal] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
+  const [transactionAssetId, setTransactionAssetId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [detailAsset, setDetailAsset] = useState<AssetWithCalcs | null>(null);
 
@@ -530,6 +532,7 @@ export default function Assets() {
                         {a.action === 'buy' ? `▲ Comprar +${formatCurrency(a.rebalanceAmount)}` : a.action === 'sell' ? `▼ Reduzir −${formatCurrency(Math.abs(a.rebalanceAmount))}` : '✓ Na meta'}
                       </span>
                       <div className={styles.rowActions} onClick={e => e.stopPropagation()}>
+                        <button className={styles.iconBtn} onClick={() => setTransactionAssetId(a.id)} title="Nova transação" aria-label={`Nova transação para ${a.ticker}`}><Plus size={13} /></button>
                         <button className={styles.iconBtn} onClick={() => handleEdit(a)} title="Editar" aria-label={`Editar ${a.ticker}`}><Pencil size={13} /></button>
                       </div>
                     </div>
@@ -549,6 +552,12 @@ export default function Assets() {
           onSave={handleSave}
           onClose={() => { setShowModal(false); setEditingAsset(null); }}
           onArchive={handleArchive}
+        />
+      )}
+      {transactionAssetId && (
+        <TransactionModal
+          assetId={transactionAssetId}
+          onClose={() => setTransactionAssetId(null)}
         />
       )}
       {showHistory && <PortfolioHistory onClose={() => setShowHistory(false)} />}
