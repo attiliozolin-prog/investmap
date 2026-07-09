@@ -328,7 +328,7 @@ export default function TransactionModal({ assetId, onClose, initialType = 'buy'
           <div className={styles.footer}>
             <button type="button" className="btn btn-ghost" onClick={onClose}>Cancelar</button>
             <button type="submit" className="btn btn-primary">
-              {type === 'sell' ? 'Ver cálculo de IR →' : 'Confirmar'}
+              {type === 'sell' ? 'Ver cálculo de IR →' : 'Confirmar aporte'}
             </button>
           </div>
         </form>
