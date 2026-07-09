@@ -1,47 +1,43 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { StrategyCategory } from '@/types';
 import { CHART_COLORS } from '@/lib/calculations';
 import styles from './Strategy.module.css';
-import { Plus, Trash2, CheckCircle, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, ChevronDown, Target } from 'lucide-react';
 import HelpTip from '@/components/HelpTip';
 import DeleteStrategyModal from '@/components/DeleteStrategyModal';
 
 export default function Strategy() {
   const {
-    activeStrategy, activeStrategyId, updateStrategy, addCategory, updateCategory, deleteCategory, createStrategy, strategies, setActiveStrategy, deleteStrategy,
+    activeStrategy, activeStrategyId, updateStrategy, addCategory, updateCategory,
+    deleteCategory, createStrategy, strategies, setActiveStrategy, deleteStrategy,
   } = useApp();
 
   const [strategyToDelete, setStrategyToDelete] = useState<{ id: string; name: string } | null>(null);
   const [stratName, setStratName] = useState(activeStrategy?.name ?? '');
-  const [stratDesc, setStratDesc] = useState(activeStrategy?.description ?? '');
   const [tolerance, setTolerance] = useState(activeStrategy?.deviationTolerance ?? 3);
-  
-  // Sincroniza campos locais quando a estratégia ativa muda
+
   useEffect(() => {
     if (activeStrategy) {
       setStratName(activeStrategy.name ?? '');
-      setStratDesc(activeStrategy.description ?? '');
       setTolerance(activeStrategy.deviationTolerance ?? 3);
     }
   }, [activeStrategy]);
 
-  // Accordions
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const toggleGroup = (cn: string) => setOpenGroups(p => ({ ...p, [cn]: !p[cn] }));
 
-  const toggleGroup = (className: string) => {
-    setOpenGroups(p => ({ ...p, [className]: !p[className] }));
-  };
-
-  // Add inline por grupo
   const [inlineAddClass, setInlineAddClass] = useState<string | null>(null);
   const [inlineSubclass, setInlineSubclass] = useState('');
   const [inlineTarget, setInlineTarget] = useState('');
-
-  // Micro-animação ao salvar %
   const [savedCatId, setSavedCatId] = useState<string | null>(null);
+
+  // Refs para add global
+  const refMacro = useRef<HTMLInputElement>(null);
+  const refSub   = useRef<HTMLInputElement>(null);
+  const refTgt   = useRef<HTMLInputElement>(null);
 
   const categories = activeStrategy?.categories ?? [];
   const totalTarget = categories.reduce((s, c) => s + c.targetPercent, 0);
@@ -58,23 +54,27 @@ export default function Strategy() {
     );
   }, [categories]);
 
-  // Chart data for Stacked Bar
   const classTotals = useMemo(() => {
-    return Object.entries(groupedCategories).map(([className, cats], i) => {
-      const targetVal = cats.reduce((sum, c) => sum + c.targetPercent, 0);
-      return {
-        name: className,
-        value: targetVal,
-        color: CHART_COLORS[i % CHART_COLORS.length]
-      };
-    }).filter(d => d.value > 0).sort((a, b) => b.value - a.value);
+    return Object.entries(groupedCategories).map(([className, cats], i) => ({
+      name: className,
+      value: cats.reduce((s, c) => s + c.targetPercent, 0),
+      color: CHART_COLORS[i % CHART_COLORS.length],
+    })).filter(d => d.value > 0).sort((a, b) => b.value - a.value);
+  }, [groupedCategories]);
+
+  // Mapa de cor por classe para usar nos accordion headers
+  const classColorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    Object.keys(groupedCategories).sort((a, b) => a.localeCompare(b)).forEach((cn, i) => {
+      map[cn] = CHART_COLORS[i % CHART_COLORS.length];
+    });
+    return map;
   }, [groupedCategories]);
 
   const handleSaveStrategy = () => {
     if (!activeStrategy) return;
     updateStrategy(activeStrategyId, {
       name: stratName.trim() || 'Minha Carteira',
-      description: stratDesc.trim(),
       deviationTolerance: Number(tolerance),
     });
   };
@@ -83,26 +83,29 @@ export default function Strategy() {
     if (!inlineAddClass) return;
     const target = parseFloat(inlineTarget.replace(',', '.'));
     if (!inlineSubclass.trim() || isNaN(target) || target <= 0 || target > 100) return;
-    addCategory({
-      className: inlineAddClass,
-      subclassName: inlineSubclass.trim(),
-      targetPercent: target,
-    });
-    setInlineSubclass('');
-    setInlineTarget('');
-    setInlineAddClass(null);
+    addCategory({ className: inlineAddClass, subclassName: inlineSubclass.trim(), targetPercent: target });
+    setInlineSubclass(''); setInlineTarget(''); setInlineAddClass(null);
+  };
+
+  const handleGlobalAdd = () => {
+    const macro = refMacro.current?.value.trim() ?? '';
+    const sub   = refSub.current?.value.trim()   ?? '';
+    const tgt   = parseFloat((refTgt.current?.value ?? '').replace(',','.'));
+    if (!macro || !sub || isNaN(tgt) || tgt <= 0) return;
+    addCategory({ className: macro, subclassName: sub, targetPercent: tgt });
+    if (refMacro.current) refMacro.current.value = '';
+    if (refSub.current)   refSub.current.value   = '';
+    if (refTgt.current)   refTgt.current.value   = '';
   };
 
   const handleConfirmDeleteStrategy = (id: string) => {
     deleteStrategy(id);
     setStrategyToDelete(null);
-    if (id === activeStrategyId) {
-      const remaining = strategies.filter((s) => s.id !== id);
-      if (remaining.length > 0) setActiveStrategy(remaining[0].id);
-    }
+    const remaining = strategies.filter(s => s.id !== id);
+    if (remaining.length > 0) setActiveStrategy(remaining[0].id);
   };
 
-  const handleUpdateCategoryPercent = (id: string, val: string) => {
+  const handleUpdatePercent = (id: string, val: string) => {
     const num = parseFloat(val.replace(',', '.'));
     if (!isNaN(num) && num >= 0 && num <= 100) {
       updateCategory(id, { targetPercent: num });
@@ -110,19 +113,24 @@ export default function Strategy() {
       setTimeout(() => setSavedCatId(null), 1200);
     }
   };
-  
+
   const handleUpdateSubclassName = (id: string, val: string) => {
     const trimmed = val.trim();
-    if (trimmed) {
-      updateCategory(id, { subclassName: trimmed });
-    }
+    if (trimmed) updateCategory(id, { subclassName: trimmed });
   };
+
+  // ── Gauge SVG ──
+  const radius = 52;
+  const circumference = 2 * Math.PI * radius;
+  const clampedPct = Math.min(totalTarget, 100);
+  const dashOffset = circumference - (clampedPct / 100) * circumference;
+  const gaugeColor = isValid ? '#10B981' : totalTarget > 100 ? '#EF4444' : 'var(--color-primary)';
 
   if (!activeStrategy) {
     return (
       <div className={styles.emptyState}>
         <h3>Nenhuma estratégia</h3>
-        <p>Crie uma estratégia para começar.</p>
+        <p>Crie uma estratégia de alocação para começar.</p>
         <button
           className={styles.btnPrimary}
           style={{ marginTop: 16 }}
@@ -131,7 +139,7 @@ export default function Strategy() {
             setActiveStrategy(s.id);
           }}
         >
-          <Plus size={16} /> Criar estratégia
+          <Plus size={16}/> Criar estratégia
         </button>
       </div>
     );
@@ -139,123 +147,196 @@ export default function Strategy() {
 
   return (
     <div className={styles.container}>
+      {/* Header */}
       <div className={styles.header}>
-        <h2 className={styles.title}>Configuração da Estratégia</h2>
+        <h2 className={styles.title}>
+          <Target size={20} color="var(--color-primary)"/>
+          Estratégia de Alocação
+          <span className={styles.titleMeta}>· {activeStrategy.name}</span>
+        </h2>
         <div className={styles.headerActions}>
           {strategies.length > 1 && (
             <button className={styles.btnGhost} onClick={() => setStrategyToDelete({ id: activeStrategy.id, name: activeStrategy.name })}>
-              <Trash2 size={15} /> Excluir Estratégia
+              <Trash2 size={14}/> Excluir
             </button>
           )}
           <button className={styles.btnPrimary} onClick={() => {
-             const s = createStrategy({ name: 'Nova Carteira', deviationTolerance: 3 });
-             setActiveStrategy(s.id);
+            const s = createStrategy({ name: 'Nova Carteira', deviationTolerance: 3 });
+            setActiveStrategy(s.id);
           }}>
-            <Plus size={15} /> Nova Estratégia
+            <Plus size={14}/> Nova Estratégia
           </button>
         </div>
       </div>
 
+      {/* Split View */}
       <div className={styles.splitView}>
-        {/* Esquerda: Configurações Gerais */}
+        {/* Config */}
         <div className={styles.card}>
-          <h3 className={styles.cardTitle}>Preferências</h3>
+          <span className={styles.cardTitle}>Preferências</span>
           <div className={styles.formGroup}>
             <label className={styles.label} htmlFor="strat-name">Nome da carteira</label>
             <input
               id="strat-name"
               className={styles.input}
               value={stratName}
-              onChange={(e) => setStratName(e.target.value)}
+              onChange={e => setStratName(e.target.value)}
               onBlur={handleSaveStrategy}
-              placeholder="Ex: Minha Carteira Diversificada"
+              placeholder="Ex: Carteira Diversificada"
             />
           </div>
-          <div className={styles.inputGrid}>
-            <div className={styles.formGroup}>
-              <label className={styles.label} htmlFor="strat-tolerance">Tolerância de desvio (%) <HelpTip text="Quando qualquer subclasse desviar mais que este valor, você verá alertas de rebalanceamento." /></label>
-              <input
-                id="strat-tolerance"
-                type="number"
-                step="0.5"
-                min="0"
-                className={styles.input}
-                value={tolerance}
-                onChange={(e) => setTolerance(Number(e.target.value))}
-                onBlur={handleSaveStrategy}
-              />
-            </div>
+          <div className={styles.formGroup}>
+            <label className={styles.label} htmlFor="strat-tolerance">
+              Tolerância de desvio (%)
+              <HelpTip text="Quando qualquer subclasse desviar mais que este valor, você verá alertas de rebalanceamento."/>
+            </label>
+            <input
+              id="strat-tolerance"
+              type="number" step="0.5" min="0"
+              className={styles.input}
+              style={{ maxWidth: 140 }}
+              value={tolerance}
+              onChange={e => setTolerance(Number(e.target.value))}
+              onBlur={handleSaveStrategy}
+            />
           </div>
         </div>
 
-        {/* Direita: Progresso da Meta */}
+        {/* Gauge + Bar */}
         <div className={styles.targetCard}>
-          <div className={`${styles.targetTotal} ${isValid ? styles.ok : styles.error}`}>
-            <span className={styles.targetVal}>{totalTarget.toFixed(1)}%</span>
-            <span className={styles.targetLbl}>Alocação Total</span>
-          </div>
-          
-          <div className={styles.allocBar}>
-            {classTotals.map((c, i) => {
-              const pct = (c.value / totalTarget) * 100;
-              return (
-                <div key={c.name} className={styles.allocSeg} style={{ width: `${pct}%`, background: c.color }} title={`${c.name} - ${c.value.toFixed(1)}%`} />
-              );
-            })}
+          {/* Gauge Ring + Info */}
+          <div className={styles.gaugeWrap}>
+            <svg width={130} height={130} viewBox="0 0 130 130" className={styles.gaugeSvg}>
+              {/* Track */}
+              <circle
+                cx={65} cy={65} r={radius}
+                fill="none"
+                stroke="var(--color-surface-2)"
+                strokeWidth={10}
+              />
+              {/* Progress */}
+              <circle
+                cx={65} cy={65} r={radius}
+                fill="none"
+                stroke={gaugeColor}
+                strokeWidth={10}
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                strokeDashoffset={dashOffset}
+                transform="rotate(-90 65 65)"
+                style={{ transition: 'stroke-dashoffset 0.6s cubic-bezier(0.4,0,0.2,1), stroke 0.4s ease' }}
+              />
+              {/* Glow */}
+              <circle
+                cx={65} cy={65} r={radius}
+                fill="none"
+                stroke={gaugeColor}
+                strokeWidth={2}
+                strokeDasharray={circumference}
+                strokeDashoffset={dashOffset}
+                transform="rotate(-90 65 65)"
+                opacity={0.25}
+                style={{ filter: 'blur(4px)', transition: 'stroke-dashoffset 0.6s cubic-bezier(0.4,0,0.2,1)' }}
+              />
+            </svg>
+
+            <div className={styles.gaugeInfo}>
+              <span className={styles.gaugeLabel}>Alocação Total</span>
+              <span className={`${styles.gaugePct} ${isValid ? styles.gaugePctOk : styles.gaugePctErr}`}>
+                {totalTarget.toFixed(1)}%
+              </span>
+              <span className={`${styles.gaugeStatus} ${isValid ? styles.gaugeOk : styles.gaugeErr}`}>
+                {isValid
+                  ? <><CheckCircle size={12}/> Balanceada</>
+                  : totalTarget > 100
+                  ? '↑ Excesso'
+                  : '↓ Incompleta'}
+              </span>
+            </div>
           </div>
 
-          <div className={styles.allocLegend}>
-            {classTotals.map(c => (
-              <div key={c.name} className={styles.legendItem}>
-                <div className={styles.legendColor} style={{ background: c.color }} />
-                <span>{c.name} ({c.value.toFixed(1)}%)</span>
+          {/* Stacked bar */}
+          {classTotals.length > 0 && (
+            <>
+              <div className={styles.allocBar}>
+                {classTotals.map(c => {
+                  const pct = totalTarget > 0 ? (c.value / totalTarget) * 100 : 0;
+                  return (
+                    <div
+                      key={c.name}
+                      className={styles.allocSeg}
+                      style={{ width: `${pct}%`, background: c.color }}
+                      title={`${c.name} — ${c.value.toFixed(1)}%`}
+                    />
+                  );
+                })}
               </div>
-            ))}
-          </div>
+              <div className={styles.allocLegend}>
+                {classTotals.map(c => (
+                  <div key={c.name} className={styles.legendItem}>
+                    <div className={styles.legendColor} style={{ background: c.color }}/>
+                    {c.name}
+                    <span className={styles.legendVal}>{c.value.toFixed(1)}%</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Accordions de Classes e Subclasses */}
+      {/* Accordions */}
       <div className={styles.listContainer}>
         {Object.entries(groupedCategories).map(([className, cats]) => {
-          const isOpen = openGroups[className] !== false; // aberto por padrão
+          const isOpen = openGroups[className] !== false;
           const classTotal = cats.reduce((s, c) => s + c.targetPercent, 0);
+          const color = classColorMap[className];
 
           return (
             <div key={className} className={styles.group}>
               <button className={styles.groupHead} onClick={() => toggleGroup(className)}>
-                <ChevronDown size={16} className={`${styles.groupChevron} ${!isOpen ? styles.groupChevronClosed : ''}`} />
+                <div className={styles.groupColorDot} style={{ background: color }}/>
+                <ChevronDown size={15} className={`${styles.groupChevron} ${!isOpen ? styles.groupChevronClosed : ''}`}/>
                 <span className={styles.groupName}>{className}</span>
-                <span className={styles.groupCount}>{cats.length} {cats.length === 1 ? 'ativo' : 'ativos'}</span>
+                <span className={styles.groupCount}>{cats.length}</span>
                 <div className={styles.groupRight}>
-                  <span className={styles.groupTotal}>{classTotal.toFixed(1)}%</span>
+                  <div className={styles.groupMiniBar}>
+                    <div
+                      className={styles.groupMiniFill}
+                      style={{
+                        width: `${Math.min(classTotal, 100)}%`,
+                        background: color,
+                      }}
+                    />
+                  </div>
+                  <span className={styles.groupPct}>{classTotal.toFixed(1)}%</span>
                 </div>
               </button>
-              
+
               {isOpen && (
                 <div className={styles.groupContent}>
                   {cats.map(cat => (
                     <div key={cat.id} className={styles.row}>
                       <input
-                        className={styles.input}
-                        style={{ padding: '0.2rem 0.4rem', border: 'none', background: 'transparent', flex: 1, fontWeight: 600, color: 'var(--color-text-2)' }}
+                        className={styles.rowName}
                         defaultValue={cat.subclassName}
-                        onBlur={(e) => handleUpdateSubclassName(cat.id, e.target.value)}
+                        onBlur={e => handleUpdateSubclassName(cat.id, e.target.value)}
                         title="Clique para renomear"
                       />
                       <div className={styles.rowInputContainer}>
                         <input
-                          type="number"
-                          step="0.5"
+                          type="number" step="0.5"
                           className={styles.rowInput}
                           defaultValue={cat.targetPercent}
-                          onBlur={(e) => handleUpdateCategoryPercent(cat.id, e.target.value)}
+                          onBlur={e => handleUpdatePercent(cat.id, e.target.value)}
                         />
                         <span className={styles.rowInputPercent}>%</span>
-                        {savedCatId === cat.id && <CheckCircle size={14} className={styles.savedIcon} />}
+                        {savedCatId === cat.id && <CheckCircle size={14} className={styles.savedIcon}/>}
                       </div>
                       <div className={styles.rowActions}>
-                        <button className={styles.iconBtn} onClick={() => deleteCategory(cat.id)} title="Excluir subclasse"><Trash2 size={14}/></button>
+                        <button className={styles.iconBtn} onClick={() => deleteCategory(cat.id)} title="Excluir">
+                          <Trash2 size={13}/>
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -263,30 +344,32 @@ export default function Strategy() {
                   {inlineAddClass === className ? (
                     <div className={styles.addRow}>
                       <div className={styles.addFormInline}>
-                        <input 
+                        <input
                           autoFocus
-                          className={styles.input} 
-                          placeholder="Ex: FIIs de Papel" 
-                          value={inlineSubclass} 
-                          onChange={e => setInlineSubclass(e.target.value)} 
+                          className={styles.input}
+                          placeholder="Nome da subclasse"
+                          value={inlineSubclass}
+                          onChange={e => setInlineSubclass(e.target.value)}
                           onKeyDown={e => e.key === 'Enter' && handleInlineAdd()}
                         />
-                        <input 
-                          className={`${styles.input} ${styles.inputTarget}`} 
-                          placeholder="%" 
-                          type="number" 
-                          value={inlineTarget} 
-                          onChange={e => setInlineTarget(e.target.value)} 
+                        <input
+                          className={`${styles.input} ${styles.inputTarget}`}
+                          placeholder="%"
+                          type="number"
+                          value={inlineTarget}
+                          onChange={e => setInlineTarget(e.target.value)}
                           onKeyDown={e => e.key === 'Enter' && handleInlineAdd()}
                         />
                         <button className={styles.btnAddInline} onClick={handleInlineAdd}>Salvar</button>
-                        <button className={styles.btnCancelInline} onClick={() => { setInlineAddClass(null); setInlineSubclass(''); setInlineTarget(''); }}>Cancelar</button>
+                        <button className={styles.btnCancelInline} onClick={() => { setInlineAddClass(null); setInlineSubclass(''); setInlineTarget(''); }}>
+                          Cancelar
+                        </button>
                       </div>
                     </div>
                   ) : (
-                    <div className={styles.addRow} style={{ padding: '0.4rem 1.1rem 0.6rem 2.8rem' }}>
+                    <div className={styles.addRow} style={{ paddingTop: '0.4rem', paddingBottom: '0.55rem' }}>
                       <button className={styles.addBtnGhost} onClick={() => { setInlineAddClass(className); setInlineSubclass(''); setInlineTarget(''); }}>
-                        <Plus size={13}/> Adicionar Subclasse
+                        <Plus size={12}/> Adicionar Subclasse
                       </button>
                     </div>
                   )}
@@ -296,25 +379,15 @@ export default function Strategy() {
           );
         })}
 
-        {/* Global Add (Nova Classe) */}
+        {/* Nova Macro-Classe */}
         {!inlineAddClass && (
-          <div className={styles.group} style={{ padding: '1rem', background: 'var(--color-surface-2)' }}>
-            <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: 'var(--color-text)' }}>Criar Nova Macro-Classe</h4>
+          <div className={styles.newMacroRow}>
+            <div className={styles.newMacroLabel}><Plus size={11}/> Nova Macro-Classe</div>
             <div className={styles.addFormInline}>
-              <input className={styles.input} placeholder="Nova Macro (Ex: Renda Fixa)" id="newMacro" />
-              <input className={styles.input} placeholder="Subclasse" id="newSub" />
-              <input className={`${styles.input} ${styles.inputTarget}`} placeholder="%" id="newTarget" type="number" />
-              <button className={styles.btnAddInline} onClick={() => {
-                const macro = (document.getElementById('newMacro') as HTMLInputElement).value;
-                const sub = (document.getElementById('newSub') as HTMLInputElement).value;
-                const tgt = parseFloat((document.getElementById('newTarget') as HTMLInputElement).value.replace(',','.'));
-                if (macro && sub && tgt > 0) {
-                  addCategory({ className: macro, subclassName: sub, targetPercent: tgt });
-                  (document.getElementById('newMacro') as HTMLInputElement).value = '';
-                  (document.getElementById('newSub') as HTMLInputElement).value = '';
-                  (document.getElementById('newTarget') as HTMLInputElement).value = '';
-                }
-              }}>Adicionar</button>
+              <input ref={refMacro} className={styles.input} placeholder="Classe (ex: Renda Fixa)" style={{ flex: '1.4' }}/>
+              <input ref={refSub}   className={styles.input} placeholder="Subclasse (ex: CDB)" style={{ flex: 1 }}/>
+              <input ref={refTgt}   className={`${styles.input} ${styles.inputTarget}`} placeholder="%" type="number"/>
+              <button className={styles.btnAddInline} onClick={handleGlobalAdd}>Adicionar</button>
             </div>
           </div>
         )}
@@ -324,7 +397,7 @@ export default function Strategy() {
         <DeleteStrategyModal
           strategy={{ id: strategyToDelete.id, name: strategyToDelete.name }}
           onClose={() => setStrategyToDelete(null)}
-          onConfirm={(id) => handleConfirmDeleteStrategy(id)}
+          onConfirm={id => handleConfirmDeleteStrategy(id)}
         />
       )}
     </div>

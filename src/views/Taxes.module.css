@@ -1,7 +1,11 @@
+/* ══════════════════════════════════════════════════════════════
+   Taxes — design premium, nível Ativos/Finanças
+   ══════════════════════════════════════════════════════════════ */
+
 .container {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.1rem;
   padding-bottom: 3rem;
   animation: fadeIn 0.3s ease;
   min-width: 0;
@@ -12,7 +16,7 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Header */
+/* ── Header ── */
 .header {
   display: flex;
   align-items: center;
@@ -21,229 +25,279 @@
   flex-wrap: wrap;
 }
 .title {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: var(--color-text);
+  display: flex; align-items: center; gap: 0.55rem;
+  font-size: 1.35rem; font-weight: 700; color: var(--color-text); margin: 0;
 }
 .headerActions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
 }
 
-/* Tabs */
+/* Tabs (anos) */
 .tabs {
-  display: inline-flex;
-  align-items: center;
-  background: var(--color-surface);
+  display: inline-flex; align-items: center;
+  background: var(--color-surface-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
-  padding: 0.2rem;
-  gap: 0.2rem;
+  padding: 0.22rem; gap: 0.2rem;
 }
 .tabBtn {
-  background: transparent;
-  color: var(--color-text-3);
-  border: none;
-  border-radius: var(--radius-full);
-  padding: 0.35rem 0.8rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
+  background: transparent; color: var(--color-text-3);
+  border: none; border-radius: var(--radius-full);
+  padding: 0.32rem 0.85rem;
+  font-size: 0.8rem; font-weight: 600; cursor: pointer;
   transition: all 0.2s;
 }
 .tabBtn:hover { color: var(--color-text); }
 .tabActive {
-  background: rgba(139, 92, 246, 0.15);
+  background: rgba(139, 92, 246, 0.18);
   color: var(--color-primary-light);
 }
 
 .btnGhost {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: transparent;
-  color: var(--color-text-2);
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  background: transparent; color: var(--color-text-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);
-  padding: 0.45rem 1rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  padding: 0.48rem 1rem; font-size: 0.82rem; font-weight: 600;
+  cursor: pointer; transition: all 0.2s ease;
 }
 .btnGhost:hover {
-  border-color: var(--color-primary);
-  color: var(--color-text);
-  background: var(--color-surface-2);
+  border-color: var(--color-primary); color: var(--color-text);
+  background: rgba(139,92,246,0.05);
 }
+.btnGhost:disabled { opacity: 0.4; pointer-events: none; }
 
-/* Sections */
-.section { margin-top: 1rem; }
+/* ── Section (DARFs, Isentos, etc.) ── */
+.section { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.sectionHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.75rem;
+}
 .sectionTitle {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--color-text);
-  margin: 0 0 0.85rem 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.9rem; font-weight: 700; color: var(--color-text); margin: 0;
+}
+.sectionCount {
+  font-size: 0.7rem; color: var(--color-text-3); font-weight: 500;
+  background: var(--color-surface-2); border: 1px solid var(--color-border);
+  border-radius: 999px; padding: 0.08rem 0.5rem;
 }
 
-/* List container */
-.list { 
-  display: flex; flex-direction: column; gap: 0; 
+/* ── DARFs List ── */
+.list {
+  display: flex; flex-direction: column; gap: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
 }
 
-/* Tax Record Action Card */
+/* Tax Card DARF */
 .taxCard {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  overflow: hidden;
-  margin-bottom: 0.8rem;
-  transition: transform 0.2s, box-shadow 0.2s;
+  border-bottom: 1px solid var(--color-border);
+  transition: background 0.15s;
 }
-.taxCard:hover {
-  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-  transform: translateY(-2px);
-}
-.taxDue { border-color: rgba(245, 158, 11, 0.4); }
-.taxPaid { border-color: rgba(16, 185, 129, 0.3); }
+.taxCard:last-child { border-bottom: none; }
+.taxCard:hover { background: rgba(139,92,246,0.03); }
+
+.taxCardDue   { border-left: 3px solid rgba(245, 158, 11, 0.55); }
+.taxCardPaid  { border-left: 3px solid rgba(16, 185, 129, 0.4); }
+.taxCardOverdue { border-left: 3px solid rgba(239,68,68,0.6); }
 
 .taxMain {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.1rem 1.25rem;
-  cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.95rem 1.1rem; cursor: pointer; gap: 0.75rem;
 }
-.taxInfo { display: flex; align-items: center; gap: 0.85rem; }
+
+.taxInfo { display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 0; }
+
 .taxIcon {
-  width: 40px; height: 40px;
-  border-radius: 12px;
-  display: grid; place-items: center;
+  width: 38px; height: 38px; border-radius: 11px;
+  display: grid; place-items: center; flex-shrink: 0;
 }
-.iconDue { background: rgba(245, 158, 11, 0.15); color: #FBBF24; }
-.iconPaid { background: rgba(16, 185, 129, 0.15); color: #34D399; }
+.iconDue     { background: rgba(245,158,11,0.14); color: #FBBF24; }
+.iconPaid    { background: rgba(16,185,129,0.14); color: #34D399; }
+.iconOverdue { background: rgba(239,68,68,0.14); color: #F87171; }
 
-.taxTitle { font-weight: 700; font-size: 1rem; display: block; color: var(--color-text); margin-bottom: 0.15rem; }
-.taxDate { font-size: 0.75rem; color: var(--color-text-3); font-weight: 500; }
+.taxBody { flex: 1; min-width: 0; }
+.taxTitle {
+  font-weight: 700; font-size: 0.92rem; color: var(--color-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.taxMeta {
+  display: flex; align-items: center; gap: 0.5rem; margin-top: 0.15rem;
+}
+.taxDate { font-size: 0.72rem; color: var(--color-text-3); font-weight: 500; }
+.taxBadge {
+  font-size: 0.62rem; font-weight: 700; border-radius: 999px;
+  padding: 0.08rem 0.42rem; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.badgeDue     { background: rgba(245,158,11,0.15); color: #FBBF24; }
+.badgePaid    { background: rgba(16,185,129,0.13); color: #34D399; }
+.badgeOverdue { background: rgba(239,68,68,0.14); color: #F87171; }
 
-.taxRight { text-align: right; display: flex; align-items: center; gap: 1rem; }
-.taxVal { font-weight: 700; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
-.valDue { color: #FBBF24; }
-.valPaid { color: #34D399; }
+.taxRight {
+  display: flex; align-items: center; gap: 0.9rem; flex-shrink: 0;
+}
+.taxValues { text-align: right; }
+.taxSubLabel { font-size: 0.68rem; color: var(--color-text-3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+.taxVal {
+  font-weight: 750; font-size: 1.05rem;
+  font-variant-numeric: tabular-nums; display: block;
+}
+.valDue     { color: #FBBF24; }
+.valPaid    { color: #34D399; }
+.valOverdue { color: #F87171; }
 
-.taxExpand { color: var(--color-text-3); transition: transform 0.2s; }
+.taxExpand { color: var(--color-text-3); transition: transform 0.22s ease; flex-shrink: 0; }
 .taxExpanded { transform: rotate(180deg); }
 
+/* Expand Details */
 .taxDetails {
-  padding: 1.25rem;
+  padding: 1.1rem 1.15rem 1.25rem 1.15rem;
   border-top: 1px solid var(--color-border);
-  background: rgba(0,0,0,0.15);
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
+  background: rgba(0,0,0,0.12);
+  display: flex; flex-direction: column; gap: 1rem;
+  animation: fadeIn 0.18s ease;
 }
-.detailGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; }
-.detailItem { display: flex; flex-direction: column; gap: 0.3rem; }
-.detailLabel { font-size: 0.7rem; color: var(--color-text-3); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
-.detailVal { font-size: 0.95rem; font-weight: 600; color: var(--color-text); font-variant-numeric: tabular-nums; }
+
+.detailGrid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.75rem;
+}
+.detailItem { display: flex; flex-direction: column; gap: 0.25rem; }
+.detailLabel {
+  font-size: 0.65rem; color: var(--color-text-3);
+  text-transform: uppercase; font-weight: 700; letter-spacing: 0.06em;
+}
+.detailVal {
+  font-size: 0.9rem; font-weight: 700;
+  color: var(--color-text); font-variant-numeric: tabular-nums;
+}
 .valGood { color: #34D399; }
 .valWarn { color: #FBBF24; }
+.valBad  { color: #F87171; }
 
-.darfActions { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
-.btnDarf {
-  display: inline-flex; align-items: center; gap: 0.4rem;
-  background: rgba(245, 158, 11, 0.15); color: #FBBF24;
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  border-radius: var(--radius-sm);
-  padding: 0.45rem 0.8rem; font-size: 0.8rem; font-weight: 600;
-  cursor: pointer; text-decoration: none;
-  transition: all 0.2s;
+.darfActions {
+  display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap;
 }
-.btnDarf:hover { background: rgba(245, 158, 11, 0.25); }
+.btnDarf {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  background: rgba(245,158,11,0.12); color: #FBBF24;
+  border: 1px solid rgba(245,158,11,0.28); border-radius: 8px;
+  padding: 0.42rem 0.75rem; font-size: 0.78rem; font-weight: 600;
+  cursor: pointer; text-decoration: none; transition: all 0.2s;
+}
+.btnDarf:hover { background: rgba(245,158,11,0.22); }
 
 .dateInput {
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  color: var(--color-text);
-  border-radius: var(--radius-sm);
-  padding: 0.45rem 0.6rem;
-  font-size: 0.8rem;
-  outline: none;
-  font-family: inherit;
+  background: var(--color-surface-2); border: 1px solid var(--color-border);
+  color: var(--color-text); border-radius: 8px;
+  padding: 0.42rem 0.6rem; font-size: 0.78rem; outline: none;
+  font-family: inherit; transition: border-color 0.2s;
 }
 .dateInput:focus { border-color: var(--color-primary); }
 
 .btnMarkPaid {
   display: inline-flex; align-items: center; gap: 0.3rem;
-  background: #10B981; color: #fff;
-  border: none; border-radius: var(--radius-sm);
-  padding: 0.5rem 0.8rem; font-size: 0.8rem; font-weight: 600;
-  cursor: pointer; transition: all 0.2s;
+  background: linear-gradient(135deg, #059669, #10B981); color: #fff;
+  border: none; border-radius: 8px;
+  padding: 0.44rem 0.85rem; font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; transition: filter 0.15s;
 }
 .btnMarkPaid:hover { filter: brightness(1.1); }
 
 .btnUnpaid {
   display: inline-flex; align-items: center; gap: 0.3rem;
   background: transparent; color: var(--color-text-3);
-  border: 1px solid var(--color-border); border-radius: var(--radius-sm);
-  padding: 0.45rem 0.8rem; font-size: 0.8rem; font-weight: 600;
-  cursor: pointer; transition: all 0.2s;
+  border: 1px solid var(--color-border); border-radius: 8px;
+  padding: 0.42rem 0.75rem; font-size: 0.78rem; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
 }
 .btnUnpaid:hover { color: var(--color-text); border-color: var(--color-text-2); }
 
-/* Simple Row for Exempt/RF/Loss */
+/* ── Simple Row (Isentos, RF, Prejuízo) ── */
 .simpleRow {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 0.85rem 1.1rem; border-bottom: 1px solid var(--color-border);
+  display: flex; justify-content: space-between; align-items: center; gap: 0.75rem;
+  padding: 0.82rem 1.1rem;
+  border-bottom: 1px solid var(--color-border);
+  transition: background 0.12s;
 }
 .simpleRow:last-child { border-bottom: none; }
-.simpleRow:hover { background: rgba(139, 92, 246, 0.05); }
+.simpleRow:hover { background: rgba(139,92,246,0.04); }
 
-.simpleInfo { display: flex; flex-direction: column; gap: 0.15rem; }
-.simpleTicker { font-weight: 700; font-size: 0.95rem; color: var(--color-text); }
-.simpleDate { font-size: 0.75rem; color: var(--color-text-3); }
-.simpleExtra { font-size: 0.7rem; color: var(--color-text-3); max-width: 300px; margin-top: 0.3rem; line-height: 1.4; }
-
-.simpleRight { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; }
-.simpleVal { font-weight: 700; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
-
-.badgeExempt { background: rgba(96, 165, 250, 0.15); color: #60A5FA; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
-.badgeLoss { background: rgba(239, 68, 68, 0.15); color: #F87171; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
-.badgeWarn { background: rgba(245, 158, 11, 0.15); color: #FBBF24; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
-.badgeOk { background: rgba(16, 185, 129, 0.15); color: #34D399; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
-
-/* Alert Box */
-.alertBox {
-  display: flex; gap: 0.75rem; padding: 1.1rem;
-  border-radius: 12px; border: 1px solid;
-  margin-bottom: 1.25rem;
-  font-size: 0.85rem; line-height: 1.6;
+.simpleLeft { display: flex; align-items: center; gap: 0.7rem; flex: 1; min-width: 0; }
+.simpleAvatar {
+  width: 34px; height: 34px; border-radius: 9px;
+  display: grid; place-items: center; flex-shrink: 0;
+  font-size: 0.65rem; font-weight: 800; letter-spacing: 0.01em;
+  color: #fff;
 }
-.alertBox p, .alertBox ul { margin: 0.5rem 0 0 0; }
-.alertBox li { margin-bottom: 0.3rem; }
+.simpleInfo { flex: 1; min-width: 0; }
+.simpleTicker {
+  font-weight: 700; font-size: 0.9rem; color: var(--color-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;
+}
+.simpleDate { font-size: 0.7rem; color: var(--color-text-3); }
+.simpleExtra {
+  font-size: 0.68rem; color: var(--color-text-3);
+  max-width: 300px; margin-top: 0.25rem; line-height: 1.4;
+}
 
-/* Empty state */
+.simpleRight {
+  text-align: right; display: flex; flex-direction: column;
+  align-items: flex-end; gap: 0.25rem; flex-shrink: 0;
+}
+.simpleVal {
+  font-weight: 700; font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Badges */
+.badgeExempt  { background: rgba(96,165,250,0.14); color: #60A5FA; padding: 0.12rem 0.5rem; border-radius: 5px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.badgeLoss    { background: rgba(239,68,68,0.13);  color: #F87171; padding: 0.12rem 0.5rem; border-radius: 5px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.badgeWarn    { background: rgba(245,158,11,0.14); color: #FBBF24; padding: 0.12rem 0.5rem; border-radius: 5px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.badgeOk      { background: rgba(16,185,129,0.13); color: #34D399; padding: 0.12rem 0.5rem; border-radius: 5px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.badgeRetido  { background: rgba(139,92,246,0.12); color: #A78BFA; padding: 0.12rem 0.5rem; border-radius: 5px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* ── Compensação Footer ── */
+.compensacaoFooter {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.75rem 1.1rem;
+  border-top: 1px solid var(--color-border);
+  background: rgba(245,158,11,0.04);
+}
+.compensacaoLabel {
+  font-size: 0.8rem; color: var(--color-text-2); font-weight: 500;
+}
+.compensacaoVal {
+  font-size: 0.95rem; font-weight: 750; color: #FBBF24;
+  font-variant-numeric: tabular-nums;
+}
+.compensacaoSub {
+  font-size: 0.7rem; color: var(--color-text-3); text-align: right; margin-top: 0.1rem;
+}
+
+/* ── Alert Info Box ── */
+.alertBox {
+  display: flex; gap: 0.75rem; padding: 1rem 1.15rem;
+  border-radius: 12px; border: 1px solid;
+  font-size: 0.83rem; line-height: 1.6;
+}
+.alertBox p, .alertBox ul { margin: 0.4rem 0 0 0; }
+.alertBox li { margin-bottom: 0.25rem; }
+
+/* ── Empty State ── */
 .emptyState {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  text-align: center; gap: 1.2rem; padding: 6rem 1rem;
+  text-align: center; gap: 1.1rem; padding: 5.5rem 1rem;
   color: var(--color-text-2);
 }
 .emptyIcon {
-  width: 88px; height: 88px; border-radius: 50%;
-  background: rgba(139, 92, 246, 0.08); color: var(--color-primary-light);
+  width: 84px; height: 84px; border-radius: 50%;
+  background: rgba(139,92,246,0.08); color: var(--color-primary-light);
   display: grid; place-items: center;
 }
-.emptyState h2 { margin: 0; color: var(--color-text); font-size: 1.3rem; }
-.emptyState p { max-width: 440px; margin: 0; font-size: 0.95rem; line-height: 1.6; }
+.emptyState h2 { margin: 0; color: var(--color-text); font-size: 1.25rem; }
+.emptyState p  { max-width: 420px; margin: 0; font-size: 0.92rem; line-height: 1.6; }
