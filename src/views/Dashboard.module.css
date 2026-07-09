@@ -1,5 +1,6 @@
 /* ══════════════════════════════════════════════════════════════
-   Dashboard — redesign premium V2
+   Dashboard — centro de comando (implementado a partir do protótipo
+   validado em /prototipo/dashboard)
    ══════════════════════════════════════════════════════════════ */
 
 .container {
@@ -31,8 +32,8 @@
 .syncSpin { animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── Hero Row ── */
-.hero { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 0.9rem; }
+/* ── Hero: patrimônio + coluna de contexto ── */
+.heroGrid { display: grid; grid-template-columns: 1.7fr 1fr; gap: 0.9rem; align-items: stretch; }
 .tile {
   background: var(--color-surface); border: 1px solid var(--color-border);
   border-radius: 16px; padding: 1.15rem 1.3rem;
@@ -43,12 +44,13 @@
 .tileHighlight {
   border-color: rgba(139,92,246,0.25);
   background: linear-gradient(135deg, var(--color-surface), rgba(139,92,246,0.06));
+  justify-content: center;
 }
 .tileHighlight:hover { box-shadow: 0 6px 24px rgba(139,92,246,0.12); }
-.tileLabel { font-size: 0.7rem; font-weight: 700; color: var(--color-text-3); letter-spacing: 0.06em; text-transform: uppercase; }
+.tileLabel { font-size: 0.7rem; font-weight: 700; color: var(--color-text-3); letter-spacing: 0.06em; text-transform: uppercase; display: flex; align-items: center; gap: 0.35rem; }
 .heroValue { font-size: 2.2rem; font-weight: 750; line-height: 1.05; letter-spacing: -0.02em; color: var(--color-text); }
-.tileValue { font-size: 1.4rem; font-weight: 700; line-height: 1.15; color: var(--color-text); }
-.delta { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.76rem; font-weight: 600; }
+.tileValue { font-size: 1.35rem; font-weight: 700; line-height: 1.15; color: var(--color-text); }
+.delta { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.76rem; font-weight: 600; flex-wrap: wrap; }
 .deltaGood { color: #10B981; }
 .deltaBad  { color: #EF4444; }
 .deltaRef  { color: var(--color-text-3); font-weight: 500; }
@@ -60,164 +62,118 @@
 .meterTrack { height: 6px; border-radius: 999px; background: rgba(139,92,246,0.12); overflow: hidden; margin-top: 0.3rem; }
 .meterFill { height: 100%; border-radius: 999px; background: var(--color-primary); transition: width 0.5s ease; }
 
-/* ── Alerts Strip ── */
-.alertsStrip {
-  display: flex; gap: 0.65rem; flex-wrap: wrap;
-}
-.alertChip {
-  display: flex; align-items: center; gap: 0.5rem;
+/* Coluna de contexto: Sobra do mês / Sobrevivência / Meta, empilhados */
+.sideCol { display: flex; flex-direction: column; gap: 0.6rem; }
+.statCardStack {
+  flex: 1;
   background: var(--color-surface); border: 1px solid var(--color-border);
-  border-radius: 12px; padding: 0.65rem 1rem;
-  flex: 1; min-width: 220px; cursor: pointer;
-  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  border-radius: 14px; padding: 0.75rem 1rem;
+  display: flex; flex-direction: column; gap: 0.2rem; justify-content: center;
+  color: inherit; font: inherit; /* <button> não herda color por padrão */
+  transition: border-color 0.15s;
 }
-.alertChip:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
-.alertRebal { border-color: rgba(245,158,11,0.3); }
-.alertRebal:hover { border-color: rgba(245,158,11,0.5); }
-.alertBoleto { border-color: rgba(239,68,68,0.25); }
-.alertBoleto:hover { border-color: rgba(239,68,68,0.45); }
-.alertDarf { border-color: rgba(245,158,11,0.3); }
-.alertDarf:hover { border-color: rgba(245,158,11,0.5); }
+.statCardStack:hover { border-color: var(--color-primary); }
 
-.alertIcon {
-  width: 34px; height: 34px; border-radius: 10px;
-  display: grid; place-items: center; flex-shrink: 0;
-}
-.alertIconRebal  { background: rgba(245,158,11,0.12); color: #FBBF24; }
-.alertIconBoleto { background: rgba(239,68,68,0.12); color: #F87171; }
-.alertIconDarf   { background: rgba(245,158,11,0.12); color: #FBBF24; }
-
-.alertBody { flex: 1; min-width: 0; }
-.alertTitle { font-size: 0.82rem; font-weight: 700; color: var(--color-text); }
-.alertSub { font-size: 0.72rem; color: var(--color-text-3); margin-top: 0.1rem; }
-.alertVal {
-  font-size: 0.95rem; font-weight: 750; font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
-}
-.alertValWarn { color: #FBBF24; }
-.alertValDanger { color: #F87171; }
-
-/* ── Grid sections ── */
-.gridMain {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
-  align-items: start;
-}
-
-/* ── Card genérico ── */
-.card {
+/* ── Central de Ações ── */
+.actionCard {
   background: var(--color-surface); border: 1px solid var(--color-border);
   border-radius: 16px; overflow: hidden;
 }
-.cardHead {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0.9rem 1.15rem; border-bottom: 1px solid var(--color-border);
+.actionHead {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.8rem 1.1rem; border-bottom: 1px solid var(--color-border);
+  font-size: 0.85rem; font-weight: 700; color: var(--color-text);
 }
-.cardTitle {
-  font-size: 0.8rem; font-weight: 700; color: var(--color-text);
-  letter-spacing: 0.04em; text-transform: uppercase;
-  display: flex; align-items: center; gap: 0.4rem;
+.actionCount {
+  background: rgba(139,92,246,0.15); color: #A78BFA;
+  font-size: 0.7rem; font-weight: 700; border-radius: 999px; padding: 0.1rem 0.5rem;
 }
-.cardLink {
-  font-size: 0.72rem; font-weight: 600; color: var(--color-primary-light);
-  background: transparent; border: none; cursor: pointer;
-  display: flex; align-items: center; gap: 0.2rem;
-  transition: opacity 0.15s;
+.actionRow {
+  width: 100%; display: flex; align-items: center; gap: 0.8rem;
+  padding: 0.7rem 1.1rem; border: none; border-top: 1px solid var(--color-border);
+  background: transparent; cursor: pointer; text-align: left;
+  color: inherit; font: inherit;
+  transition: background 0.12s;
 }
-.cardLink:hover { opacity: 0.8; }
-.cardBody { padding: 0.9rem 1.15rem; }
-
-/* ── Allocation mini-bar ── */
-.allocBar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; gap: 2px; }
-.allocSeg {
-  height: 100%; transition: filter 0.15s; border-radius: 0;
-}
-.allocSeg:first-child { border-radius: 999px 0 0 999px; }
-.allocSeg:last-child  { border-radius: 0 999px 999px 0; }
-.allocSeg:hover { filter: brightness(1.2); }
-
-.allocLegend { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.75rem; }
-.legendChip {
-  display: flex; align-items: center; gap: 0.3rem;
-  font-size: 0.7rem; color: var(--color-text-2);
-}
-.legendDot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
-
-/* ── Category rows ── */
-.catRow {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0.55rem 0; gap: 0.5rem;
-  border-bottom: 1px solid rgba(37,37,56,0.45);
-}
-.catRow:last-child { border-bottom: none; }
-.catLeft { display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 0; }
-.catDot { width: 6px; height: 6px; border-radius: 2px; flex-shrink: 0; }
-.catName { font-size: 0.82rem; font-weight: 600; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.catRight { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
-.catPct { font-size: 0.78rem; font-weight: 700; color: var(--color-text); font-variant-numeric: tabular-nums; }
-.catTarget { font-size: 0.68rem; color: var(--color-text-3); }
-.catBadge {
-  font-size: 0.62rem; font-weight: 700; border-radius: 999px;
-  padding: 0.08rem 0.45rem; white-space: nowrap;
-}
-.catBuy  { background: rgba(16,185,129,0.12); color: #34D399; }
-.catSell { background: rgba(239,68,68,0.12); color: #F87171; }
-.catOk   { background: rgba(139,92,246,0.1); color: #A78BFA; }
-
-/* ── Top Performers ── */
-.perfRow {
-  display: flex; align-items: center; gap: 0.6rem;
-  padding: 0.55rem 0; border-bottom: 1px solid rgba(37,37,56,0.45);
-}
-.perfRow:last-child { border-bottom: none; }
-.perfAvatar {
-  width: 32px; height: 32px; border-radius: 8px;
+.actionRow:first-of-type { border-top: none; }
+.actionRow:hover { background: rgba(139,92,246,0.05); }
+.actionIcon {
+  width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
   display: grid; place-items: center;
-  font-size: 0.62rem; font-weight: 800; color: #fff; flex-shrink: 0;
 }
-.perfBody { flex: 1; min-width: 0; }
-.perfTicker { font-size: 0.85rem; font-weight: 700; color: var(--color-text); }
-.perfInfo { font-size: 0.68rem; color: var(--color-text-3); }
-.perfRight { text-align: right; flex-shrink: 0; }
-.perfVal { font-size: 0.85rem; font-weight: 700; color: var(--color-text); font-variant-numeric: tabular-nums; }
-.perfPct { font-size: 0.72rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-.perfGood { color: #34D399; }
-.perfBad  { color: #F87171; }
+.aiUrgent { background: rgba(239,68,68,0.14); color: #F87171; }
+.aiWarn   { background: rgba(245,158,11,0.14); color: #FBBF24; }
+.aiInfo   { background: rgba(139,92,246,0.14); color: #A78BFA; }
+.actionBody { flex: 1; min-width: 0; }
+.actionTitle { font-size: 0.84rem; font-weight: 650; color: var(--color-text); }
+.actionTitle strong { font-variant-numeric: tabular-nums; }
+.actionSub { font-size: 0.71rem; color: var(--color-text-3); margin-top: 0.1rem; }
+.actionGo {
+  display: inline-flex; align-items: center; gap: 0.3rem; flex-shrink: 0;
+  font-size: 0.74rem; font-weight: 700; color: #A78BFA;
+}
+.actionEmpty {
+  display: flex; align-items: center; gap: 0.7rem;
+  padding: 1rem 1.1rem; font-size: 0.84rem; color: var(--color-text-2);
+}
 
-/* ── Finanças mini ── */
-.finRow {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0.5rem 0; border-bottom: 1px solid rgba(37,37,56,0.45);
-}
-.finRow:last-child { border-bottom: none; }
-.finLabel { font-size: 0.82rem; font-weight: 500; color: var(--color-text-2); display: flex; align-items: center; gap: 0.35rem; }
-.finVal { font-size: 0.88rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.finGood { color: #34D399; }
-.finBad  { color: #F87171; }
-.finNeutral { color: var(--color-text); }
-.finBar {
-  height: 8px; border-radius: 999px; overflow: hidden;
-  background: var(--color-surface-2); margin-top: 0.65rem;
-}
-.finBarFill { height: 100%; border-radius: 999px; transition: width 0.5s ease; }
-
-/* ── Survival / Tempo de Sobrevivência ── */
-.survivalCard {
+/* ── Pilares ── */
+.pillars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.9rem; }
+.pillar {
   background: var(--color-surface); border: 1px solid var(--color-border);
-  border-left: 4px solid var(--color-primary);
-  border-radius: 14px; padding: 1.1rem 1.25rem;
-  display: flex; align-items: center; gap: 1.25rem;
+  border-radius: 16px; padding: 1rem 1.1rem;
+  display: flex; flex-direction: column; gap: 0.5rem;
+  cursor: pointer; text-align: left; min-width: 0;
+  color: inherit; font: inherit;
+  transition: border-color 0.15s, transform 0.15s;
 }
-.survivalIcon { color: var(--color-primary); flex-shrink: 0; }
-.survivalBody { flex: 1; display: flex; flex-direction: column; gap: 0.2rem; }
-.survivalTitle {
-  font-weight: 700; font-size: 0.78rem;
-  text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text);
+.pillar:hover { border-color: var(--color-primary); transform: translateY(-2px); }
+.pillarHead { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.pillarTitle { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; font-weight: 700; color: var(--color-text-2); }
+.pillarArrow { color: var(--color-text-3); transition: transform 0.15s, color 0.15s; }
+.pillar:hover .pillarArrow { transform: translateX(2px); color: #A78BFA; }
+.pillarValue { font-size: 1.2rem; font-weight: 750; font-variant-numeric: tabular-nums; color: var(--color-text); }
+.pillarSub { font-size: 0.71rem; color: var(--color-text-3); line-height: 1.4; }
+.pillarSub strong { color: var(--color-text-2); }
+.miniAlloc { display: flex; height: 7px; border-radius: 999px; overflow: hidden; gap: 1px; }
+.pillBadge {
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  font-size: 0.66rem; font-weight: 700; border-radius: 999px;
+  padding: 0.14rem 0.55rem; width: fit-content;
 }
-.survivalDesc { font-size: 0.78rem; color: var(--color-text-2); line-height: 1.45; }
-.survivalDesc strong { color: var(--color-text); }
-.survivalNumbers { display: flex; flex-direction: column; align-items: flex-end; gap: 0.1rem; flex-shrink: 0; }
-.survivalMain { font-size: 1.8rem; font-weight: 800; color: var(--color-primary); white-space: nowrap; }
-.survivalSub { font-size: 0.75rem; color: var(--color-text-2); }
+.pbGood { background: rgba(16,185,129,0.12); color: #34D399; }
+.pbWarn { background: rgba(245,158,11,0.14); color: #FBBF24; }
+.pbBad  { background: rgba(239,68,68,0.14); color: #F87171; }
+
+/* ── Insight (melhor/pior ativo) ── */
+.insightsCard {
+  background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(139,92,246,0.02));
+  border: 1px solid rgba(139,92,246,0.3);
+  border-radius: 16px; padding: 1rem 1.2rem;
+}
+.insightsHead { font-size: 0.82rem; font-weight: 700; margin-bottom: 0.65rem; color: #A78BFA; }
+.insightRow { display: flex; align-items: center; gap: 0.75rem; font-size: 0.82rem; color: var(--color-text-2); line-height: 1.55; }
+.insightRow strong { color: var(--color-text); }
+.perfAvatar {
+  width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+  display: grid; place-items: center; color: #fff; font-size: 0.65rem; font-weight: 800;
+}
+
+/* ── Modal: detalhe da meta (embrulha o GoalWidget real) ── */
+.goalModalOverlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(5,5,12,0.65); backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center; padding: 1rem;
+}
+.goalModalWrap { position: relative; width: 100%; max-width: 620px; max-height: 90vh; overflow-y: auto; }
+.goalModalClose {
+  position: absolute; top: 0.4rem; right: 0.4rem; z-index: 5;
+  display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px;
+  border: 1px solid var(--color-border); background: var(--color-surface);
+  color: var(--color-text-2); cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.goalModalClose:hover { border-color: var(--color-primary); color: var(--color-text); }
 
 /* ── Empty State ── */
 .emptyState {
@@ -230,15 +186,12 @@
 
 /* ── Responsivo ── */
 @media (max-width: 960px) {
-  .hero { grid-template-columns: 1fr 1fr; }
-  .hero > .tile:first-child { grid-column: 1 / -1; }
-  .gridMain { grid-template-columns: 1fr; }
+  .heroGrid { grid-template-columns: 1fr; }
+  .pillars { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 640px) {
-  .hero { grid-template-columns: 1fr; }
   .greeting { flex-direction: column; align-items: stretch; }
-  .alertsStrip { flex-direction: column; }
-  .survivalCard { flex-direction: column; gap: 0.75rem; text-align: center; align-items: center; }
-  .survivalNumbers { align-items: center; }
-  .survivalIcon { display: none; }
+  .pillars { grid-template-columns: 1fr; }
+  .heroValue { font-size: 1.9rem; }
+  .actionGo span { display: none; }
 }

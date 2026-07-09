@@ -1,7 +1,6 @@
 'use client';
 
-import { useMemo, useEffect } from 'react';
-import dynamic from 'next/dynamic';
+import { useMemo, useEffect, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useFinance } from '@/context/FinanceContext';
 import { calculatePortfolio, formatCurrency, CHART_COLORS } from '@/lib/calculations';
@@ -11,19 +10,26 @@ import AiAnalysisCard from '@/components/AiAnalysisCard';
 import FirstUseTip from '@/components/FirstUseTip';
 import styles from './Dashboard.module.css';
 import {
-  TrendingUp, TrendingDown, RefreshCw, AlertTriangle, CalendarClock,
-  Landmark, ShieldAlert, ArrowRight, PieChart, Wallet, ArrowUpRight,
-  ArrowDownRight, BarChart3,
+  TrendingUp, RefreshCw, AlertTriangle, CalendarClock,
+  Landmark, ShieldAlert, ArrowRight, Wallet, ArrowUpRight,
+  ArrowDownRight, Target, Zap, CheckCircle2, X, Briefcase,
 } from 'lucide-react';
 
-const AllocationChart = dynamic(() => import('@/components/AllocationChart'), {
-  ssr: false,
-  loading: () => (
-    <div className={styles.card} style={{ height: 340, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: 28, height: 28, border: '2px solid var(--color-border)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }}/>
-    </div>
-  ),
-});
+/**
+ * Dashboard — centro de comando do app.
+ *
+ * Hierarquia (redesenhada a partir do protótipo em /prototipo/dashboard,
+ * validado com o usuário):
+ * 1. QUANTO EU TENHO — hero (patrimônio, saúde) + evolução do patrimônio
+ *    (EvolutionChart existente) + coluna de contexto (sobra do mês,
+ *    sobrevivência, meta — reaproveitando o GoalWidget real num modal).
+ * 2. O QUE PRECISA DE MIM — Central de Ações: inbox priorizada (DARF
+ *    atrasado > pendente > boletos vencendo > rebalanceamento > fatura
+ *    prevista a confirmar), com "tudo em dia" quando vazia.
+ * 3. COMO ESTÃO OS PILARES — Carteira / Finanças / Impostos / Estratégia,
+ *    cada um com 2-3 números reais e link direto.
+ * 4. Análise por IA (AiAnalysisCard, já existente) fecha a página.
+ */
 
 function tickerColor(t: string): string {
   const p = ['#7C3AED','#2563EB','#059669','#D97706','#DC2626','#0891B2','#9333EA','#65A30D','#C2410C','#0D9488'];
@@ -32,12 +38,20 @@ function tickerColor(t: string): string {
   return p[Math.abs(h) % p.length];
 }
 
+const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const fmtMonth = (m: string) => {
+  const [y, mo] = m.split('-');
+  return `${MONTH_NAMES[parseInt(mo) - 1]} ${y}`;
+};
+
 export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void }) {
   const {
     activeStrategy, activeAssets, saveSnapshot, snapshots, syncPrices,
-    isSyncingPrices, lastPriceSyncAt, sellTaxRecords,
+    isSyncingPrices, lastPriceSyncAt, sellTaxRecords, activeGoal,
   } = useApp();
   const { transactions, months, activeMonthId, subscriptions } = useFinance();
+
+  const [showGoalModal, setShowGoalModal] = useState(false);
 
   const summary = useMemo(() => {
     if (!activeStrategy || activeAssets.length === 0) return null;
@@ -79,14 +93,28 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
       return diffDays >= 0 && diffDays <= 7;
     }).sort((a, b) => (a.dueDay ?? 0) - (b.dueDay ?? 0));
   }, [transactions, activeMonthId, months]);
-
   const upcomingTotal = upcomingBoletos.reduce((s, t) => s + t.value, 0);
 
-  // DARFs pendentes
+  // Faturas "previstas" (valor estimado) do mês ativo, aguardando confirmação
+  const previstoTxs = useMemo(() =>
+    transactions.filter(t => t.monthId === activeMonthId && t.paymentStatus === 'previsto'),
+  [transactions, activeMonthId]);
+  const previstoTotal = previstoTxs.reduce((s, t) => s + t.value, 0);
+
+  // DARFs — separa atrasado (competência já passou) de pendente dentro do prazo
+  const currentMonthStr = new Date().toISOString().slice(0, 7);
   const pendingDarfs = useMemo(() =>
     sellTaxRecords.filter(r => !r.isLoss && !r.isExempt && r.taxDue > 0 && !r.taxPaid),
   [sellTaxRecords]);
+  const overdueDarfs = pendingDarfs.filter(r => r.darfPeriod && r.darfPeriod < currentMonthStr);
+  const dueDarfs = pendingDarfs.filter(r => !overdueDarfs.includes(r));
   const pendingDarfTotal = pendingDarfs.reduce((s, r) => s + r.taxDue, 0);
+
+  // Impostos pagos no ano corrente (para o pilar de Impostos)
+  const currentYear = new Date().getFullYear().toString();
+  const paidThisYear = useMemo(() =>
+    sellTaxRecords.filter(r => r.taxPaid && r.sellDate.startsWith(currentYear)).reduce((s, r) => s + r.taxDue, 0),
+  [sellTaxRecords, currentYear]);
 
   // Finanças do mês ativo
   const monthSummary = useMemo(() => {
@@ -101,41 +129,40 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
 
   const monthlyCost = monthSummary.expense;
   const activeMonth = months.find(m => m.id === activeMonthId);
-  const fmtMonth = (m: string) => {
-    const names = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    const [y, mo] = m.split('-');
-    return `${names[parseInt(mo) - 1]} ${y}`;
-  };
+  const survivalMonths = monthlyCost > 0 && summary ? summary.totalValue / monthlyCost : 0;
 
   // Greeting
   const hour = new Date().getHours();
   const greetText = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
 
-  // Pre-compute derived values (hooks must be before early returns)
+  // Pre-compute derived values (hooks must vir antes dos early returns)
   const categorySummaries = summary?.categorySummaries ?? [];
   const assetsWithCalcs = summary?.assetsWithCalcs ?? [];
   const needsRebalancing = summary?.needsRebalancing ?? false;
 
-  // Class totals for mini alloc bar
-  const classTotals = useMemo(() => {
-    const map: Record<string, { value: number; color: string }> = {};
-    const classNames = Array.from(new Set(categorySummaries.map(c => c.category.className))).sort();
-    classNames.forEach((cn, i) => {
-      map[cn] = { value: 0, color: CHART_COLORS[i % CHART_COLORS.length] };
-    });
-    categorySummaries.forEach(cs => {
-      if (map[cs.category.className]) map[cs.category.className].value += cs.currentPercent;
-    });
-    return Object.entries(map).map(([name, d]) => ({ name, ...d })).filter(d => d.value > 0).sort((a, b) => b.value - a.value);
-  }, [categorySummaries]);
-
-  // Alloc category colors
   const catColorMap = useMemo(() => {
     const classNames = Array.from(new Set(categorySummaries.map(c => c.category.className))).sort();
     const map: Record<string, string> = {};
     classNames.forEach((cn, i) => { map[cn] = CHART_COLORS[i % CHART_COLORS.length]; });
     return map;
   }, [categorySummaries]);
+
+  const classTotals = useMemo(() => {
+    const map: Record<string, { value: number; color: string }> = {};
+    Object.keys(catColorMap).forEach(cn => { map[cn] = { value: 0, color: catColorMap[cn] }; });
+    categorySummaries.forEach(cs => {
+      if (map[cs.category.className]) map[cs.category.className].value += cs.currentPercent;
+    });
+    return Object.entries(map).map(([name, d]) => ({ name, ...d })).filter(d => d.value > 0).sort((a, b) => b.value - a.value);
+  }, [categorySummaries, catColorMap]);
+
+  const outOfTolerance = activeStrategy
+    ? categorySummaries.filter(cs => Math.abs(cs.currentPercent - cs.targetPercent) > activeStrategy.deviationTolerance)
+    : [];
+
+  const goalProgressPct = activeGoal && activeGoal.targetValue > 0 && summary
+    ? Math.min(100, (summary.totalValue / activeGoal.targetValue) * 100)
+    : 0;
 
   // ── Empty states ──
   if (!activeStrategy) {
@@ -164,15 +191,62 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
     );
   }
 
-  const buyAssets  = assetsWithCalcs.filter(a => a.action === 'buy');
+  const buyAssets = assetsWithCalcs.filter(a => a.action === 'buy');
   const sellAssets = assetsWithCalcs.filter(a => a.action === 'sell');
-  const hasAlerts = needsRebalancing || upcomingBoletos.length > 0 || pendingDarfs.length > 0;
 
-  // Top performers (by P&L %)
-  const topPerformers = [...assetsWithCalcs]
-    .filter(a => !a.isArchived && a.currentValue > 0)
-    .sort((a, b) => b.profitLossPercent - a.profitLossPercent)
-    .slice(0, 5);
+  // Melhor/pior performer do ano — único insight cross-domínio incluído
+  // nesta primeira versão (sem duplicar cálculos de rebalanceamento que já
+  // vivem na página de Ativos, para as duas páginas não divergirem).
+  const ranked = [...assetsWithCalcs].filter(a => !a.isArchived && a.currentValue > 0).sort((a, b) => b.profitLossPercent - a.profitLossPercent);
+  const bestPerformer = ranked[0];
+  const worstPerformer = ranked.length > 1 ? ranked[ranked.length - 1] : null;
+
+  // ── Central de Ações: prioridade fixa (urgente → importante → oportunidade) ──
+  interface ActionItem { key: string; icon: React.ReactNode; cls: string; title: React.ReactNode; sub: string; go: string; dest: string; }
+  const actions: ActionItem[] = [];
+
+  if (overdueDarfs.length > 0) {
+    const total = overdueDarfs.reduce((s, r) => s + r.taxDue, 0);
+    actions.push({
+      key: 'darf-overdue', icon: <AlertTriangle size={16} />, cls: styles.aiUrgent,
+      title: <>DARF{overdueDarfs.length > 1 ? 's' : ''} de <strong>{formatCurrency(total)}</strong> atrasado{overdueDarfs.length > 1 ? 's' : ''}</>,
+      sub: 'Multa e juros correm desde o vencimento — gere o DARF e marque como pago',
+      go: 'Resolver', dest: 'taxes',
+    });
+  }
+  if (dueDarfs.length > 0) {
+    const total = dueDarfs.reduce((s, r) => s + r.taxDue, 0);
+    actions.push({
+      key: 'darf-due', icon: <Landmark size={16} />, cls: styles.aiWarn,
+      title: <>{dueDarfs.length} DARF{dueDarfs.length > 1 ? 's' : ''} pendente{dueDarfs.length > 1 ? 's' : ''} · <strong>{formatCurrency(total)}</strong></>,
+      sub: 'IR sobre vendas do mês — vence no dia 30',
+      go: 'Ver', dest: 'taxes',
+    });
+  }
+  if (upcomingBoletos.length > 0) {
+    actions.push({
+      key: 'boletos', icon: <CalendarClock size={16} />, cls: styles.aiWarn,
+      title: <>{upcomingBoletos.length} conta{upcomingBoletos.length > 1 ? 's' : ''} vence{upcomingBoletos.length > 1 ? 'm' : ''} em até 7 dias · <strong>{formatCurrency(upcomingTotal)}</strong></>,
+      sub: upcomingBoletos.slice(0, 2).map(t => t.description).join(', ') + (upcomingBoletos.length > 2 ? '…' : ''),
+      go: 'Ver contas', dest: 'finances',
+    });
+  }
+  if (needsRebalancing) {
+    actions.push({
+      key: 'rebalance', icon: <Zap size={16} />, cls: styles.aiInfo,
+      title: <><strong>{buyAssets.length}</strong> ativo{buyAssets.length !== 1 ? 's' : ''} para comprar · <strong>{sellAssets.length}</strong> para reduzir</>,
+      sub: `${outOfTolerance.length} de ${categorySummaries.length} subclasses fora da tolerância de ${activeStrategy.deviationTolerance}pp`,
+      go: 'Rebalancear', dest: 'assets',
+    });
+  }
+  if (previstoTxs.length > 0) {
+    actions.push({
+      key: 'previsto', icon: <CalendarClock size={16} />, cls: styles.aiInfo,
+      title: <>{previstoTxs.length} lançamento{previstoTxs.length > 1 ? 's' : ''} com valor <strong>≈ previsto</strong> · {formatCurrency(previstoTotal)}</>,
+      sub: 'Valor estimado pela média — confirme quando a fatura fechar',
+      go: 'Confirmar', dest: 'finances',
+    });
+  }
 
   return (
     <div className={styles.container}>
@@ -194,9 +268,8 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
         </div>
       </div>
 
-      {/* ── Hero Row ── */}
-      <div className={styles.hero}>
-        {/* Patrimônio */}
+      {/* ── Hero: patrimônio + contexto ── */}
+      <div className={styles.heroGrid}>
         <div className={`${styles.tile} ${styles.tileHighlight}`}>
           <span className={styles.tileLabel}>Patrimônio Total</span>
           <span className={styles.heroValue}>{formatCurrency(summary.totalValue)}</span>
@@ -213,231 +286,165 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
           </span>
         </div>
 
-        {/* Saúde */}
-        <div className={styles.tile}>
-          <span className={styles.tileLabel}>Saúde da Carteira</span>
-          <div className={styles.healthRow}>
-            <span className={styles.healthScore} style={{ color: summary.healthScore >= 80 ? '#10B981' : summary.healthScore >= 50 ? '#FBBF24' : '#F87171' }}>
-              {summary.healthScore}
+        <div className={styles.sideCol}>
+          <div className={styles.statCardStack}>
+            <span className={styles.tileLabel}><Wallet size={11}/> Sobra {activeMonth ? fmtMonth(activeMonth.month) : 'do mês'}</span>
+            <span className={styles.tileValue} style={{ color: monthSummary.balance >= 0 ? '#34D399' : '#F87171' }}>
+              {formatCurrency(monthSummary.balance)}
             </span>
-            <span className={styles.healthOf}>/ 100</span>
+            <span className={styles.tileSub}>
+              Receitas <strong>{formatCurrency(monthSummary.income)}</strong> · Saídas <strong>{formatCurrency(monthSummary.expense)}</strong>
+            </span>
           </div>
-          <div className={styles.meterTrack}>
-            <div className={styles.meterFill} style={{
-              width: `${summary.healthScore}%`,
-              background: summary.healthScore >= 80 ? '#10B981' : summary.healthScore >= 50 ? '#FBBF24' : '#F87171',
-            }}/>
-          </div>
-          <span className={styles.tileSub}>
-            {summary.healthScore >= 80 ? 'Carteira equilibrada ✓' : needsRebalancing ? 'Rebalanceamento necessário' : 'Próximo ao equilíbrio'}
-          </span>
-        </div>
 
-        {/* Finanças rápido */}
-        <div className={styles.tile}>
-          <span className={styles.tileLabel}>Saldo do Mês {activeMonth ? fmtMonth(activeMonth.month) : ''}</span>
-          <span className={`${styles.tileValue} ${monthSummary.balance >= 0 ? styles.deltaGood : styles.deltaBad}`}>
-            {formatCurrency(monthSummary.balance)}
-          </span>
-          <span className={styles.tileSub}>
-            Receita: <strong>{formatCurrency(monthSummary.income)}</strong>
-          </span>
-          <span className={styles.tileSub}>
-            Despesas: <strong>{formatCurrency(monthSummary.expense)}</strong>
-          </span>
-        </div>
-      </div>
-
-      {/* ── Alerts Strip ── */}
-      {hasAlerts && (
-        <div className={styles.alertsStrip}>
-          {needsRebalancing && (
-            <button className={`${styles.alertChip} ${styles.alertRebal}`} onClick={() => onNavigate('assets')}>
-              <div className={`${styles.alertIcon} ${styles.alertIconRebal}`}><AlertTriangle size={17}/></div>
-              <div className={styles.alertBody}>
-                <div className={styles.alertTitle}>Rebalanceamento</div>
-                <div className={styles.alertSub}>{buyAssets.length} comprar · {sellAssets.length} reduzir</div>
-              </div>
-              <ArrowRight size={15} style={{ color: 'var(--color-text-3)' }}/>
-            </button>
-          )}
-
-          {upcomingBoletos.length > 0 && (
-            <button className={`${styles.alertChip} ${styles.alertBoleto}`} onClick={() => onNavigate('finances')}>
-              <div className={`${styles.alertIcon} ${styles.alertIconBoleto}`}><CalendarClock size={17}/></div>
-              <div className={styles.alertBody}>
-                <div className={styles.alertTitle}>{upcomingBoletos.length} boleto{upcomingBoletos.length > 1 ? 's' : ''} vencendo</div>
-                <div className={styles.alertSub}>Próximos 7 dias</div>
-              </div>
-              <span className={`${styles.alertVal} ${styles.alertValDanger}`}>{formatCurrency(upcomingTotal)}</span>
-            </button>
-          )}
-
-          {pendingDarfs.length > 0 && (
-            <button className={`${styles.alertChip} ${styles.alertDarf}`} onClick={() => onNavigate('taxes')}>
-              <div className={`${styles.alertIcon} ${styles.alertIconDarf}`}><Landmark size={17}/></div>
-              <div className={styles.alertBody}>
-                <div className={styles.alertTitle}>{pendingDarfs.length} DARF{pendingDarfs.length > 1 ? 's' : ''} pendente{pendingDarfs.length > 1 ? 's' : ''}</div>
-                <div className={styles.alertSub}>IR sobre vendas</div>
-              </div>
-              <span className={`${styles.alertVal} ${styles.alertValWarn}`}>{formatCurrency(pendingDarfTotal)}</span>
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* ── Grid Main: Alocação + Top Performers ── */}
-      <div className={styles.gridMain}>
-        {/* Alocação por Classe */}
-        <div className={styles.card}>
-          <div className={styles.cardHead}>
-            <span className={styles.cardTitle}><PieChart size={15}/> Alocação por Classe</span>
-            <button className={styles.cardLink} onClick={() => onNavigate('strategy')}>
-              Estratégia <ArrowRight size={12}/>
-            </button>
-          </div>
-          <div className={styles.cardBody}>
-            <div className={styles.allocBar}>
-              {classTotals.map(c => (
-                <div key={c.name} className={styles.allocSeg}
-                  style={{ width: `${c.value}%`, background: c.color }}
-                  title={`${c.name} — ${c.value.toFixed(1)}%`}
-                />
-              ))}
-            </div>
-            <div className={styles.allocLegend}>
-              {classTotals.map(c => (
-                <div key={c.name} className={styles.legendChip}>
-                  <div className={styles.legendDot} style={{ background: c.color }}/>
-                  {c.name} {c.value.toFixed(1)}%
-                </div>
-              ))}
-            </div>
-
-            <div style={{ marginTop: '1rem' }}>
-              {categorySummaries.map(cs => (
-                <div key={cs.category.id} className={styles.catRow}>
-                  <div className={styles.catLeft}>
-                    <div className={styles.catDot} style={{ background: catColorMap[cs.category.className] }}/>
-                    <span className={styles.catName}>{cs.category.subclassName}</span>
-                  </div>
-                  <div className={styles.catRight}>
-                    <span className={styles.catPct}>{(cs.currentPercent || 0).toFixed(1)}%</span>
-                    <span className={styles.catTarget}>/ {cs.targetPercent}%</span>
-                    <span className={`${styles.catBadge} ${cs.action === 'buy' ? styles.catBuy : cs.action === 'sell' ? styles.catSell : styles.catOk}`}>
-                      {cs.action === 'buy' ? `+${formatCurrency(cs.rebalanceAmount)}` : cs.action === 'sell' ? formatCurrency(cs.rebalanceAmount) : '✓'}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Top Performers */}
-        <div className={styles.card}>
-          <div className={styles.cardHead}>
-            <span className={styles.cardTitle}><BarChart3 size={15}/> Top Ativos</span>
-            <button className={styles.cardLink} onClick={() => onNavigate('assets')}>
-              Ver todos <ArrowRight size={12}/>
-            </button>
-          </div>
-          <div className={styles.cardBody}>
-            {topPerformers.map(a => (
-              <div key={a.id} className={styles.perfRow}>
-                <div className={styles.perfAvatar} style={{ background: tickerColor(a.ticker) }}>
-                  {a.ticker.slice(0, 3)}
-                </div>
-                <div className={styles.perfBody}>
-                  <div className={styles.perfTicker}>{a.ticker}</div>
-                  <div className={styles.perfInfo}>{a.category?.subclassName || a.info}</div>
-                </div>
-                <div className={styles.perfRight}>
-                  <div className={styles.perfVal}>{formatCurrency(a.currentValue)}</div>
-                  <div className={`${styles.perfPct} ${a.profitLossPercent >= 0 ? styles.perfGood : styles.perfBad}`}>
-                    {a.profitLossPercent >= 0 ? '+' : ''}{a.profitLossPercent.toFixed(2)}%
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Finanças do Mês + Survival ── */}
-      <div className={styles.gridMain}>
-        <div className={styles.card}>
-          <div className={styles.cardHead}>
-            <span className={styles.cardTitle}><Wallet size={15}/> Finanças — {activeMonth ? fmtMonth(activeMonth.month) : 'Mês'}</span>
-            <button className={styles.cardLink} onClick={() => onNavigate('finances')}>
-              Abrir <ArrowRight size={12}/>
-            </button>
-          </div>
-          <div className={styles.cardBody}>
-            <div className={styles.finRow}>
-              <span className={styles.finLabel}><ArrowUpRight size={14} color="#34D399"/> Receitas</span>
-              <span className={`${styles.finVal} ${styles.finGood}`}>{formatCurrency(monthSummary.income)}</span>
-            </div>
-            <div className={styles.finRow}>
-              <span className={styles.finLabel}><ArrowDownRight size={14} color="#F87171"/> Boletos</span>
-              <span className={`${styles.finVal} ${styles.finBad}`}>{formatCurrency(monthSummary.boletos)}</span>
-            </div>
-            <div className={styles.finRow}>
-              <span className={styles.finLabel}>💳 Assinaturas</span>
-              <span className={`${styles.finVal} ${styles.finBad}`}>{formatCurrency(monthSummary.subs)}</span>
-            </div>
-            <div className={styles.finRow}>
-              <span className={styles.finLabel}>🛒 Extras</span>
-              <span className={`${styles.finVal} ${styles.finBad}`}>{formatCurrency(monthSummary.extras)}</span>
-            </div>
-            <div className={styles.finRow} style={{ borderBottom: 'none', paddingTop: '0.65rem', borderTop: '1px solid var(--color-border)', marginTop: '0.35rem' }}>
-              <span className={styles.finLabel} style={{ fontWeight: 700, color: 'var(--color-text)' }}>Saldo</span>
-              <span className={`${styles.finVal} ${monthSummary.balance >= 0 ? styles.finGood : styles.finBad}`} style={{ fontSize: '1rem' }}>
-                {formatCurrency(monthSummary.balance)}
+          {monthlyCost > 0 && (
+            <div className={styles.statCardStack}>
+              <span className={styles.tileLabel}><ShieldAlert size={11}/> Sobrevivência</span>
+              <span className={styles.tileValue}>{survivalMonths.toFixed(0)} meses</span>
+              <span className={styles.tileSub}>
+                {survivalMonths >= 12 ? `≈ ${(survivalMonths / 12).toFixed(1)} anos no seu padrão de vida` : 'patrimônio ÷ custo mensal'}
               </span>
             </div>
-            {monthSummary.income > 0 && (
-              <div className={styles.finBar}>
-                <div className={styles.finBarFill} style={{
-                  width: `${Math.min((monthSummary.expense / monthSummary.income) * 100, 100)}%`,
-                  background: monthSummary.expense / monthSummary.income > 0.9 ? '#EF4444' : monthSummary.expense / monthSummary.income > 0.7 ? '#FBBF24' : '#10B981',
-                }}/>
-              </div>
-            )}
-          </div>
-        </div>
+          )}
 
-        {/* Tempo de Sobrevivência */}
-        {monthlyCost > 0 && summary.totalValue > 0 && (
-          <div className={styles.survivalCard}>
-            <div className={styles.survivalIcon}><ShieldAlert size={28}/></div>
-            <div className={styles.survivalBody}>
-              <div className={styles.survivalTitle}>Tempo de Sobrevivência</div>
-              <div className={styles.survivalDesc}>
-                Com <strong>{formatCurrency(summary.totalValue)}</strong> de patrimônio e <strong>{formatCurrency(monthlyCost)}</strong>/mês de custos.
-              </div>
-            </div>
-            <div className={styles.survivalNumbers}>
-              <div className={styles.survivalMain}>{(summary.totalValue / monthlyCost).toFixed(0)} m</div>
-              {summary.totalValue / monthlyCost >= 12 && (
-                <div className={styles.survivalSub}>≈ {(summary.totalValue / monthlyCost / 12).toFixed(1)} anos</div>
-              )}
-            </div>
+          <button className={styles.statCardStack} onClick={() => setShowGoalModal(true)} title="Ver detalhes da meta" style={{ cursor: 'pointer', textAlign: 'left', width: '100%', border: '1px solid var(--color-border)' }}>
+            <span className={styles.tileLabel}><Target size={11}/> {activeGoal ? `Meta: ${activeGoal.emoji} ${activeGoal.title}` : 'Meta financeira'}</span>
+            {activeGoal ? (
+              <>
+                <span className={styles.tileValue} style={{ color: '#A78BFA' }}>{goalProgressPct.toFixed(1)}%</span>
+                <div className={styles.meterTrack} style={{ marginTop: '0.3rem' }}>
+                  <div className={styles.meterFill} style={{ width: `${goalProgressPct}%`, background: '#8B5CF6' }}/>
+                </div>
+              </>
+            ) : (
+              <span className={styles.tileSub}>Defina um objetivo e acompanhe o progresso automaticamente</span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Evolução do patrimônio ── */}
+      <EvolutionChart snapshots={snapshots.filter(s => s.strategyId === activeStrategy.id)} />
+
+      {/* ── Central de Ações ── */}
+      <div className={styles.actionCard}>
+        <div className={styles.actionHead}>
+          <Zap size={15} color="#A78BFA" /> Precisa de você
+          {actions.length > 0 && <span className={styles.actionCount}>{actions.length}</span>}
+        </div>
+        {actions.length === 0 ? (
+          <div className={styles.actionEmpty}>
+            <CheckCircle2 size={18} color="#34D399" /> Tudo em dia — nenhuma ação pendente. Bom trabalho!
           </div>
+        ) : (
+          actions.map(a => (
+            <button key={a.key} className={styles.actionRow} onClick={() => onNavigate(a.dest)}>
+              <span className={`${styles.actionIcon} ${a.cls}`}>{a.icon}</span>
+              <span className={styles.actionBody}>
+                <div className={styles.actionTitle}>{a.title}</div>
+                <div className={styles.actionSub}>{a.sub}</div>
+              </span>
+              <span className={styles.actionGo}>{a.go} <ArrowRight size={13} /></span>
+            </button>
+          ))
         )}
       </div>
 
-      {/* ── Evolution Chart ── */}
-      <EvolutionChart snapshots={snapshots.filter(s => s.strategyId === activeStrategy.id)} />
+      {/* ── Pilares ── */}
+      <div className={styles.pillars}>
+        <button className={styles.pillar} onClick={() => onNavigate('assets')}>
+          <div className={styles.pillarHead}>
+            <span className={styles.pillarTitle}><Briefcase size={13}/> Carteira</span>
+            <ArrowRight size={14} className={styles.pillarArrow} />
+          </div>
+          <span className={styles.pillarValue}>{formatCurrency(summary.totalValue)}</span>
+          {classTotals.length > 0 && (
+            <div className={styles.miniAlloc}>
+              {classTotals.map(c => (
+                <span key={c.name} style={{ width: `${c.value}%`, background: c.color, height: '100%', flexShrink: 0 }} title={`${c.name}: ${c.value.toFixed(1)}%`} />
+              ))}
+            </div>
+          )}
+          <span className={styles.pillarSub}>{activeAssets.length} ativos · saúde <strong>{Math.round(summary.healthScore)}/100</strong></span>
+          <span className={`${styles.pillBadge} ${needsRebalancing ? styles.pbWarn : styles.pbGood}`}>
+            {needsRebalancing ? `▲ ${buyAssets.length} comprar · ▼ ${sellAssets.length} reduzir` : '✓ carteira equilibrada'}
+          </span>
+        </button>
 
-      {/* ── Allocation Donut (reaproveitando o componente existente) ── */}
-      <AllocationChart summary={summary} />
+        <button className={styles.pillar} onClick={() => onNavigate('finances')}>
+          <div className={styles.pillarHead}>
+            <span className={styles.pillarTitle}><Wallet size={13}/> Finanças{activeMonth ? ` · ${fmtMonth(activeMonth.month)}` : ''}</span>
+            <ArrowRight size={14} className={styles.pillarArrow} />
+          </div>
+          <span className={styles.pillarValue} style={{ color: monthSummary.balance >= 0 ? '#34D399' : '#F87171' }}>
+            {monthSummary.balance >= 0 ? '+' : ''}{formatCurrency(monthSummary.balance)}
+          </span>
+          <span className={styles.pillarSub}>Entradas <strong>{formatCurrency(monthSummary.income)}</strong> · Saídas <strong>{formatCurrency(monthSummary.expense)}</strong></span>
+          {upcomingBoletos.length > 0 ? (
+            <span className={`${styles.pillBadge} ${styles.pbWarn}`}>{upcomingBoletos.length} conta{upcomingBoletos.length > 1 ? 's' : ''} a pagar · {formatCurrency(upcomingTotal)}</span>
+          ) : (
+            <span className={`${styles.pillBadge} ${styles.pbGood}`}>✓ sem contas vencendo</span>
+          )}
+        </button>
 
-      {/* ── Goal Widget ── */}
-      <GoalWidget currentValue={summary.totalValue} strategyId={activeStrategy.id} />
+        <button className={styles.pillar} onClick={() => onNavigate('taxes')}>
+          <div className={styles.pillarHead}>
+            <span className={styles.pillarTitle}><Landmark size={13}/> Impostos</span>
+            <ArrowRight size={14} className={styles.pillarArrow} />
+          </div>
+          <span className={styles.pillarValue} style={{ color: pendingDarfTotal > 0 ? '#F87171' : 'var(--color-text)' }}>
+            {formatCurrency(pendingDarfTotal)}
+          </span>
+          <span className={styles.pillarSub}>DARF pendente · <strong>{formatCurrency(paidThisYear)}</strong> pagos em {currentYear}</span>
+          {overdueDarfs.length > 0 ? (
+            <span className={`${styles.pillBadge} ${styles.pbBad}`}>{overdueDarfs.length} atrasado{overdueDarfs.length > 1 ? 's' : ''} — resolver hoje</span>
+          ) : pendingDarfs.length > 0 ? (
+            <span className={`${styles.pillBadge} ${styles.pbWarn}`}>{pendingDarfs.length} pendente{pendingDarfs.length > 1 ? 's' : ''}</span>
+          ) : (
+            <span className={`${styles.pillBadge} ${styles.pbGood}`}>✓ em dia</span>
+          )}
+        </button>
 
-      {/* ── AI Analysis ── */}
+        <button className={styles.pillar} onClick={() => onNavigate('strategy')}>
+          <div className={styles.pillarHead}>
+            <span className={styles.pillarTitle}><Target size={13}/> Estratégia</span>
+            <ArrowRight size={14} className={styles.pillarArrow} />
+          </div>
+          <span className={styles.pillarValue}>{Math.round(summary.healthScore)}<span style={{ fontSize: '0.8rem', color: 'var(--color-text-3)' }}> /100</span></span>
+          <span className={styles.pillarSub}>{outOfTolerance.length} de {categorySummaries.length} subclasses fora da tolerância de {activeStrategy.deviationTolerance}pp</span>
+          <span className={`${styles.pillBadge} ${outOfTolerance.length === 0 ? styles.pbGood : styles.pbWarn}`}>
+            {outOfTolerance.length === 0 ? '✓ tudo na meta' : `plano com ${categorySummaries.length} metas`}
+          </span>
+        </button>
+      </div>
+
+      {/* ── Insight cross-domínio (melhor/pior ativo do ano) ── */}
+      {bestPerformer && worstPerformer && (
+        <div className={styles.insightsCard}>
+          <div className={styles.insightsHead}>💡 Destaques da carteira</div>
+          <div className={styles.insightRow}>
+            <div className={styles.perfAvatar} style={{ background: tickerColor(bestPerformer.ticker) }}>{bestPerformer.ticker.slice(0, 3)}</div>
+            <span>
+              <strong>{bestPerformer.ticker}</strong> é seu melhor ativo (<strong style={{ color: '#34D399' }}>{bestPerformer.profitLossPercent >= 0 ? '+' : ''}{bestPerformer.profitLossPercent.toFixed(1)}%</strong>);{' '}
+              <strong>{worstPerformer.ticker}</strong> é o pior (<strong style={{ color: '#F87171' }}>{worstPerformer.profitLossPercent >= 0 ? '+' : ''}{worstPerformer.profitLossPercent.toFixed(1)}%</strong>) e representa{' '}
+              {((worstPerformer.currentValue / summary.totalValue) * 100).toFixed(1)}% da carteira.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Análise por IA ── */}
       <AiAnalysisCard summary={summary} strategyName={activeStrategy.name} />
+
+      {/* ── Modal: detalhe da meta (reaproveita o GoalWidget real) ── */}
+      {showGoalModal && (
+        <div className={styles.goalModalOverlay} onClick={() => setShowGoalModal(false)}>
+          <div className={styles.goalModalWrap} onClick={e => e.stopPropagation()}>
+            <button className={styles.goalModalClose} onClick={() => setShowGoalModal(false)} aria-label="Fechar"><X size={16}/></button>
+            <GoalWidget currentValue={summary.totalValue} strategyId={activeStrategy.id} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
