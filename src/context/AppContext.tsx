@@ -1061,6 +1061,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dbSynced]);
 
+  // `setInterval` é pausado/throttled pelo navegador quando a aba fica em
+  // segundo plano (e suspenso quase totalmente em PWAs instaladas ao sair
+  // do app) — por isso o timer de 5min sozinho não é confiável: o usuário
+  // volta ao app horas depois e vê preços desatualizados até fazer algo
+  // manual. Complementa o timer sincronizando também quando a aba volta a
+  // ficar visível, que é o momento em que o usuário de fato está olhando
+  // para a tela.
+  useEffect(() => {
+    if (!dbSynced) return;
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') syncPrices();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dbSynced]);
+
   const activeGoal = useMemo(() =>
     goals.find(g => g.strategyId === activeStrategyId) ?? null,
   [goals, activeStrategyId]);
