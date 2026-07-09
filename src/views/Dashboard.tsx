@@ -124,7 +124,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
     isSyncingPrices, lastPriceSyncAt, sellTaxRecords, activeGoal,
   } = useApp();
   const { user } = useAuth();
-  const { transactions, months, activeMonthId, subscriptions } = useFinance();
+  const { transactions, months, activeMonthId } = useFinance();
 
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [range, setRange] = useState<RangeId>('1a');
@@ -212,16 +212,17 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
     sellTaxRecords.filter(r => r.taxPaid && r.sellDate.startsWith(currentYear)).reduce((s, r) => s + r.taxDue, 0),
   [sellTaxRecords, currentYear]);
 
-  // Finanças do mês ativo
+  // Finanças do mês ativo — mesma fórmula da página de Finanças: assinaturas
+  // não somam à parte, pois seu valor já está embutido nas transações de
+  // boleto (ex.: fatura do cartão que já inclui as assinaturas do mês).
   const monthSummary = useMemo(() => {
     const mtxs = transactions.filter(t => t.monthId === activeMonthId);
-    const income = mtxs.filter(t => t.type === 'income').reduce((s, t) => s + t.value, 0);
+    const income = mtxs.filter(t => t.section === 'income').reduce((s, t) => s + t.value, 0);
     const boletos = mtxs.filter(t => t.section === 'boleto').reduce((s, t) => s + t.value, 0);
     const extras = mtxs.filter(t => t.section === 'extra').reduce((s, t) => s + t.value, 0);
-    const subs = subscriptions.reduce((s, sub) => s + sub.value, 0);
-    const expense = boletos + extras + subs;
-    return { income, boletos, extras, subs, expense, balance: income - expense };
-  }, [transactions, activeMonthId, subscriptions]);
+    const expense = boletos + extras;
+    return { income, boletos, extras, expense, balance: income - expense };
+  }, [transactions, activeMonthId]);
 
   const monthlyCost = monthSummary.expense;
   const activeMonth = months.find(m => m.id === activeMonthId);
