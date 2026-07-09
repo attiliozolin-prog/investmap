@@ -238,8 +238,8 @@ export default function Navbar({ activeTab, onTabChange }: {
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
                 title="Perfil e configurações"
               >
-                <User size={15} />
-                <span className={styles.profileBtnLabel}>Perfil</span>
+                <Settings size={15} />
+                <span className={styles.profileBtnLabel}>Configurações</span>
                 <ChevronDown size={12} className={`${styles.profileChevron} ${showProfileMenu ? styles.chevronUp : ''}`} />
               </button>
 
