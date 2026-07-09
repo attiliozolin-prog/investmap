@@ -72,6 +72,42 @@
 }
 .btnGhost:hover { border-color: var(--color-primary); color: var(--color-text); }
 
+/* ── Menu de carteira/estratégia (gerenciar carteira ativa) ── */
+.strategyMenu { position: relative; }
+.chevronUp { transform: rotate(180deg); }
+.strategyDropdown {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  min-width: 200px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  animation: dropReveal 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 200;
+}
+.strategyItem {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; text-align: left;
+  padding: 10px 12px;
+  background: transparent; border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-2);
+  font-family: var(--font);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.strategyItem:hover { background: var(--color-surface-2); color: var(--color-text); }
+.strategyItemActive { color: var(--color-primary-light) !important; background: var(--color-primary-glow) !important; }
+.strategyDropdownDivider { height: 1px; background: var(--color-border); margin: var(--space-2) 0; }
+@keyframes dropReveal {
+  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* ── Hero ── */
 .hero { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 0.9rem; }
 .tile {
@@ -445,6 +481,8 @@
 @media (max-width: 640px) {
   .header { flex-direction: column; align-items: stretch; }
   .headerActions > * { flex: 1; justify-content: center; }
+  .strategyMenu { flex: 1; }
+  .strategyMenu .btnGhost { width: 100%; justify-content: center; }
 
   .hero { grid-template-columns: 1fr; }
 

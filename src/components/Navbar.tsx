@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import styles from './Navbar.module.css';
 import {
   TrendingUp, Download, Upload, LogOut, Sun, Moon,
-  BarChart3, ChevronDown, User, LayoutDashboard,
+  ChevronDown, User, LayoutDashboard,
   Briefcase, Target, Wallet, Settings, X, Landmark,
 } from 'lucide-react';
 
@@ -21,18 +21,15 @@ export default function Navbar({ activeTab, onTabChange }: {
   activeTab: string;
   onTabChange: (tab: string) => void;
 }) {
-  const { strategies, assets, activeStrategyId, setActiveStrategy, importData } = useApp();
+  const { strategies, assets, importData } = useApp();
   const { signOut } = useAuth();
 
-  const [showStrategies, setShowStrategies]   = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu]   = useState(false);
   const [theme, setTheme]                     = useState('dark');
 
-  const activeStrategy  = strategies.find((s) => s.id === activeStrategyId);
   const importRef       = useRef<HTMLInputElement>(null);
   const profileMenuRef  = useRef<HTMLDivElement>(null);
-  const strategyMenuRef = useRef<HTMLDivElement>(null);
   const navRef          = useRef<HTMLElement>(null);
 
   // Mede a altura real da navbar e atualiza a variável CSS para os sticky abaixo
@@ -62,9 +59,6 @@ export default function Navbar({ activeTab, onTabChange }: {
     function handleOutsideClick(e: MouseEvent) {
       if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
         setShowProfileMenu(false);
-      }
-      if (strategyMenuRef.current && !strategyMenuRef.current.contains(e.target as Node)) {
-        setShowStrategies(false);
       }
     }
     document.addEventListener('mousedown', handleOutsideClick);
@@ -122,8 +116,6 @@ export default function Navbar({ activeTab, onTabChange }: {
     if (confirm('Tem certeza que deseja sair?')) await signOut();
   };
 
-  const multipleStrategies = strategies.length > 1;
-
   return (
     <>
       <nav ref={navRef} className={styles.nav}>
@@ -156,79 +148,8 @@ export default function Navbar({ activeTab, onTabChange }: {
             </div>
           </div>
 
-          {/* ── Direita: Carteira + Perfil ────────────────────────────────── */}
+          {/* ── Direita: Perfil ───────────────────────────────────────────── */}
           <div className={styles.rightGroup}>
-
-            {/* Seletor / badge de carteira */}
-            <div className={styles.strategySwitcher} ref={strategyMenuRef}>
-              {multipleStrategies ? (
-                <>
-                  <button
-                    id="strategy-switcher-btn"
-                    className={styles.strategyBtn}
-                    onClick={() => setShowStrategies(!showStrategies)}
-                  >
-                    <BarChart3 size={15} className={styles.strategyBtnIcon} />
-                    <div className={styles.strategyBtnContent}>
-                      <span className={styles.strategyLabel}>Carteira</span>
-                      <span className={styles.strategyName}>{activeStrategy?.name ?? 'Selecionar'}</span>
-                    </div>
-                    <ChevronDown
-                      size={13}
-                      className={`${styles.strategyChevron} ${showStrategies ? styles.chevronUp : ''}`}
-                    />
-                  </button>
-
-                  {showStrategies && (
-                    <div className={styles.strategyDropdown}>
-                      {strategies.map((s) => (
-                        <button
-                          key={s.id}
-                          className={`${styles.strategyItem} ${s.id === activeStrategyId ? styles.strategyItemActive : ''}`}
-                          onClick={() => { setActiveStrategy(s.id); setShowStrategies(false); }}
-                        >
-                          {s.name}
-                        </button>
-                      ))}
-                      <div className={styles.strategyDropdownDivider} />
-                      <button
-                        className={styles.strategyItem}
-                        onClick={() => { onTabChange('strategy'); setShowStrategies(false); }}
-                      >
-                        <Target size={13} style={{ opacity: 0.7 }} />
-                        <span>Configurar Estratégia</span>
-                      </button>
-                    </div>
-                  )}
-                </>
-              ) : (
-                /* Badge único — clicável para acessar estratégia */
-                <button
-                  className={styles.strategyBtn}
-                  onClick={() => setShowStrategies(!showStrategies)}
-                >
-                  <BarChart3 size={14} className={styles.strategyBtnIcon} />
-                  <div className={styles.strategyBtnContent}>
-                    <span className={styles.strategyLabel}>Carteira</span>
-                    <span className={styles.strategyName}>{activeStrategy?.name ?? 'Minha Carteira'}</span>
-                  </div>
-                  <ChevronDown size={13} className={`${styles.strategyChevron} ${showStrategies ? styles.chevronUp : ''}`} />
-                </button>
-              )}
-
-              {/* Dropdown para badge único */}
-              {!multipleStrategies && showStrategies && (
-                <div className={styles.strategyDropdown}>
-                  <button
-                    className={styles.strategyItem}
-                    onClick={() => { onTabChange('strategy'); setShowStrategies(false); }}
-                  >
-                    <Target size={13} style={{ opacity: 0.7 }} />
-                    <span>Configurar Estratégia</span>
-                  </button>
-                </div>
-              )}
-            </div>
 
             {/* Dropdown de Perfil */}
             <div className={styles.profileWrapper} ref={profileMenuRef}>

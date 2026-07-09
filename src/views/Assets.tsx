@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { calculatePortfolio, formatCurrency, idealSingleContribution } from '@/lib/calculations';
@@ -12,7 +12,7 @@ import { AssetWithCalcs, Asset } from '@/types';
 import styles from './Assets.module.css';
 import {
   Plus, BookOpen, RefreshCw, ChevronDown, X, Pencil,
-  Target, Sparkles, Zap, Wallet, Landmark,
+  Target, Sparkles, Zap, Wallet, Landmark, Settings,
 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 
@@ -31,7 +31,7 @@ const CLASS_COLORS = ['#8B5CF6', '#0891B2', '#D97706', '#DB2777'];
 export default function Assets() {
   const router = useRouter();
   const {
-    activeStrategy, activeAssets, activeStrategyId,
+    strategies, activeStrategy, activeAssets, activeStrategyId, setActiveStrategy,
     addAsset, updateAsset,
     syncPrices, isSyncingPrices, lastPriceSyncAt,
   } = useApp();
@@ -42,6 +42,18 @@ export default function Assets() {
   const [transactionAssetId, setTransactionAssetId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [detailAsset, setDetailAsset] = useState<AssetWithCalcs | null>(null);
+  const [showStrategyMenu, setShowStrategyMenu] = useState(false);
+  const strategyMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleOutsideClick(e: MouseEvent) {
+      if (strategyMenuRef.current && !strategyMenuRef.current.contains(e.target as Node)) {
+        setShowStrategyMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
   const [filter, setFilter] = useState<Filter>('all');
   const [classFilter, setClassFilter] = useState<string | null>(null);
@@ -263,6 +275,37 @@ export default function Assets() {
           </div>
         </div>
         <div className={styles.headerActions}>
+          <div className={styles.strategyMenu} ref={strategyMenuRef}>
+            <button className={styles.btnGhost} onClick={() => setShowStrategyMenu(v => !v)} title="Gerenciar carteira e estratégia">
+              <Settings size={15} /> {activeStrategy?.name ?? 'Carteira'}
+              <ChevronDown size={13} className={showStrategyMenu ? styles.chevronUp : undefined} />
+            </button>
+            {showStrategyMenu && (
+              <div className={styles.strategyDropdown}>
+                {strategies.length > 1 && (
+                  <>
+                    {strategies.map(s => (
+                      <button
+                        key={s.id}
+                        className={`${styles.strategyItem} ${s.id === activeStrategyId ? styles.strategyItemActive : ''}`}
+                        onClick={() => { setActiveStrategy(s.id); setShowStrategyMenu(false); }}
+                      >
+                        {s.name}
+                      </button>
+                    ))}
+                    <div className={styles.strategyDropdownDivider} />
+                  </>
+                )}
+                <button
+                  className={styles.strategyItem}
+                  onClick={() => { router.push('/estrategia'); setShowStrategyMenu(false); }}
+                >
+                  <Target size={13} style={{ opacity: 0.7 }} />
+                  <span>Configurar Estratégia</span>
+                </button>
+              </div>
+            )}
+          </div>
           <button className={styles.btnGhost} onClick={() => setShowHistory(true)} title="Extrato completo de compras e vendas">
             <BookOpen size={15} /> Histórico
           </button>
