@@ -7,7 +7,7 @@ import styles from './Navbar.module.css';
 import {
   TrendingUp, Download, Upload, LogOut, Sun, Moon,
   ChevronDown, User, LayoutDashboard,
-  Briefcase, Target, Wallet, Settings, X, Landmark,
+  Briefcase, Target, Wallet, Settings, X,
 } from 'lucide-react';
 
 // ── Tab definitions (ícones reaproveitados do mobile) ─────────────────────────
@@ -257,10 +257,6 @@ export default function Navbar({ activeTab, onTabChange }: {
         <button className={`${styles.mobileTabItem} ${activeTab === 'finances' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('finances')}>
           <Wallet className={styles.mobileTabIcon} />
           <span>Finanças</span>
-        </button>
-        <button className={`${styles.mobileTabItem} ${activeTab === 'taxes' ? styles.mobileTabItemActive : ''}`} onClick={() => onTabChange('taxes')}>
-          <Landmark className={styles.mobileTabIcon} />
-          <span>Impostos</span>
         </button>
       </div>
     </>
