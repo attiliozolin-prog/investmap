@@ -191,6 +191,7 @@ export interface AiImportResult {
   referenceMonth: string | null;  // YYYY-MM
   totalDetected: number | null;   // total do documento (ex.: total da fatura)
   items: AiImportItem[];
+  truncated?: boolean;            // documento tinha mais itens que o limite
 }
 
 // Computed finance interfaces

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   X, ScanLine, Camera, FileUp, ShieldCheck, AlertTriangle, Sparkles,
 } from 'lucide-react';
@@ -82,6 +82,43 @@ interface ReviewRow {
 
 type Step = 'select' | 'processing' | 'review';
 type Mode = 'detalhado' | 'unico';
+
+// Não há como saber o progresso real de uma única chamada de IA, então o
+// indicador é honesto por aproximação: estágios pelo tempo decorrido e uma
+// curva assintótica calibrada para ~30s (fatura típica), que nunca "fecha"
+// sozinha — os 100% só aparecem quando a resposta de fato chega.
+const PROGRESS_STAGES: [afterSeconds: number, label: string][] = [
+  [0, 'Enviando o documento…'],
+  [3, 'Lendo o documento…'],
+  [10, 'Identificando os lançamentos…'],
+  [25, 'Categorizando os itens…'],
+  [60, 'Fatura longa — quase lá, aguarde…'],
+];
+
+function ProcessingIndicator() {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const t0 = Date.now();
+    const timer = setInterval(() => setElapsed((Date.now() - t0) / 1000), 500);
+    return () => clearInterval(timer);
+  }, []);
+
+  const pct = Math.min(95, Math.round(100 * (1 - Math.exp(-elapsed / 22))));
+  const stage = [...PROGRESS_STAGES].reverse().find(([s]) => elapsed >= s)?.[1] ?? PROGRESS_STAGES[0][1];
+
+  return (
+    <div className={styles.processing} role="status" aria-live="polite">
+      <ScanLine size={38} className={styles.processingIcon} />
+      <p className={styles.processingTitle}>{stage}</p>
+      <div className={styles.progressTrack}>
+        <div className={styles.progressFill} style={{ width: `${pct}%` }} />
+      </div>
+      <p className={styles.processingSub}>
+        ~{pct}% · {Math.floor(elapsed)}s — faturas grandes levam até 2 minutos
+      </p>
+    </div>
+  );
+}
 
 export default function FinanceImportModal({
   monthId, monthStr, categories, monthTxs, onClose, onConfirm,
@@ -332,13 +369,7 @@ export default function FinanceImportModal({
         )}
 
         {/* ── Passo 2: processando ── */}
-        {step === 'processing' && (
-          <div className={styles.processing}>
-            <ScanLine size={38} className={styles.processingIcon} />
-            <p className={styles.processingTitle}>Lendo o documento…</p>
-            <p className={styles.processingSub}>A IA está identificando os lançamentos. Isso leva de 10 a 30 segundos.</p>
-          </div>
-        )}
+        {step === 'processing' && <ProcessingIndicator />}
 
         {/* ── Passo 3: revisão ── */}
         {step === 'review' && result && (
@@ -350,6 +381,12 @@ export default function FinanceImportModal({
                 {result.totalDetected != null && <span>· total do documento {fmt(result.totalDetected)}</span>}
                 <span>· {rows.length} {rows.length === 1 ? 'item' : 'itens'}</span>
               </div>
+
+              {result.truncated && (
+                <div className={styles.errorBox} style={{ background: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.35)', color: '#FBBF24' }} role="alert">
+                  <AlertTriangle size={15} /> O documento tem mais itens que o limite de leitura ({rows.length} carregados). Confira o total e adicione manualmente o que faltar.
+                </div>
+              )}
 
               {result.documentType === 'fatura_cartao' && rows.length > 1 && (
                 <div className={styles.modeRow} role="tablist" aria-label="Forma de lançamento">

@@ -68,7 +68,21 @@
   50% { opacity: 0.45; transform: scale(0.92); }
 }
 .processingTitle { font-size: 0.95rem; font-weight: 700; color: var(--color-text); margin: 0; }
-.processingSub { font-size: 0.78rem; color: var(--color-text-3); margin: 0; }
+.processingSub { font-size: 0.78rem; color: var(--color-text-3); margin: 0; font-variant-numeric: tabular-nums; }
+
+.progressTrack {
+  width: min(300px, 80%);
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-primary-glow);
+  overflow: hidden;
+}
+.progressFill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-primary);
+  transition: width 0.5s ease;
+}
 
 /* ── Passo 3: revisão ── */
 .docMeta {

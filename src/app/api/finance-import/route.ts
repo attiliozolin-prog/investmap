@@ -3,6 +3,7 @@ import { extractText } from 'unpdf';
 import { createServerSupabase } from '@/lib/supabase-server';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { OPENAI_MODEL, OPENAI_CHAT_COMPLETIONS_URL } from '@/lib/aiConfig';
+import { fallbackCategory, isUselessCategory } from '@/lib/importCategoryRules';
 import type { AiImportItem, AiImportResult, AiImportDocumentType } from '@/types';
 
 // Fatura grande = muitos tokens de saída = minutos. Requer Fluid Compute
@@ -21,8 +22,8 @@ const ACCEPTED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'applica
 // ~3,3 MB de arquivo (base64 infla ~33%) — folga sob o teto de 4,5 MB
 // de body da Vercel. O client já comprime imagens antes de enviar.
 const MAX_BASE64_CHARS = 4_500_000;
-// Fatura real chega a >100 compras; com maxDuration de 300s cabe com folga
-const MAX_ITEMS = 200;
+// Fatura real chega a >150 compras; com maxDuration de 300s cabe com folga
+const MAX_ITEMS = 300;
 
 // PDFs digitais (faturas de banco) têm texto embutido: extraí-lo e mandar só
 // texto é ordens de grandeza mais rápido que visão sobre cada página — uma
@@ -73,10 +74,12 @@ const RESPONSE_SCHEMA = {
 const str = (v: unknown, max = 60): string =>
   typeof v === 'string' ? v.slice(0, max) : '';
 
+
 function sanitizeResult(raw: unknown, allowedCategories: string[]): AiImportResult {
   const r = raw as Record<string, unknown>;
 
-  const items = (Array.isArray(r?.items) ? r.items : [])
+  const rawItems = Array.isArray(r?.items) ? r.items : [];
+  const items = rawItems
     .slice(0, MAX_ITEMS)
     .map((it): AiImportItem | null => {
       const item = it as Record<string, unknown>;
@@ -87,8 +90,12 @@ function sanitizeResult(raw: unknown, allowedCategories: string[]): AiImportResu
       const date = typeof item?.dt === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.dt) && !isNaN(Date.parse(item.dt))
         ? item.dt : null;
       const catIdx = Number(item?.c);
-      const category = Number.isInteger(catIdx) && catIdx >= 0 && catIdx < allowedCategories.length
+      let category = Number.isInteger(catIdx) && catIdx >= 0 && catIdx < allowedCategories.length
         ? allowedCategories[catIdx] : null;
+      // Sem categoria (ou no genérico "Outro")? Tenta as regras de estabelecimento
+      if (isUselessCategory(category)) {
+        category = fallbackCategory(description, allowedCategories) ?? category;
+      }
       const type = item?.t === 'i' ? 'income' as const : 'expense' as const;
       return { description, value, date, category, type };
     })
@@ -103,6 +110,7 @@ function sanitizeResult(raw: unknown, allowedCategories: string[]): AiImportResu
       ? r.referenceMonth : null,
     totalDetected: Number.isFinite(totalRaw) && totalRaw > 0 ? totalRaw : null,
     items,
+    truncated: rawItems.length > MAX_ITEMS,
   };
 }
 
@@ -178,6 +186,7 @@ Cada compra/cobrança/receita vira um item com os campos:
 - v: valor em reais, sempre positivo, com centavos.
 - dt: data do item no formato YYYY-MM-DD; null se o documento não mostrar.
 - c: índice numérico da categoria que melhor descreve o item, escolhido desta lista, ou null se nenhuma servir: ${categories.map((c, i) => `${i}=${c}`).join(' ') || '(nenhuma categoria — use null)'}.
+  Use o ramo do estabelecimento para categorizar: apps de transporte (Uber, 99), postos e estacionamentos → transporte; delivery, restaurantes e mercados → alimentação; farmácias → saúde; lojas de roupas e calçados → vestuário/roupas; streaming e jogos → lazer. Prefira sempre uma categoria específica a "Outro".
 - t: "e" para gastos e cobranças; "i" somente para valores recebidos pelo usuário (salário, reembolso, transferência recebida).
 
 Regras:
@@ -240,8 +249,8 @@ Regras:
           },
         ],
         response_format: { type: 'json_schema', json_schema: RESPONSE_SCHEMA },
-        // Fatura grande pode ter ~100 itens; truncar aqui quebraria o JSON
-        max_tokens: 8192,
+        // Fatura grande pode ter ~300 itens; truncar aqui quebraria o JSON
+        max_tokens: 12288,
         temperature: 0,
       }),
     });
