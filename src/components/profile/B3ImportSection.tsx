@@ -25,10 +25,22 @@ interface ParsedRow {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function parseB3Date(raw: string): { isoDate: string; dateDay: string } {
-  const parts = raw.split('/');
+function parseB3Date(raw: unknown): { isoDate: string; dateDay: string } {
+  // Célula de data nativa do Excel (com cellDates: true)
+  if (raw instanceof Date && !isNaN(raw.getTime())) {
+    const dateDay = `${raw.getFullYear()}-${String(raw.getMonth() + 1).padStart(2, '0')}-${String(raw.getDate()).padStart(2, '0')}`;
+    return { isoDate: `${dateDay}T12:00:00Z`, dateDay };
+  }
+  // Número serial do Excel (dias desde 30/12/1899)
+  if (typeof raw === 'number' && raw > 25569) {
+    const d = new Date(Math.round((raw - 25569) * 86400 * 1000));
+    const dateDay = d.toISOString().split('T')[0];
+    return { isoDate: `${dateDay}T12:00:00Z`, dateDay };
+  }
+  // Texto dd/mm/aaaa
+  const parts = String(raw ?? '').trim().split('/');
   if (parts.length === 3) {
-    const dateDay = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    const dateDay = `${parts[2].padStart(4, '20')}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
     return { isoDate: `${dateDay}T12:00:00Z`, dateDay };
   }
   const now = new Date();
@@ -39,9 +51,20 @@ function parseB3Date(raw: string): { isoDate: string; dateDay: string } {
 }
 
 function parseNum(raw: unknown): number {
-  const s = String(raw ?? '0').replace(/\./g, '').replace(',', '.');
+  // Célula numérica nativa do Excel — usar direto, sem manipular string
+  if (typeof raw === 'number') return isNaN(raw) ? 0 : raw;
+  let s = String(raw ?? '0').replace(/[R$\s ]/g, '');
+  if (s.includes(',')) {
+    // Formato brasileiro: "1.234,56" → ponto é separador de milhar
+    s = s.replace(/\./g, '').replace(',', '.');
+  }
   const n = parseFloat(s);
   return isNaN(n) ? 0 : n;
+}
+
+/** Normaliza célula de cabeçalho: remove espaços extras/NBSP e baixa a caixa. */
+function normHeader(h: unknown): string {
+  return String(h ?? '').replace(/ /g, ' ').trim().toLowerCase();
 }
 
 /**
@@ -101,31 +124,40 @@ export default function B3ImportSection() {
 
     try {
       const data = await file.arrayBuffer();
-      const workbook = read(data);
+      const workbook = read(data, { cellDates: true });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = utils.sheet_to_json<any[]>(sheet, { header: 1 });
 
       if (rows.length < 2) throw new Error('Arquivo vazio ou formato inválido.');
 
       const headerRow = rows.find(
-        r => Array.isArray(r) && r.length > 3 && (r.includes('Produto') || r.includes('Código de Negociação'))
+        r =>
+          Array.isArray(r) &&
+          r.length > 3 &&
+          r.some(c => {
+            const h = normHeader(c);
+            return h === 'produto' || h === 'código de negociação' || h === 'codigo de negociação' || h === 'código de negociacão';
+          })
       );
-      if (!headerRow) throw new Error('Cabeçalho não encontrado. Use o arquivo de Negociação ou Movimentação exportado pelo CEI/B3.');
+      if (!headerRow) throw new Error('Cabeçalho não encontrado. Use o arquivo de Negociação ou Movimentação exportado pela Área do Investidor (B3), sem editar as colunas.');
 
+      const findCol = (...names: string[]) => headerRow.findIndex((h: unknown) => names.includes(normHeader(h)));
       const idx = {
-        produto: headerRow.findIndex((h: string) => h === 'Produto' || h === 'Código de Negociação'),
-        data: headerRow.findIndex((h: string) => h === 'Data' || h === 'Data do Negócio'),
-        mov: headerRow.findIndex((h: string) => h === 'Movimentação' || h === 'Tipo de Movimentação'),
-        qtd: headerRow.findIndex((h: string) => h === 'Quantidade'),
-        preco: headerRow.findIndex((h: string) => h === 'Preço unitário' || h === 'Preço'),
-        total: headerRow.findIndex((h: string) => h === 'Valor da Operação' || h === 'Valor'),
-        entradaSaida: 0, // primeira coluna nos arquivos de movimentação
+        produto: findCol('produto', 'código de negociação', 'codigo de negociação'),
+        data: findCol('data', 'data do negócio', 'data do negocio'),
+        mov: findCol('movimentação', 'movimentacao', 'tipo de movimentação', 'tipo de movimentacao'),
+        qtd: findCol('quantidade'),
+        preco: findCol('preço unitário', 'preco unitário', 'preço', 'preco'),
+        total: findCol('valor da operação', 'valor da operacao', 'valor'),
+        entradaSaida: findCol('entrada/saída', 'entrada/saida') !== -1 ? findCol('entrada/saída', 'entrada/saida') : 0,
       };
 
       if (idx.produto === -1 || idx.data === -1) throw new Error('Colunas obrigatórias ausentes no arquivo.');
 
       const parsed: ParsedRow[] = [];
       const headerIdx = rows.indexOf(headerRow);
+      const unmatchedTickers = new Set<string>();
+      let recognizedCount = 0;
 
       for (let i = headerIdx + 1; i < rows.length; i++) {
         const row = rows[i];
@@ -133,7 +165,7 @@ export default function B3ImportSection() {
 
         // Extrair ticker: remove sufixo 'F' de fracionário para casar com ativo cadastrado
         const rawCode = String(row[idx.produto]).split(' - ')[0].trim().toUpperCase();
-        const ticker = rawCode.endsWith('F') ? rawCode.slice(0, -1) : rawCode;
+        const ticker = /^[A-Z]{4}\d{1,2}F$/.test(rawCode) ? rawCode.slice(0, -1) : rawCode;
 
         // Tipo de movimento
         const rawMov = String(row[idx.mov] ?? '').toLowerCase();
@@ -141,16 +173,23 @@ export default function B3ImportSection() {
         if (rawMov.includes('compra')) txType = 'buy';
         else if (rawMov.includes('venda')) txType = 'sell';
         // Movimentação: "Transferência - Liquidação" Credito = compra, Debito = venda
-        else if (rawMov.includes('transferência - liquidação')) {
+        else if (rawMov.includes('transferência - liquidação') || rawMov.includes('transferencia - liquidacao')) {
           const direction = String(row[idx.entradaSaida]).toLowerCase();
-          txType = direction === 'credito' ? 'buy' : 'sell';
+          txType = direction.startsWith('cred') ? 'buy' : 'sell';
         }
 
         if (!txType) continue; // ignora dividendos, atualizações, etc.
+        recognizedCount++;
 
         // Casar com ativo cadastrado (aceita PETR4 e PETR4F → PETR4)
-        const asset = assets.find(a => a.ticker.toUpperCase() === ticker);
-        if (!asset) continue;
+        const asset = assets.find(a => {
+          const t = a.ticker.toUpperCase().trim();
+          return t === ticker || t === rawCode;
+        });
+        if (!asset) {
+          unmatchedTickers.add(ticker);
+          continue;
+        }
 
         const { isoDate, dateDay } = parseB3Date(String(row[idx.data]));
         const quantity = parseNum(row[idx.qtd]);
@@ -166,16 +205,34 @@ export default function B3ImportSection() {
       }
 
       if (parsed.length === 0) {
-        setStatus({ type: 'warning', message: 'Nenhuma transação de compra/venda reconhecida no arquivo, ou todos os ativos não estão cadastrados na sua carteira.' });
+        if (unmatchedTickers.size > 0) {
+          const list = Array.from(unmatchedTickers).sort().join(', ');
+          setStatus({
+            type: 'warning',
+            message: `${recognizedCount} transação(ões) de compra/venda encontrada(s) no arquivo, mas nenhum destes ativos está cadastrado na sua carteira: ${list}. Cadastre esses ativos primeiro (aba Carteira) e importe o arquivo novamente.`,
+          });
+        } else {
+          setStatus({
+            type: 'warning',
+            message: 'Nenhuma transação de compra/venda foi reconhecida no arquivo. Verifique se você exportou o extrato de Negociação (ou Movimentação) da Área do Investidor da B3 — extratos de proventos/dividendos não contêm compras e vendas.',
+          });
+        }
         setLoading(false);
         return;
       }
 
+      if (unmatchedTickers.size > 0) {
+        console.warn('[B3 Import] Tickers não cadastrados ignorados:', Array.from(unmatchedTickers));
+      }
+
       const dups = parsed.filter(r => r.duplicate).length;
+      const unmatchedNote = unmatchedTickers.size > 0
+        ? ` ⚠️ Ativos não cadastrados foram ignorados: ${Array.from(unmatchedTickers).sort().join(', ')}.`
+        : '';
       setPreview(parsed);
       setStatus({
-        type: dups > 0 ? 'warning' : 'info',
-        message: `${parsed.length} transação(ões) encontrada(s). ${dups > 0 ? `⚠️ ${dups} já existem e serão ignoradas.` : 'Nenhuma duplicata detectada.'} Revise e confirme.`,
+        type: dups > 0 || unmatchedTickers.size > 0 ? 'warning' : 'info',
+        message: `${parsed.length} transação(ões) encontrada(s). ${dups > 0 ? `⚠️ ${dups} já existem e serão ignoradas.` : 'Nenhuma duplicata detectada.'}${unmatchedNote} Revise e confirme.`,
       });
     } catch (err: any) {
       console.error(err);
