@@ -26,8 +26,20 @@ describe('fallbackCategory', () => {
   });
 
   it('reconhece lojas de roupa como Vestuário', () => {
-    expect(fallbackCategory('Shein *Shein', CATS)).toBe('Vestuário');
     expect(fallbackCategory('Lojas Renner', CATS)).toBe('Vestuário');
+    expect(fallbackCategory('Zara Brasil', CATS)).toBe('Vestuário');
+  });
+
+  it('reconhece marketplaces genéricos como Compras Online (Shein incluído, prevalece sobre Vestuário)', () => {
+    const catsComOnline = [...CATS, 'Compras Online'];
+    expect(fallbackCategory('Mercado Livre', catsComOnline)).toBe('Compras Online');
+    expect(fallbackCategory('Amazon.Com.Br', catsComOnline)).toBe('Compras Online');
+    expect(fallbackCategory('Aliexpress', catsComOnline)).toBe('Compras Online');
+    expect(fallbackCategory('Temu', catsComOnline)).toBe('Compras Online');
+    expect(fallbackCategory('Shopee *Shopee', catsComOnline)).toBe('Compras Online');
+    expect(fallbackCategory('Shein *Shein', catsComOnline)).toBe('Compras Online');
+    // Sem categoria de compras online no usuário → null (não força Vestuário)
+    expect(fallbackCategory('Shein *Shein', CATS)).toBeNull();
   });
 
   it('reconhece delivery e mercado como Alimentação', () => {

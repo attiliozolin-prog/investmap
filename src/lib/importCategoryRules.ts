@@ -16,10 +16,16 @@ const normalize = (s: string) =>
 const MERCHANT_RULES: { pattern: RegExp; targets: string[] }[] = [
   // "uber" como prefixo pega "Uberrides"/"Uber *Trip"; lookahead exclui Uberaba/Uberlândia
   { pattern: /\buber(?!aba|l[aâ]nd)|\b99 ?(app|pop|taxi)?\b|cabify|taxi|metro\b|onibus|estacionamento|pedagio|posto |shell|ipiranga|combustivel/, targets: ['transporte'] },
-  { pattern: /ifood|rappi|restaurante|padaria|lanchonete|pizzari|hamburg|burger|mercado|supermercado|hortifruti|acougue|emporio|cafeteria|\bcafe\b/, targets: ['alimentacao'] },
+  // "mercado" isolado (mercadinho, mercado municipal) é alimentação, mas
+  // "mercado livre" é o marketplace — excluído aqui via lookahead negativo.
+  { pattern: /ifood|rappi|restaurante|padaria|lanchonete|pizzari|hamburg|burger|\bmercado\b(?! ?livre)|supermercado|hortifruti|acougue|emporio|cafeteria|\bcafe\b/, targets: ['alimentacao'] },
   { pattern: /farmacia|drogaria|drogasil|droga raia|pague menos|panvel|laboratorio|clinica|odonto/, targets: ['saude'] },
   { pattern: /netflix|spotify|disney|hbo|\bmax\b|prime video|youtube|cinema|ingresso|steam|playstation|xbox|nintendo/, targets: ['lazer', 'assinatura'] },
-  { pattern: /renner|riachuelo|\bc ?& ?a\b|\bzara\b|hering|marisa|shein|\bnike\b|adidas|\bvans\b|calcado|sapato|vestuario|roupa/, targets: ['vestuario', 'roupa'] },
+  { pattern: /renner|riachuelo|\bc ?& ?a\b|\bzara\b|hering|marisa|\bnike\b|adidas|\bvans\b|calcado|sapato|vestuario|roupa/, targets: ['vestuario', 'roupa'] },
+  // Marketplaces genéricos (vendem de tudo) — checados ANTES de vestuário
+  // pois "shein"/"shopee" também vendem roupa, mas o padrão de compra é
+  // melhor descrito como "compras online" que como uma categoria única.
+  { pattern: /mercado ?livre|amazon|ali ?express|\btemu\b|shopee|shein|magazine luiza|magalu|americanas\.com|casas bahia/, targets: ['compras online', 'compras', 'marketplace'] },
   { pattern: /apple ?\.? ?com ?\/? ?bill|apple bill|icloud|google one|google storage|dropbox|onedrive/, targets: ['nuvem', 'servico digital', 'servicos digitais', 'assinatura'] },
   { pattern: /centauro|decathlon|smart ?fit|bluefit|academia|suplemento/, targets: ['esporte'] },
   { pattern: /\bvivo\b|claro\b|\btim\b|telefonica|operadora/, targets: ['telefonia'] },
