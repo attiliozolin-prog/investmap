@@ -187,6 +187,12 @@ export default function Navbar({ activeTab, onTabChange }: {
                     <LogOut size={15} />
                     <span>Sair da Conta</span>
                   </button>
+
+                  <div className={styles.profileLegalFooter}>
+                    <a href="/privacidade">Privacidade</a>
+                    <span aria-hidden>·</span>
+                    <a href="/termos">Termos de Uso</a>
+                  </div>
                 </div>
               )}
             </div>
@@ -239,6 +245,12 @@ export default function Navbar({ activeTab, onTabChange }: {
                   <span>Sair da Conta</span>
                 </div>
               </button>
+
+              <div className={styles.mobileLegalFooter}>
+                <a href="/privacidade">Privacidade</a>
+                <span aria-hidden>·</span>
+                <a href="/termos">Termos de Uso</a>
+              </div>
             </div>
           </div>
         )}

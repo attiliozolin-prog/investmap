@@ -352,6 +352,19 @@
   border-top: 1px solid var(--color-border);
 }
 
+.profileLegalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 4px;
+  padding: 8px 6px 4px;
+  font-size: 0.72rem;
+  color: var(--color-text-3);
+}
+.profileLegalFooter a { color: var(--color-text-3); text-decoration: none; }
+.profileLegalFooter a:hover { color: var(--color-text-2); text-decoration: underline; }
+
 /* ── Botão de menu mobile (engrenagem) ─────────────────────────────────────── */
 .mobileActionBtn {
   display: none;
@@ -412,6 +425,20 @@
   margin: 6px 0;
   border-top: 1px solid var(--color-border);
 }
+
+.mobileLegalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 6px;
+  padding: 10px 6px 4px;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.74rem;
+  color: var(--color-text-3);
+}
+.mobileLegalFooter a { color: var(--color-text-3); text-decoration: none; }
+.mobileLegalFooter a:hover { color: var(--color-text-2); text-decoration: underline; }
 
 /* ── Bottom Tab Nav (Mobile) ───────────────────────────────────────────────── */
 .mobileTabNav {
