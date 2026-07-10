@@ -39,7 +39,8 @@ export default function Strategy() {
   const refSub   = useRef<HTMLInputElement>(null);
   const refTgt   = useRef<HTMLInputElement>(null);
 
-  const categories = activeStrategy?.categories ?? [];
+  const rawCategories = activeStrategy?.categories;
+  const categories = useMemo(() => rawCategories ?? [], [rawCategories]);
   const totalTarget = categories.reduce((s, c) => s + c.targetPercent, 0);
   const isValid = Math.abs(totalTarget - 100) < 0.01;
 
