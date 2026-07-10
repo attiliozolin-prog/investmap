@@ -30,9 +30,13 @@ const MAX_PDF_TEXT_CHARS = 60_000;
 
 const DOC_TYPES: AiImportDocumentType[] = ['fatura_cartao', 'extrato', 'cupom', 'recibo', 'boleto', 'outro'];
 
-// Structured Outputs (strict): garante JSON válido no formato exato.
-// A categoria é validada server-side contra a lista do usuário (enum
-// dinâmico no schema seria possível, mas a validação local é mais robusta).
+// Tempo é o recurso escasso: a função da Vercel morre em 60s (plano Hobby)
+// e o que domina a latência é a GERAÇÃO de tokens. Por isso os itens usam
+// chaves de 1-2 letras e categoria como índice numérico — uma fatura de
+// ~100 itens cai de ~3.500 para ~1.800 tokens de saída, metade do tempo.
+//
+// Structured Outputs (strict) garante JSON válido no formato exato; a
+// validação de conteúdo (valores, datas, índice de categoria) é server-side.
 const RESPONSE_SCHEMA = {
   name: 'lancamentos_extraidos',
   strict: true,
@@ -49,13 +53,13 @@ const RESPONSE_SCHEMA = {
         items: {
           type: 'object',
           additionalProperties: false,
-          required: ['description', 'value', 'date', 'category', 'type'],
+          required: ['d', 'v', 'dt', 'c', 't'],
           properties: {
-            description: { type: 'string' },
-            value: { type: 'number' },
-            date: { type: ['string', 'null'], description: 'Data do item no formato YYYY-MM-DD' },
-            category: { type: ['string', 'null'] },
-            type: { type: 'string', enum: ['expense', 'income'] },
+            d: { type: 'string', description: 'descrição curta' },
+            v: { type: 'number', description: 'valor em reais' },
+            dt: { type: ['string', 'null'], description: 'data YYYY-MM-DD ou null' },
+            c: { type: ['integer', 'null'], description: 'índice da categoria na lista numerada, ou null' },
+            t: { type: 'string', enum: ['e', 'i'], description: 'e=gasto, i=receita' },
           },
         },
       },
@@ -68,20 +72,21 @@ const str = (v: unknown, max = 60): string =>
 
 function sanitizeResult(raw: unknown, allowedCategories: string[]): AiImportResult {
   const r = raw as Record<string, unknown>;
-  const catSet = new Set(allowedCategories);
 
   const items = (Array.isArray(r?.items) ? r.items : [])
     .slice(0, MAX_ITEMS)
     .map((it): AiImportItem | null => {
       const item = it as Record<string, unknown>;
-      const description = typeof item?.description === 'string' ? item.description.trim().slice(0, 120) : '';
-      const value = Math.round(Number(item?.value) * 100) / 100;
+      const description = typeof item?.d === 'string' ? item.d.trim().slice(0, 120) : '';
+      const value = Math.round(Number(item?.v) * 100) / 100;
       if (!description || !Number.isFinite(value) || value <= 0) return null;
 
-      const date = typeof item?.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.date) && !isNaN(Date.parse(item.date))
-        ? item.date : null;
-      const category = typeof item?.category === 'string' && catSet.has(item.category) ? item.category : null;
-      const type = item?.type === 'income' ? 'income' as const : 'expense' as const;
+      const date = typeof item?.dt === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.dt) && !isNaN(Date.parse(item.dt))
+        ? item.dt : null;
+      const catIdx = Number(item?.c);
+      const category = Number.isInteger(catIdx) && catIdx >= 0 && catIdx < allowedCategories.length
+        ? allowedCategories[catIdx] : null;
+      const type = item?.t === 'i' ? 'income' as const : 'expense' as const;
       return { description, value, date, category, type };
     })
     .filter((it): it is AiImportItem => it !== null);
@@ -165,15 +170,16 @@ export async function POST(req: NextRequest) {
 Extraia os lançamentos financeiros deste documento (fatura de cartão, extrato, cupom fiscal, recibo ou boleto).
 ${monthRef ? `O usuário está organizando o mês ${monthRef}.` : ''}
 
+Cada compra/cobrança/receita vira um item com os campos:
+- d: descrição curta e limpa (nome do estabelecimento ou serviço, sem códigos internos, no máximo ~5 palavras). Compra parcelada: parcela no fim, ex. "Magazine Luiza (3/10)".
+- v: valor em reais, sempre positivo, com centavos.
+- dt: data do item no formato YYYY-MM-DD; null se o documento não mostrar.
+- c: índice numérico da categoria que melhor descreve o item, escolhido desta lista, ou null se nenhuma servir: ${categories.map((c, i) => `${i}=${c}`).join(' ') || '(nenhuma categoria — use null)'}.
+- t: "e" para gastos e cobranças; "i" somente para valores recebidos pelo usuário (salário, reembolso, transferência recebida).
+
 Regras:
-- Cada compra/cobrança/receita vira um item. Descrição curta e limpa (nome do estabelecimento ou serviço, sem códigos internos, no máximo ~6 palavras).
-- Valores em reais, sempre positivos, com centavos.
-- Compra parcelada: mantenha a parcela no fim da descrição, ex. "Magazine Luiza (3/10)".
 - Em fatura de cartão: ignore linhas de pagamento da fatura anterior, créditos e estornos. Encargos e juros cobrados são itens normais.
 - Não crie itens para subtotais nem para o total — informe o total do documento apenas em totalDetected.
-- date: a data do item no formato YYYY-MM-DD; null se o documento não mostrar.
-- type: "expense" para gastos e cobranças; "income" somente para valores recebidos pelo usuário (salário, reembolso, transferência recebida).
-- category: escolha EXATAMENTE uma desta lista, copiando a grafia, ou null se nenhuma servir: ${categories.join(' | ') || '(nenhuma categoria cadastrada — use null)'}.
 - referenceMonth: mês de referência do documento (YYYY-MM) ou null.
 - Se o documento estiver ilegível ou não for um documento financeiro, retorne items: [] e documentType: "outro".
 `.trim();
@@ -204,9 +210,16 @@ Regras:
     ];
   }
 
+  // Aborta antes de a Vercel matar a função (maxDuration 60s), para o
+  // usuário receber uma mensagem acionável em vez de um 504 opaco.
+  const abort = new AbortController();
+  const abortTimer = setTimeout(() => abort.abort(), 52_000);
+  const t0 = Date.now();
+
   try {
     const response = await fetch(OPENAI_CHAT_COMPLETIONS_URL, {
       method: 'POST',
+      signal: abort.signal,
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
@@ -254,9 +267,22 @@ Regras:
       return NextResponse.json({ error: 'Resposta da IA em formato inesperado. Tente novamente.' }, { status: 502 });
     }
 
-    return NextResponse.json({ result: sanitizeResult(parsed, categories) });
+    const result = sanitizeResult(parsed, categories);
+    // Telemetria nos logs da Vercel para diagnosticar latência em produção
+    console.log(`[finance-import] ok em ${Date.now() - t0}ms · ${mimeType} · ${result.items.length} itens`);
+    return NextResponse.json({ result });
   } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      console.error(`[finance-import] abortado após ${Date.now() - t0}ms · ${mimeType}`);
+      return NextResponse.json(
+        { error: 'O documento é muito longo para o tempo disponível. Tente enviar só as páginas com os lançamentos, ou uma foto por página.' },
+        { status: 504 }
+      );
+    }
     const message = err instanceof Error ? err.message : 'Erro desconhecido.';
+    console.error(`[finance-import] erro após ${Date.now() - t0}ms:`, message);
     return NextResponse.json({ error: message }, { status: 500 });
+  } finally {
+    clearTimeout(abortTimer);
   }
 }
