@@ -753,6 +753,42 @@
 
 .pvAiCard strong { color: #fff; }
 
+.pvScanHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #2DD4BF;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+  margin-bottom: 0.15rem;
+}
+
+.pvScanRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.pvScanTag {
+  flex: 1;
+  background: rgba(45, 212, 191, 0.12);
+  color: #5EEAD4;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 99px;
+  width: fit-content;
+}
+
+.pvScanValue {
+  color: #D1D5DB;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ──────────────────────────────────────────────────────────
    Passo 3 — Objetivos
 ────────────────────────────────────────────────────────── */

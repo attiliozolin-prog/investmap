@@ -9,7 +9,7 @@ import {
   TrendingUp, Wallet, Receipt, Sparkles,
   PlusCircle, ArrowRight, Check, ChevronLeft, ChevronRight,
   Shield, Scale, Rocket, PartyPopper, Target, PieChart,
-  LineChart, Landmark, Umbrella, Coins, FileSpreadsheet
+  LineChart, Landmark, Umbrella, Coins, FileSpreadsheet, ScanLine
 } from 'lucide-react';
 import styles from './OnboardingFlow.module.css';
 
@@ -166,6 +166,30 @@ function PreviewTaxes() {
   );
 }
 
+/** Mini-preview: lançamento de gastos via foto/PDF com IA */
+function PreviewAiImport() {
+  const rows = [
+    { n: 'Uber', c: 'Transporte', v: 'R$ 32,90' },
+    { n: 'Amazon', c: 'Compras', v: 'R$ 156,00' },
+    { n: 'Academia', c: 'Saúde', v: 'R$ 120,00' },
+  ];
+  return (
+    <div className={styles.previewBox}>
+      <div className={styles.pvScanHeader}>
+        <ScanLine size={14} />
+        <span>Fatura PDF → 12 itens identificados</span>
+      </div>
+      {rows.map(r => (
+        <div key={r.n} className={styles.pvScanRow}>
+          <span className={styles.pvLabel} style={{ width: 70 }}>{r.n}</span>
+          <span className={styles.pvScanTag}>{r.c}</span>
+          <span className={styles.pvScanValue}>{r.v}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Mini-preview: insight de IA */
 function PreviewAi() {
   return (
@@ -211,6 +235,16 @@ const FEATURES: FeatureSlide[] = [
     desc: 'Registre aportes e retiradas e acompanhe a evolução do patrimônio mês a mês.',
     bullets: ['Evolução patrimonial em gráficos', 'Aportes e retiradas organizados', 'Visão consolidada de tudo que você tem'],
     preview: <PreviewFinances />
+  },
+  {
+    id: 'ai-import',
+    Icon: ScanLine,
+    color: '#2DD4BF',
+    tag: 'Finanças com IA',
+    title: 'Lance gastos tirando uma foto',
+    desc: 'Envie o PDF da fatura do cartão ou a foto de um boleto — a IA identifica cada item, sugere a categoria e ainda reconhece gastos recorrentes.',
+    bullets: ['Leitura automática de faturas, boletos e recibos', 'Categorização sugerida automaticamente', 'Aceita foto, PDF e vários formatos de imagem'],
+    preview: <PreviewAiImport />
   },
   {
     id: 'goals',
