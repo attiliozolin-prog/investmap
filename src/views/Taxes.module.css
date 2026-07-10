@@ -28,6 +28,14 @@
   display: flex; align-items: center; gap: 0.55rem;
   font-size: 1.35rem; font-weight: 700; color: var(--color-text); margin: 0;
 }
+.methodologyLink {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  margin-top: 0.3rem; margin-left: 1.9rem;
+  background: transparent; border: none; padding: 0; cursor: pointer;
+  font-size: 0.76rem; font-weight: 600; color: var(--color-text-3);
+  transition: color 0.15s;
+}
+.methodologyLink:hover { color: var(--color-primary-light); text-decoration: underline; }
 .headerActions {
   display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
 }

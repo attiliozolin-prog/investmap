@@ -5,10 +5,11 @@ import { useApp } from '@/context/AppContext';
 import { SellTaxRecord } from '@/types';
 import {
   FileDown, Calendar, CheckCircle, Clock, Info, Shield, TrendingDown,
-  ChevronDown, ExternalLink, RotateCcw, AlertTriangle,
+  ChevronDown, ExternalLink, RotateCcw, AlertTriangle, ScrollText,
 } from 'lucide-react';
 import styles from './Taxes.module.css';
 import summaryStyles from '@/components/SummaryCards.module.css';
+import TaxMethodologyModal from '@/components/TaxMethodologyModal';
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtDate = (d: string) => {
@@ -40,6 +41,7 @@ export default function Taxes() {
   const [selectedYear, setSelectedYear] = useState(years[0]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [payDate, setPayDate] = useState<Record<string, string>>({});
+  const [showMethodology, setShowMethodology] = useState(false);
 
   const records = useMemo(() => sellTaxRecords.filter(r => r.sellDate.startsWith(selectedYear)), [sellTaxRecords, selectedYear]);
   const sorted = useMemo(() => [...records].sort((a, b) => b.sellDate.localeCompare(a.sellDate)), [records]);
@@ -234,10 +236,15 @@ export default function Taxes() {
     <div className={styles.container}>
       {/* Header */}
       <div className={styles.header}>
-        <h2 className={styles.title}>
-          <Shield size={22} color="var(--color-primary)" />
-          Impostos (IRPF)
-        </h2>
+        <div>
+          <h2 className={styles.title}>
+            <Shield size={22} color="var(--color-primary)" />
+            Impostos (IRPF)
+          </h2>
+          <button className={styles.methodologyLink} onClick={() => setShowMethodology(true)}>
+            <ScrollText size={13} /> Entenda os cálculos
+          </button>
+        </div>
         <div className={styles.headerActions}>
           <div className={styles.tabs}>
             {years.map(y => (
@@ -470,6 +477,8 @@ export default function Taxes() {
           </div>
         </>
       )}
+
+      {showMethodology && <TaxMethodologyModal onClose={() => setShowMethodology(false)} />}
     </div>
   );
 }
