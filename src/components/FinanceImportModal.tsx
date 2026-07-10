@@ -225,6 +225,10 @@ export default function FinanceImportModal({
         return Number.isFinite(v) && v > 0 && !!r.description.trim();
       });
 
+  // Fatura detalhada vai para a seção 'cartao': como as assinaturas, os itens
+  // NÃO somam nas saídas — o dinheiro sai uma vez só, pela fatura (boleto).
+  const isFatura = result?.documentType === 'fatura_cartao';
+
   const handleConfirm = () => {
     if (!canConfirm) return;
 
@@ -245,7 +249,7 @@ export default function FinanceImportModal({
 
     onConfirm(selectedRows.map(r => {
       const isIncome = r.type === 'income';
-      const section: FinanceSection = isIncome ? 'income' : expenseSection;
+      const section: FinanceSection = isIncome ? 'income' : (isFatura ? 'cartao' : expenseSection);
       const date = r.date || fallbackDate(monthStr);
       return {
         monthId,
@@ -256,9 +260,10 @@ export default function FinanceImportModal({
         date,
         category: isIncome ? undefined : (r.category || undefined),
         dueDay: section === 'boleto' ? new Date(`${date}T12:00:00`).getDate() : undefined,
-        // Item vindo de fatura/cupom já aconteceu → extra nasce pago;
+        // Item de cartão é informativo (a fatura é quem paga) → sem status;
+        // item de fatura/cupom já aconteceu → extra nasce pago;
         // conta recorrente importada nasce pendente para não sumir do radar
-        paymentStatus: isIncome ? undefined : (section === 'boleto' ? 'pending' : 'paid'),
+        paymentStatus: isIncome || section === 'cartao' ? undefined : (section === 'boleto' ? 'pending' : 'paid'),
       };
     }));
   };
@@ -359,17 +364,25 @@ export default function FinanceImportModal({
 
               {mode === 'detalhado' && (
                 <>
-                  <div className={styles.sectionChoice}>
-                    <span className={styles.sectionChoiceLabel}>Lançar saídas em:</span>
-                    <div className={styles.modeRow} style={{ flex: 1, minWidth: 200 }}>
-                      <button className={`${styles.modeBtn} ${expenseSection === 'extra' ? styles.modeActive : ''}`} onClick={() => setExpenseSection('extra')}>
-                        Gastos Extras
-                      </button>
-                      <button className={`${styles.modeBtn} ${expenseSection === 'boleto' ? styles.modeActive : ''}`} onClick={() => setExpenseSection('boleto')}>
-                        Recorrentes
-                      </button>
+                  {isFatura ? (
+                    <p style={{ fontSize: '0.76rem', color: 'var(--color-text-2)', lineHeight: 1.55, margin: 0 }}>
+                      Os itens entram na aba <strong style={{ color: 'var(--color-text)' }}>Cartão</strong> — mostram
+                      para onde foi o dinheiro por categoria, mas <strong style={{ color: 'var(--color-text)' }}>não
+                      somam nas saídas</strong>: quem soma é a fatura, que continua como conta a pagar nos Recorrentes.
+                    </p>
+                  ) : (
+                    <div className={styles.sectionChoice}>
+                      <span className={styles.sectionChoiceLabel}>Lançar saídas em:</span>
+                      <div className={styles.modeRow} style={{ flex: 1, minWidth: 200 }}>
+                        <button className={`${styles.modeBtn} ${expenseSection === 'extra' ? styles.modeActive : ''}`} onClick={() => setExpenseSection('extra')}>
+                          Gastos Extras
+                        </button>
+                        <button className={`${styles.modeBtn} ${expenseSection === 'boleto' ? styles.modeActive : ''}`} onClick={() => setExpenseSection('boleto')}>
+                          Recorrentes
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <label className={styles.selectAllRow}>
                     <input
@@ -480,7 +493,7 @@ export default function FinanceImportModal({
                       <div className={styles.totalCheck}>
                         {totalMatches
                           ? <span className={styles.totalOk}>✓ bate com o total do documento</span>
-                          : <span className={styles.totalWarn}>total do documento: {fmt(result.totalDetected)}</span>}
+                          : <span className={styles.totalInfo}>total impresso: {fmt(result.totalDetected)} — difere quando há pagamentos, créditos ou estornos no documento</span>}
                       </div>
                     )}
                   </>

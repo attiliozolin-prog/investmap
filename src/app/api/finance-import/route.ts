@@ -21,7 +21,8 @@ const ACCEPTED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'applica
 // ~3,3 MB de arquivo (base64 infla ~33%) — folga sob o teto de 4,5 MB
 // de body da Vercel. O client já comprime imagens antes de enviar.
 const MAX_BASE64_CHARS = 4_500_000;
-const MAX_ITEMS = 100;
+// Fatura real chega a >100 compras; com maxDuration de 300s cabe com folga
+const MAX_ITEMS = 200;
 
 // PDFs digitais (faturas de banco) têm texto embutido: extraí-lo e mandar só
 // texto é ordens de grandeza mais rápido que visão sobre cada página — uma

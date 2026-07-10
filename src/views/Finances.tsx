@@ -139,15 +139,24 @@ export default function Finances() {
   const recResolvidos = monthTxs.filter(t => t.section === 'boleto' && !needsAction(t.paymentStatus)).length;
   const recTotal = monthTxs.filter(t => t.section === 'boleto').length;
 
+  // "Para onde foi o dinheiro": quando a fatura foi importada em detalhe
+  // (seção cartao), o gráfico abre o cartão por categoria e ESCONDE o bloco
+  // único "Cartão Crédito" do boleto — senão o mesmo dinheiro apareceria
+  // duas vezes. O fluxo de caixa (Sobra/Saídas) não muda: cartao não soma lá.
+  const hasCardItems = useMemo(() => monthTxs.some(t => t.section === 'cartao'), [monthTxs]);
   const categoryTotals = useMemo(() => {
     const map = new Map<string, number>();
-    monthTxs.filter(t => t.section === 'boleto' || t.section === 'extra').forEach(t => {
-      const cat = t.category || 'Outro';
-      map.set(cat, (map.get(cat) ?? 0) + t.value);
-    });
+    monthTxs
+      .filter(t => t.section === 'boleto' || t.section === 'extra' || t.section === 'cartao')
+      .filter(t => !(hasCardItems && t.section === 'boleto' && isCardCategory(t.category)))
+      .forEach(t => {
+        const cat = t.category || 'Outro';
+        map.set(cat, (map.get(cat) ?? 0) + t.value);
+      });
     return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
-  }, [monthTxs]);
+  }, [monthTxs, hasCardItems]);
   const maxCat = categoryTotals[0]?.[1] ?? 1;
+  const chartTotal = categoryTotals.reduce((s, [, v]) => s + v, 0);
 
   const visiveis = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -236,8 +245,9 @@ export default function Finances() {
   };
 
   // ── Materialização do mês seguinte (navegação por seta) ──
+  // Itens de cartão são históricos (compras da fatura passada): não repetem
   const recorrentesDoUltimoMes = useMemo(
-    () => latestRealMonth ? transactions.filter(t => t.monthId === latestRealMonth.id && t.section !== 'extra') : [],
+    () => latestRealMonth ? transactions.filter(t => t.monthId === latestRealMonth.id && t.section !== 'extra' && t.section !== 'cartao') : [],
     [transactions, latestRealMonth]
   );
 
@@ -493,6 +503,9 @@ export default function Finances() {
                       <button role="tab" aria-selected={filter === 'extra'} className={`${styles.segBtn} ${filter === 'extra' ? styles.segActive : ''}`} onClick={() => setFilter('extra')}>
                         Extras<span className={styles.segCount}>{countBy('extra')}</span>
                       </button>
+                      <button role="tab" aria-selected={filter === 'cartao'} className={`${styles.segBtn} ${filter === 'cartao' ? styles.segActive : ''}`} onClick={() => setFilter('cartao')}>
+                        Cartão<span className={styles.segCount}>{countBy('cartao')}</span>
+                      </button>
                     </div>
                   </div>
                   <div className={styles.filterGroup}>
@@ -508,11 +521,23 @@ export default function Finances() {
               </div>
 
               {visiveis.length === 0 && (
-                <p className={styles.emptyRow2}>
-                  {monthTxs.filter(t => t.section === filter).length === 0
-                    ? 'Nenhum lançamento nesta seção — adicione o primeiro.'
-                    : `Nenhum lançamento encontrado${query ? ` para "${query}"` : ''}.`}
-                </p>
+                filter === 'cartao' && countBy('cartao') === 0 ? (
+                  <div className={styles.emptyRow2}>
+                    <p style={{ margin: '0 0 0.8rem' }}>
+                      Aqui ficam as compras que compõem a fatura do cartão — elas não somam nas
+                      saídas (quem soma é a fatura, nos Recorrentes), mas mostram para onde foi o dinheiro.
+                    </p>
+                    <button className={styles.btnPrimary} disabled={activeMonth?.status === 'closed'} onClick={() => setIsImportOpen(true)}>
+                      <ScanLine size={16}/> Importar fatura com IA
+                    </button>
+                  </div>
+                ) : (
+                  <p className={styles.emptyRow2}>
+                    {monthTxs.filter(t => t.section === filter).length === 0
+                      ? 'Nenhum lançamento nesta seção — adicione o primeiro.'
+                      : `Nenhum lançamento encontrado${query ? ` para "${query}"` : ''}.`}
+                  </p>
+                )
               )}
 
               {aPagar.length > 0 && <div className={styles.groupLabel}>A pagar ({aPagar.length})</div>}
@@ -544,7 +569,11 @@ export default function Finances() {
             <aside className={styles.sidebar}>
               <div className={styles.sideCard}>
                 <h2 className={styles.sideTitle}>Para onde foi o dinheiro</h2>
-                <p className={styles.sideSub}>Saídas do mês por categoria</p>
+                <p className={styles.sideSub}>
+                  {hasCardItems
+                    ? 'Saídas por categoria, com a fatura do cartão aberta compra a compra'
+                    : 'Saídas do mês por categoria'}
+                </p>
                 {categoryTotals.length === 0 && <p className={styles.sideSub}>Sem saídas ainda.</p>}
                 {categoryTotals.map(([nome, valor]) => {
                   const Icon = iconForCategory(nome);
@@ -552,7 +581,7 @@ export default function Finances() {
                     <div key={nome} className={styles.catRow}>
                       <div className={styles.catLabelRow}>
                         <span className={styles.catName}><span className={styles.catIcon}><Icon size={13} strokeWidth={1.8}/></span>{nome}</span>
-                        <span className={styles.catVal}>{fmt(valor)}<span className={styles.catPct}>{totalExp > 0 ? ((valor / totalExp) * 100).toFixed(0) : 0}%</span></span>
+                        <span className={styles.catVal}>{fmt(valor)}<span className={styles.catPct}>{chartTotal > 0 ? ((valor / chartTotal) * 100).toFixed(0) : 0}%</span></span>
                       </div>
                       <div className={styles.catTrack}><div className={styles.catFill} style={{ width: `${(valor / maxCat) * 100}%` }} /></div>
                     </div>
@@ -1070,12 +1099,13 @@ function DeleteMonthModal({ monthName, onClose, onConfirm }: { monthName: string
   );
 }
 
-// ─── Transaction Modal (adicionar / editar recorrente, extra ou receita) ─────
-const SECTION_LABELS: Record<'boleto' | 'extra' | 'income', string> = { boleto: 'Recorrente', extra: 'Gasto Extra', income: 'Receita' };
-const SECTION_ICONS: Record<'boleto' | 'extra' | 'income', React.ReactNode> = {
+// ─── Transaction Modal (adicionar / editar recorrente, extra, cartão ou receita) ─────
+const SECTION_LABELS: Record<'boleto' | 'extra' | 'income' | 'cartao', string> = { boleto: 'Recorrente', extra: 'Gasto Extra', income: 'Receita', cartao: 'Item do Cartão' };
+const SECTION_ICONS: Record<'boleto' | 'extra' | 'income' | 'cartao', React.ReactNode> = {
   boleto: <Receipt size={18} style={{ color: '#3B82F6' }}/>,
   extra: <ShoppingBag size={18} style={{ color: '#FF1493' }}/>,
   income: <ArrowDownCircle size={18} style={{ color: '#10B981' }}/>,
+  cartao: <CreditCard size={18} style={{ color: '#F59E0B' }}/>,
 };
 
 function TxModal({ section, monthId, existing, onClose, onSave }: {
@@ -1090,7 +1120,8 @@ function TxModal({ section, monthId, existing, onClose, onSave }: {
 
   // Lançamentos legados de 'assinatura' não são mais editáveis por esta UI;
   // trata como 'extra' apenas para não quebrar caso um dia surjam aqui.
-  const effSection: 'boleto' | 'extra' | 'income' = section === 'boleto' || section === 'income' ? section : 'extra';
+  const effSection: 'boleto' | 'extra' | 'income' | 'cartao' =
+    section === 'boleto' || section === 'income' || section === 'cartao' ? section : 'extra';
 
   const [desc, setDesc] = useState(existing?.description || '');
   const [value, setValue] = useState(existing?.value ? String(existing.value) : '');

@@ -123,10 +123,14 @@ export interface FinanceCategory {
 export type FinanceTransactionType = 'income' | 'expense';
 
 // Seção na planilha a que pertence este lançamento.
+// 'cartao' = compra dentro da fatura do cartão (importada da fatura ou manual).
+//   Como as assinaturas, NÃO soma nas saídas do mês — o dinheiro sai uma vez
+//   só, pela fatura (lançamento 'boleto' da categoria Cartão Crédito). Serve
+//   para análise por categoria do que compõe a fatura.
 // 'assinatura' é um valor LEGADO: assinaturas deixaram de ser lançamentos
 // mensais e viraram FinanceSubscription (global, fora do mês) — mantido no
 // tipo apenas para não quebrar a leitura de linhas antigas já no banco.
-export type FinanceSection = 'boleto' | 'assinatura' | 'extra' | 'income';
+export type FinanceSection = 'boleto' | 'assinatura' | 'extra' | 'income' | 'cartao';
 
 // Status de pagamento do lançamento
 // 'previsto' = valor estimado (ex.: fatura do cartão pela média dos últimos
