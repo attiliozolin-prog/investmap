@@ -504,8 +504,8 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
               <div className={styles.infoPopover} onClick={(e) => e.stopPropagation()}>
                 <strong>O que é isso?</strong>
                 <p>
-                  Não é uma previsão de vida — é quanto tempo o seu patrimônio atual sustentaria
-                  o seu padrão de vida se você parasse de receber qualquer renda hoje.
+                  Quanto tempo o seu patrimônio atual sustentaria o seu padrão de vida se você
+                  parasse de receber qualquer renda hoje.
                 </p>
                 <p className={styles.infoFormula}>
                   Patrimônio total ÷ custo médio mensal (suas saídas registradas em Finanças)
