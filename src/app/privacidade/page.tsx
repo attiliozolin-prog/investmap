@@ -45,6 +45,13 @@ export default function PrivacidadePage() {
         enviado ao provedor do modelo para gerar o texto. Não enviamos seu e-mail,
         nome ou valores absolutos identificáveis para esse fim.
       </p>
+      <p>
+        Ao usar a importação de lançamentos por foto ou PDF, o documento que você
+        enviar (ex.: fatura de cartão) é transmitido ao provedor do modelo de IA
+        (OpenAI) exclusivamente para leitura e extração dos lançamentos, e não é
+        utilizado para treinamento de modelos. O envio só ocorre por ação sua, e
+        nenhum lançamento é salvo sem a sua revisão e confirmação.
+      </p>
 
       <h2>5. Seus direitos</h2>
       <p>A LGPD garante a você, a qualquer momento:</p>

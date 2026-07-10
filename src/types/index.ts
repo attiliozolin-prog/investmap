@@ -168,6 +168,27 @@ export interface FinanceSubscription {
   createdAt: string;
 }
 
+// ── Importação de lançamentos via IA (foto ou PDF de fatura/extrato) ──
+
+export type AiImportDocumentType = 'fatura_cartao' | 'extrato' | 'cupom' | 'recibo' | 'boleto' | 'outro';
+
+// Item extraído do documento pela IA — sempre revisado pelo usuário antes
+// de virar FinanceTransaction (a IA sugere, o usuário confirma).
+export interface AiImportItem {
+  description: string;
+  value: number;
+  date: string | null;      // YYYY-MM-DD, null se o documento não mostra
+  category: string | null;  // exatamente uma das categorias do usuário, ou null
+  type: FinanceTransactionType;
+}
+
+export interface AiImportResult {
+  documentType: AiImportDocumentType;
+  referenceMonth: string | null;  // YYYY-MM
+  totalDetected: number | null;   // total do documento (ex.: total da fatura)
+  items: AiImportItem[];
+}
+
 // Computed finance interfaces
 export interface FinanceMonthSummary {
   monthId: string;

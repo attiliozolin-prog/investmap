@@ -6,11 +6,12 @@ import { FinanceTransaction, FinanceSection, FinancePaymentStatus, FinanceCpfCnp
 import {
   Plus, Trash2, X, Wallet, Edit2, Tags, Receipt, CreditCard, ShoppingBag,
   ArrowDownCircle, ArrowUpCircle, Sparkles, ChevronLeft, ChevronRight,
-  CalendarClock, CheckCircle2, Lock,
+  CalendarClock, CheckCircle2, Lock, ScanLine,
 } from 'lucide-react';
 import styles from './Finances.module.css';
 import { useToast } from '@/components/Toast';
 import { iconForCategory, isCardCategory } from '@/lib/financeCategories';
+import FinanceImportModal from '@/components/FinanceImportModal';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 const fmt = (v: number) =>
@@ -87,6 +88,7 @@ export default function Finances() {
   const [isMonthModalOpen, setIsMonthModalOpen] = useState(false);
   const [isCategoriesModalOpen, setIsCategoriesModalOpen] = useState(false);
   const [isSubsModalOpen, setIsSubsModalOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [addSection, setAddSection] = useState<FinanceSection | null>(null);
   const [editTx, setEditTx] = useState<FinanceTransaction | null>(null);
   const [monthToDelete, setMonthToDelete] = useState<string | null>(null);
@@ -363,6 +365,9 @@ export default function Finances() {
             </button>
             <button className={styles.btnGhost} onClick={() => setIsCategoriesModalOpen(true)}><Tags size={15}/> Categorias</button>
             <button className={styles.btnGhost} onClick={() => setMonthToDelete(activeMonth.id)}><Trash2 size={15}/> Excluir Mês</button>
+            <button className={styles.btnGhost} disabled={activeMonth.status === 'closed'} onClick={() => setIsImportOpen(true)} title="Lance uma fatura ou nota a partir de uma foto ou PDF">
+              <ScanLine size={15}/> Importar com IA
+            </button>
             <button className={styles.btnPrimary} disabled={activeMonth.status === 'closed'} onClick={() => setAddSection(filter)}>
               <Plus size={16}/> Novo lançamento
             </button>
@@ -607,6 +612,20 @@ export default function Finances() {
           onClose={() => setIsSubsModalOpen(false)}
           onAdd={addSubscription}
           onRemove={(id) => { deleteSubscription(id); toast('Assinatura removida'); }}
+        />
+      )}
+      {isImportOpen && activeMonth && (
+        <FinanceImportModal
+          monthId={activeMonth.id}
+          monthStr={activeMonth.month}
+          categories={categories.map(c => c.name)}
+          monthTxs={monthTxs}
+          onClose={() => setIsImportOpen(false)}
+          onConfirm={(list) => {
+            list.forEach(addTransaction);
+            toast(`${list.length} lançamento${list.length !== 1 ? 's' : ''} adicionado${list.length !== 1 ? 's' : ''} via importação`);
+            setIsImportOpen(false);
+          }}
         />
       )}
       {addSection && activeMonthId && (
