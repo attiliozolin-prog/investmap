@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { extractText } from 'unpdf';
 import { createServerSupabase } from '@/lib/supabase-server';
 import { checkRateLimit } from '@/lib/rateLimit';
 import { OPENAI_MODEL, OPENAI_CHAT_COMPLETIONS_URL } from '@/lib/aiConfig';
@@ -19,6 +20,13 @@ const ACCEPTED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'applica
 // de body da Vercel. O client já comprime imagens antes de enviar.
 const MAX_BASE64_CHARS = 4_500_000;
 const MAX_ITEMS = 100;
+
+// PDFs digitais (faturas de banco) têm texto embutido: extraí-lo e mandar só
+// texto é ordens de grandeza mais rápido que visão sobre cada página — uma
+// fatura de 11 páginas estourava o tempo da função (504). Abaixo deste mínimo
+// de texto, tratamos como PDF escaneado e caímos no caminho de visão.
+const MIN_PDF_TEXT_CHARS = 200;
+const MAX_PDF_TEXT_CHARS = 60_000;
 
 const DOC_TYPES: AiImportDocumentType[] = ['fatura_cartao', 'extrato', 'cupom', 'recibo', 'boleto', 'outro'];
 
@@ -158,7 +166,7 @@ Extraia os lançamentos financeiros deste documento (fatura de cartão, extrato,
 ${monthRef ? `O usuário está organizando o mês ${monthRef}.` : ''}
 
 Regras:
-- Cada compra/cobrança/receita vira um item. Descrição curta e limpa (nome do estabelecimento ou serviço, sem códigos internos).
+- Cada compra/cobrança/receita vira um item. Descrição curta e limpa (nome do estabelecimento ou serviço, sem códigos internos, no máximo ~6 palavras).
 - Valores em reais, sempre positivos, com centavos.
 - Compra parcelada: mantenha a parcela no fim da descrição, ex. "Magazine Luiza (3/10)".
 - Em fatura de cartão: ignore linhas de pagamento da fatura anterior, créditos e estornos. Encargos e juros cobrados são itens normais.
@@ -170,9 +178,31 @@ Regras:
 - Se o documento estiver ilegível ou não for um documento financeiro, retorne items: [] e documentType: "outro".
 `.trim();
 
-  const filePart = mimeType === 'application/pdf'
-    ? { type: 'file', file: { filename: 'documento.pdf', file_data: `data:application/pdf;base64,${fileBase64}` } }
-    : { type: 'image_url', image_url: { url: `data:${mimeType};base64,${fileBase64}`, detail: 'high' } };
+  // Conteúdo enviado ao modelo: texto extraído (PDF digital — rápido),
+  // ou o arquivo em si (imagem/PDF escaneado — visão, mais lento).
+  let userContent: unknown[];
+  if (mimeType === 'application/pdf') {
+    let pdfText = '';
+    try {
+      const bytes = new Uint8Array(Buffer.from(fileBase64, 'base64'));
+      const { text } = await extractText(bytes, { mergePages: true });
+      pdfText = (text ?? '').trim();
+    } catch {
+      pdfText = ''; // PDF ilegível pela extração → tenta visão
+    }
+
+    userContent = pdfText.length >= MIN_PDF_TEXT_CHARS
+      ? [{ type: 'text', text: `${instructions}\n\nCONTEÚDO DO DOCUMENTO (texto extraído do PDF):\n${pdfText.slice(0, MAX_PDF_TEXT_CHARS)}` }]
+      : [
+          { type: 'text', text: instructions },
+          { type: 'file', file: { filename: 'documento.pdf', file_data: `data:application/pdf;base64,${fileBase64}` } },
+        ];
+  } else {
+    userContent = [
+      { type: 'text', text: instructions },
+      { type: 'image_url', image_url: { url: `data:${mimeType};base64,${fileBase64}`, detail: 'high' } },
+    ];
+  }
 
   try {
     const response = await fetch(OPENAI_CHAT_COMPLETIONS_URL, {
@@ -190,14 +220,12 @@ Regras:
           },
           {
             role: 'user',
-            content: [
-              { type: 'text', text: instructions },
-              filePart,
-            ],
+            content: userContent,
           },
         ],
         response_format: { type: 'json_schema', json_schema: RESPONSE_SCHEMA },
-        max_tokens: 4096,
+        // Fatura grande pode ter ~100 itens; truncar aqui quebraria o JSON
+        max_tokens: 8192,
         temperature: 0,
       }),
     });

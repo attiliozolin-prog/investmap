@@ -144,7 +144,11 @@ export default function FinanceImportModal({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error((data as { error?: string })?.error || `Erro ${res.status}`);
+        const serverMsg = (data as { error?: string })?.error;
+        if (!serverMsg && (res.status === 504 || res.status === 502)) {
+          throw new Error('A leitura demorou mais que o normal e foi interrompida. Tente de novo — se persistir, envie uma foto da página principal da fatura.');
+        }
+        throw new Error(serverMsg || `Erro ${res.status}`);
       }
 
       const r = (data as { result: AiImportResult }).result;
