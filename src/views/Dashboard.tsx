@@ -12,7 +12,7 @@ import styles from './Dashboard.module.css';
 import {
   TrendingUp, RefreshCw, AlertTriangle, CalendarClock,
   Landmark, ShieldAlert, ArrowRight, Wallet, Pencil,
-  Target, Zap, CheckCircle2, X, Briefcase, Lightbulb,
+  Target, Zap, CheckCircle2, X, Briefcase, Lightbulb, HelpCircle,
 } from 'lucide-react';
 
 /**
@@ -128,6 +128,19 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
 
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [range, setRange] = useState<RangeId>('1a');
+  const [showSurvivalInfo, setShowSurvivalInfo] = useState(false);
+  const survivalInfoRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showSurvivalInfo) return;
+    function handleOutsideClick(e: MouseEvent) {
+      if (survivalInfoRef.current && !survivalInfoRef.current.contains(e.target as Node)) {
+        setShowSurvivalInfo(false);
+      }
+    }
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [showSurvivalInfo]);
 
   const summary = useMemo(() => {
     if (!activeStrategy || activeAssets.length === 0) return null;
@@ -237,7 +250,8 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
   const todayLong = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
 
   // Pre-compute derived values (hooks must vir antes dos early returns)
-  const categorySummaries = summary?.categorySummaries ?? [];
+  const rawCategorySummaries = summary?.categorySummaries;
+  const categorySummaries = useMemo(() => rawCategorySummaries ?? [], [rawCategorySummaries]);
   const assetsWithCalcs = summary?.assetsWithCalcs ?? [];
   const needsRebalancing = summary?.needsRebalancing ?? false;
 
@@ -459,15 +473,46 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
             )}
           </button>
 
-          <button className={styles.statCard} onClick={() => onNavigate('finances')} title="Patrimônio ÷ custo mensal">
-            <span className={styles.statLabel}><ShieldAlert size={11}/> Sobrevivência</span>
+          <div
+            className={styles.statCard}
+            ref={survivalInfoRef}
+            role="button"
+            tabIndex={0}
+            onClick={() => onNavigate('finances')}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate('finances'); } }}
+            title="Ir para Finanças"
+          >
+            <span className={styles.statLabel}>
+              <ShieldAlert size={11}/> Sobrevivência
+              <button
+                type="button"
+                className={styles.infoBtn}
+                onClick={(e) => { e.stopPropagation(); setShowSurvivalInfo(v => !v); }}
+                aria-label="O que é sobrevivência financeira?"
+                aria-expanded={showSurvivalInfo}
+              >
+                <HelpCircle size={12} />
+              </button>
+            </span>
             <span className={styles.statValue}>{monthlyCost > 0 ? `${survivalMonths.toFixed(0)} meses` : '—'}</span>
             <span className={styles.statSub}>
               {monthlyCost > 0
                 ? `≈ ${(survivalMonths / 12).toFixed(1).replace('.', ',')} anos no seu padrão de vida`
                 : 'patrimônio ÷ custo mensal'}
             </span>
-          </button>
+            {showSurvivalInfo && (
+              <div className={styles.infoPopover} onClick={(e) => e.stopPropagation()}>
+                <strong>O que é isso?</strong>
+                <p>
+                  Não é uma previsão de vida — é quanto tempo o seu patrimônio atual sustentaria
+                  o seu padrão de vida se você parasse de receber qualquer renda hoje.
+                </p>
+                <p className={styles.infoFormula}>
+                  Patrimônio total ÷ custo médio mensal (suas saídas registradas em Finanças)
+                </p>
+              </div>
+            )}
+          </div>
 
           <button className={styles.statCard} onClick={() => setShowGoalModal(true)} title="Ver detalhes da meta">
             <span className={styles.statLabel}>

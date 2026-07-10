@@ -84,6 +84,7 @@
 /* Coluna lateral: Sobra do mês / Sobrevivência / Meta */
 .sideCol { display: flex; flex-direction: column; gap: 0.9rem; min-width: 0; }
 .statCard {
+  position: relative;
   flex: 1;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -101,6 +102,37 @@
 .statLabel { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-text-3); display: flex; align-items: center; gap: 0.35rem; }
 .statValue { font-size: 1.15rem; font-weight: 750; font-variant-numeric: tabular-nums; color: var(--color-text); }
 .statSub { font-size: 0.7rem; color: var(--color-text-3); }
+
+.infoBtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; margin-left: -0.1rem;
+  border-radius: 50%; border: none; background: transparent;
+  color: var(--color-text-3); cursor: pointer; flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+.infoBtn:hover { color: var(--color-primary-light); background: rgba(139, 92, 246, 0.12); }
+
+.infoPopover {
+  position: absolute; top: calc(100% + 8px); left: 0.5rem; right: 0.5rem;
+  z-index: 20;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  cursor: default;
+  animation: infoPopIn 0.15s ease;
+}
+.infoPopover strong { display: block; font-size: 0.78rem; color: var(--color-text); margin-bottom: 0.35rem; }
+.infoPopover p { font-size: 0.76rem; color: var(--color-text-2); line-height: 1.5; margin: 0 0 0.5rem; }
+.infoPopover p:last-child { margin-bottom: 0; }
+.infoFormula {
+  font-size: 0.7rem !important; color: var(--color-text-3) !important;
+  font-family: var(--font-mono, monospace);
+  background: var(--color-surface); border-radius: 6px;
+  padding: 0.4rem 0.55rem;
+}
+@keyframes infoPopIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 
 /* Dica de que o card de Meta é editável (a edição abre no modal) */
 .goalEditHint { color: var(--color-text-3); margin-left: 0.1rem; }
