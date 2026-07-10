@@ -5,8 +5,10 @@ import { checkRateLimit } from '@/lib/rateLimit';
 import { OPENAI_MODEL, OPENAI_CHAT_COMPLETIONS_URL } from '@/lib/aiConfig';
 import type { AiImportItem, AiImportResult, AiImportDocumentType } from '@/types';
 
-// PDFs multipágina demoram mais que os 10s default da Vercel
-export const maxDuration = 60;
+// Fatura grande = muitos tokens de saída = minutos. Requer Fluid Compute
+// ativado no projeto Vercel (Settings → Functions) — sem ele o plano Hobby
+// limita a 60s e o deploy com este valor falha.
+export const maxDuration = 300;
 
 // Limite próprio (não divide a janela com a análise de carteira):
 // ler documento custa mais tokens, mas o usuário importa no máximo
@@ -210,10 +212,10 @@ Regras:
     ];
   }
 
-  // Aborta antes de a Vercel matar a função (maxDuration 60s), para o
+  // Aborta antes de a Vercel matar a função (maxDuration 300s), para o
   // usuário receber uma mensagem acionável em vez de um 504 opaco.
   const abort = new AbortController();
-  const abortTimer = setTimeout(() => abort.abort(), 52_000);
+  const abortTimer = setTimeout(() => abort.abort(), 280_000);
   const t0 = Date.now();
 
   try {
