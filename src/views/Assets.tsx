@@ -4,6 +4,7 @@ import { useMemo, useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { calculatePortfolio, formatCurrency, idealSingleContribution } from '@/lib/calculations';
+import { detectPriceSource } from '@/lib/brapi';
 import AssetModal from '@/components/AssetModal';
 import AssetDetailDrawer from '@/components/AssetDetailDrawer';
 import PortfolioHistory from '@/components/PortfolioHistory';
@@ -268,7 +269,7 @@ export default function Assets() {
           <h1 className={styles.pageTitle}>Minha Carteira</h1>
           <div className={styles.pageMeta}>
             {activeAssets.length} ativo{activeAssets.length !== 1 ? 's' : ''} · tolerância de {activeStrategy.deviationTolerance}%
-            <button className={styles.syncChip} onClick={() => syncPrices(true)} disabled={isSyncingPrices} title="Sincronizar cotações agora (Brapi)">
+            <button className={styles.syncChip} onClick={() => syncPrices(true)} disabled={isSyncingPrices} title="Sincronizar cotações agora (Brapi + CoinGecko)">
               <RefreshCw size={11} className={isSyncingPrices ? styles.syncSpin : undefined} />
               {lastSyncLabel()}
             </button>
@@ -542,7 +543,9 @@ export default function Assets() {
                         <div className={styles.rowTicker}>
                           {a.ticker}
                           <span className={`${styles.priceBadge} ${a.priceMode === 'auto' ? styles.priceAuto : styles.priceManual}`}
-                            title={a.priceMode === 'auto' ? 'Cotação sincronizada automaticamente (Brapi)' : 'Valor atualizado manualmente por você'}>
+                            title={a.priceMode === 'auto'
+                              ? `Cotação sincronizada automaticamente (${detectPriceSource(a.ticker) === 'coingecko' ? 'CoinGecko' : 'Brapi'})`
+                              : 'Valor atualizado manualmente por você'}>
                             {a.priceMode === 'auto' ? <><Zap size={9} /> auto</> : 'manual'}
                           </span>
                         </div>

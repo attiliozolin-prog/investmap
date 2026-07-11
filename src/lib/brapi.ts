@@ -1,5 +1,8 @@
 // As cotações passam pelo proxy autenticado /api/quotes —
 // o token da Brapi fica no servidor, fora do bundle do client.
+import { isCryptoTicker } from './cryptoMap';
+import { fetchCryptoPrice, fetchCryptoPrices } from './coingecko';
+
 const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutos
 
 // -----------------------------------------------
@@ -42,25 +45,25 @@ export function clearPriceCache(tickers?: string[]): void {
 }
 
 // -----------------------------------------------
-// Heurística: detecta se o ticker é elegível para
-// busca automática (ações B3, FIIs, ETFs, BDRs, Cripto)
+// Heurística: detecta a FONTE de cotação de um ticker.
+//
+//   Tickers B3 SEMPRE terminam com pelo menos 1 dígito → Brapi:
+//     Ações PETR4 · FIIs HGLG11 · ETFs IVVB11 · BDRs AAPL34
+//   Criptomoedas são letras puras, SEM dígito final → CoinGecko:
+//     BTC, ETH, SOL … (apenas as reconhecidas em cryptoMap; letras
+//     puras fora do mapa não são resolvíveis para um id).
+//
+// Retorna null quando nenhuma fonte reconhece o ticker (→ modo manual).
 // -----------------------------------------------
-export function detectPriceMode(ticker: string): 'auto' | 'manual' {
+export function detectPriceSource(ticker: string): 'brapi' | 'coingecko' | null {
   const clean = ticker.trim().toUpperCase();
-  /*
-    Tickers B3 SEMPRE terminam com pelo menos 1 dígito:
-      Ações:  PETR4, VALE3, ITUB4
-      FIIs:   HGLG11, MXRF11
-      ETFs:   BOVA11, IVVB11
-      BDRs:   AAPL34, AMZO34
+  if (/^[A-Z]{2,6}\d{1,2}$/.test(clean)) return 'brapi';
+  if (isCryptoTicker(clean)) return 'coingecko';
+  return null;
+}
 
-    Criptomoedas são letras puras, SEM dígito final:
-      BTC, ETH, SOL, DOT, ADA → manual
-
-    A regex antiga usava [0-9]{0,2} (0 a 2 dígitos), classificando
-    criptos incorretamente como 'auto'.
-  */
-  return /^[A-Z]{2,6}\d{1,2}$/.test(clean) ? 'auto' : 'manual';
+export function detectPriceMode(ticker: string): 'auto' | 'manual' {
+  return detectPriceSource(ticker) ? 'auto' : 'manual';
 }
 
 
@@ -69,6 +72,10 @@ export function detectPriceMode(ticker: string): 'auto' | 'manual' {
 // -----------------------------------------------
 export async function fetchAssetPrice(ticker: string): Promise<number | null> {
   if (!ticker) return null;
+
+  // Cripto vai para o CoinGecko; ações/FIIs/etc. seguem pela Brapi.
+  if (isCryptoTicker(ticker)) return fetchCryptoPrice(ticker);
+
   const cleanTicker = ticker.toUpperCase().replace(/F$/, '');
 
   const cached = getCached(cleanTicker);
@@ -95,8 +102,18 @@ export async function fetchAssetPrices(tickers: string[], forceRefresh = false):
   const result = new Map<string, number>();
   if (!tickers.length) return result;
 
-  // Deduplica e limpa tickers
-  const cleanTickers = Array.from(new Set(tickers.map(t => t.toUpperCase().replace(/F$/, ''))));
+  // Separa cripto (CoinGecko) das demais (Brapi). Cripto é buscada em
+  // paralelo pelo wrapper próprio e mesclada no resultado; note que o
+  // strip de "F" final (fracionário B3) NÃO se aplica a cripto.
+  const cryptoTickers = tickers.filter(isCryptoTicker);
+  const b3Raw = tickers.filter(t => !isCryptoTicker(t));
+
+  const cryptoPromise = cryptoTickers.length
+    ? fetchCryptoPrices(cryptoTickers, forceRefresh)
+    : Promise.resolve(new Map<string, number>());
+
+  // Deduplica e limpa tickers B3
+  const cleanTickers = Array.from(new Set(b3Raw.map(t => t.toUpperCase().replace(/F$/, ''))));
 
   // Se forceRefresh, invalida o cache para esses tickers
   if (forceRefresh) clearPriceCache(cleanTickers);
@@ -113,22 +130,26 @@ export async function fetchAssetPrices(tickers: string[], forceRefresh = false):
     }
   }
 
-  if (uncached.length === 0) return result;
-
-  try {
-    const res = await fetch(`/api/quotes?tickers=${encodeURIComponent(uncached.join(','))}`);
-    if (!res.ok) return result;
-    const data = await res.json() as { prices?: Record<string, number> };
-
-    for (const [symbol, price] of Object.entries(data.prices ?? {})) {
-      if (price != null && !isNaN(price)) {
-        result.set(symbol, price);
-        setCache(symbol, price);
+  if (uncached.length > 0) {
+    try {
+      const res = await fetch(`/api/quotes?tickers=${encodeURIComponent(uncached.join(','))}`);
+      if (res.ok) {
+        const data = await res.json() as { prices?: Record<string, number> };
+        for (const [symbol, price] of Object.entries(data.prices ?? {})) {
+          if (price != null && !isNaN(price)) {
+            result.set(symbol, price);
+            setCache(symbol, price);
+          }
+        }
       }
+    } catch (e) {
+      console.error('Erro ao buscar preços em batch:', e);
     }
-  } catch (e) {
-    console.error('Erro ao buscar preços em batch:', e);
   }
+
+  // Mescla as cotações de cripto (buscadas em paralelo desde o início).
+  const cryptoPrices = await cryptoPromise;
+  cryptoPrices.forEach((price, symbol) => result.set(symbol, price));
 
   return result;
 }

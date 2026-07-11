@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Asset, StrategyCategory } from '@/types';
 import styles from './AssetModal.module.css';
-import { X, RefreshCw, Calculator, Landmark, TrendingUp, Archive } from 'lucide-react';
+import { X, RefreshCw, Calculator, Landmark, TrendingUp, Archive, CheckCircle2 } from 'lucide-react';
 import TickerSearch from './TickerSearch';
 import HelpTip from './HelpTip';
-import { fetchAssetPrice, detectPriceMode } from '@/lib/brapi';
+import { fetchAssetPrice, detectPriceMode, detectPriceSource } from '@/lib/brapi';
 
 interface Props {
   categories: StrategyCategory[];
@@ -44,6 +44,10 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
 
   // ── Modo Renda Fixa ──────────────────────────────────────────────
   const isRendaFixa = selectedClass === 'Renda Fixa';
+
+  // Fonte de cotação reconhecida para o ticker atual (null = não reconhecido)
+  const priceSource = detectPriceSource(ticker);
+  const sourceLabel = priceSource === 'coingecko' ? 'via CoinGecko' : priceSource === 'brapi' ? 'via Brapi' : null;
 
   // ── Derivados ────────────────────────────────────────────────────
   const qtyNum = parseNum(quantity);
@@ -91,6 +95,27 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
   useEffect(() => {
     if (!asset && ticker) setPriceMode(detectPriceMode(ticker));
   }, [ticker, asset]);
+
+  // ── Auto-busca da cotação ao reconhecer um ticker no modo Auto ──────
+  // Assim o usuário vê o preço aparecer sozinho (confirmação de que o
+  // ticker foi encontrado), sem precisar clicar em "Atualizar". Debounce
+  // curto evita disparar a cada tecla; como só busca quando priceSource
+  // != null, tickers parciais/inválidos são naturalmente ignorados.
+  useEffect(() => {
+    if (isRendaFixa || priceMode !== 'auto' || !priceSource) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setIsFetchingPrice(true);
+      const price = await fetchAssetPrice(ticker);
+      if (!cancelled) {
+        setIsFetchingPrice(false);
+        if (price !== null) setCurrentPrice(fmtNum(price));
+      }
+    }, 500);
+    return () => { cancelled = true; clearTimeout(timer); };
+  // priceSource deriva de ticker; depender dele cobre a troca de fonte
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticker, priceMode, priceSource, isRendaFixa]);
 
   // ── Auto-foco no campo Valor Atual ao abrir para edição ──────────────
   const currentInputRef = useRef<HTMLInputElement>(null);
@@ -198,6 +223,18 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
                   if (name && !info.trim()) setInfo(name);
                 }}
               />
+              {!isRendaFixa && ticker.trim() && (
+                priceSource ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 6, fontSize: 12, color: '#34d399' }}>
+                    <CheckCircle2 size={13} />
+                    {priceSource === 'coingecko' ? 'Cripto reconhecida — sync automático via CoinGecko' : 'Ticker reconhecido — sync automático via Brapi'}
+                  </span>
+                ) : (
+                  <span style={{ display: 'inline-block', marginTop: 6, fontSize: 12, color: 'var(--text-secondary, #94a3b8)' }}>
+                    Ticker não reconhecido para busca automática — informe o preço no modo Manual.
+                  </span>
+                )
+              )}
             </div>
           </div>
 
@@ -355,7 +392,7 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
                     type="button"
                     className={`${styles.pillBtn} ${priceMode === 'auto' ? styles.pillBtnActive : ''}`}
                     onClick={() => setPriceMode('auto')}
-                    title="Preço atualizado automaticamente pela Brapi"
+                    title={priceSource === 'coingecko' ? 'Preço atualizado automaticamente pelo CoinGecko' : 'Preço atualizado automaticamente pela Brapi'}
                   >
                     Auto
                   </button>
@@ -374,8 +411,8 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
                 <div className="form-group">
                   <label className="label" htmlFor="asset-price">
                     Preço de Mercado
-                    <HelpTip text="Cotação atual do ativo na bolsa. No modo Auto, é atualizado pela Brapi. No modo Manual, você insere o valor." />
-                    {priceMode === 'auto' && <span className={styles.labelHint}>via Brapi</span>}
+                    <HelpTip text="Cotação atual do ativo. No modo Auto, ações e FIIs são atualizados pela Brapi e criptomoedas pelo CoinGecko. No modo Manual, você insere o valor." />
+                    {priceMode === 'auto' && sourceLabel && <span className={styles.labelHint}>{sourceLabel}</span>}
                   </label>
                   <div className={styles.priceInputRow}>
                     <input
