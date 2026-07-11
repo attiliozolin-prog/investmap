@@ -56,6 +56,21 @@ export async function POST(req: NextRequest) {
   const healthScore = num(raw.healthScore);
   const totalProfitLossPercent = num(raw.totalProfitLossPercent);
   const needsRebalancing = Boolean(raw.needsRebalancing);
+
+  // Contexto quantitativo opcional (plano de aporte, IR estimado, concentração)
+  const rawPlan = raw.contributionPlan as Record<string, unknown> | null | undefined;
+  const planTotal = rawPlan ? num(rawPlan.total) : 0;
+  const planItems = rawPlan && Array.isArray(rawPlan.items)
+    ? rawPlan.items.slice(0, 5).map(i => {
+        const it = i as Record<string, unknown>;
+        return { subclass: str(it.subclass), amount: num(it.amount) };
+      }).filter(i => i.amount > 0)
+    : [];
+  const estimatedSellTax = num(raw.estimatedSellTax);
+  const rawConc = raw.topConcentration as Record<string, unknown> | null | undefined;
+  const topConcentration = rawConc
+    ? { ticker: str(rawConc.ticker, 12), percent: num(rawConc.percent) }
+    : null;
   const categories = (Array.isArray(raw.categories) ? raw.categories : [])
     .slice(0, 30)
     .map(c => {
@@ -79,12 +94,18 @@ Sua missão é olhar os dados da carteira abaixo e escrever uma análise curta, 
 
 **Categorias Atuais vs Alvos:**
 ${categories.map(c => `- ${c.class} / ${c.subclass}: Você tem ${c.currentPercent.toFixed(1)}%, mas o plano era ${c.targetPercent}%`).join('\n')}
-
+${planTotal > 0 ? `
+**Plano de correção já calculado pelo app (aporte, sem vender nada):**
+- Total: R$ ${planTotal.toFixed(0)}
+${planItems.map(i => `- R$ ${i.amount.toFixed(0)} em ${i.subclass}`).join('\n')}
+` : ''}${estimatedSellTax > 0 ? `- Atenção: corrigir VENDENDO os ativos acima do alvo geraria ~R$ ${estimatedSellTax.toFixed(0)} de imposto de renda; corrigir via aporte evita esse custo.
+` : ''}${topConcentration && topConcentration.percent >= 15 ? `- Maior posição individual: ${topConcentration.ticker} com ${topConcentration.percent.toFixed(1)}% da carteira.
+` : ''}
 ## Diretrizes para a sua resposta:
 1. Comece de forma direta, avaliando o nível de saúde financeira da carteira e o retorno total.
 2. Faça um diagnóstico focado em **equilíbrio e diversificação**. Seja direto sobre concentrações excessivas e riscos atrelados a elas.
 3. Se houver desvios grandes (ex: Renda Variável Exterior muito acima do alvo), explique brevemente o porquê de ser um risco, ressaltando a importância do rebalanceamento.
-4. Forneça **bullet points precisos e diretos** com os pontos de atenção e onde agir.
+4. Forneça **bullet points precisos e diretos** com os pontos de atenção e onde agir. Quando houver "Plano de correção já calculado pelo app", comente esse plano concreto (por que corrigir via aporte é melhor que vender, especialmente se houver custo de IR estimado) em vez de sugestões genéricas.
 5. Regra de Ouro: **NUNCA** recomende compra ou venda de ações ou ativos diretamente.
 6. A linguagem deve ser profissional, objetiva e fácil de entender para um iniciante, sem analogias exageradas.
 7. Use Markdown (**negrito** para destacar termos importantes, "##" para cabeçalhos e "-" para listas estruturadas). Evite blocos de texto muito longos.

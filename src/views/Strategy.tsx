@@ -189,7 +189,7 @@ export default function Strategy() {
           <div className={styles.formGroup}>
             <label className={styles.label} htmlFor="strat-tolerance">
               Tolerância de desvio (%)
-              <HelpTip text="Quando qualquer subclasse desviar mais que este valor, você verá alertas de rebalanceamento."/>
+              <HelpTip text="Quando qualquer subclasse desviar mais que este valor, você verá alertas de rebalanceamento. Para alvos pequenos, o app usa automaticamente a regra 5/25: alerta também quando o desvio passa de 25% do próprio alvo (ex.: alvo de 4% alerta a partir de 1 ponto)."/>
             </label>
             <input
               id="strat-tolerance"

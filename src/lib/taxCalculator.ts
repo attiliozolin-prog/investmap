@@ -36,7 +36,7 @@
  * - Lei 14.754/2023 (regime de aplicações no exterior — fora do escopo)
  */
 
-import { AssetType, TaxCalculation } from '@/types';
+import { AssetType, TaxCalculation, AssetWithCalcs } from '@/types';
 
 export const ASSET_TYPE_LABELS: Record<AssetType, string> = {
   acao:       'Ação (B3)',
@@ -349,4 +349,54 @@ function nextMonthDue(yyyymm: string): string {
   const [y, m] = yyyymm.split('-').map(Number);
   const next = m === 12 ? { y: y + 1, m: 1 } : { y, m: m + 1 };
   return `último dia útil de ${formatMonthYear(`${next.y}-${String(next.m).padStart(2,'0')}`)}`;
+}
+
+// ── Estimativa de IR nas sugestões de rebalanceamento ───────────────────────
+
+
+export interface RebalanceSellTax {
+  assetId: string;
+  taxDue: number;
+  isExempt: boolean;
+  /** rótulo curto para UI: "isento", "prejuízo" ou "IR ~R$ X" fica a cargo da view */
+  reason?: string;
+}
+
+export interface RebalanceSellTaxSummary {
+  byAssetId: Record<string, RebalanceSellTax>;
+  totalTaxDue: number;
+}
+
+/**
+ * Estima o IR de executar TODAS as vendas sugeridas pelo rebalanceamento,
+ * em lote — as vendas do mesmo tipo tributário se somam para efeito das
+ * isenções mensais (R$ 20k ações / R$ 35k cripto), como aconteceria de fato
+ * se o usuário executasse tudo no mesmo mês.
+ *
+ * Custo-base proporcional: investedValue × (venda / valorAtual).
+ * É estimativa educacional (não considera outras vendas já feitas no mês).
+ */
+export function estimateRebalanceSellTaxes(assets: AssetWithCalcs[]): RebalanceSellTaxSummary {
+  const sells = assets.filter(a => !a.isArchived && a.action === 'sell' && a.rebalanceAmount < 0 && a.currentValue > 0);
+  const today = new Date().toISOString().slice(0, 10);
+  const salesByType: Partial<Record<AssetType, number>> = {};
+  const byAssetId: Record<string, RebalanceSellTax> = {};
+  let totalTaxDue = 0;
+
+  for (const a of sells) {
+    const sellValue = Math.min(Math.abs(a.rebalanceAmount), a.currentValue);
+    const costBasis = a.investedValue * (sellValue / a.currentValue);
+    const type = detectAssetType(a.category.className, a.category.subclassName, a.ticker);
+    const calc = calculateTax(type, sellValue, costBasis, today, a.createdAt, salesByType[type] ?? 0);
+    salesByType[type] = (salesByType[type] ?? 0) + sellValue;
+    byAssetId[a.id] = {
+      assetId: a.id,
+      taxDue: calc.taxDue,
+      isExempt: calc.isExempt,
+      reason: calc.isLoss ? 'prejuízo' : calc.isExempt ? 'isento' : undefined,
+    };
+    totalTaxDue += calc.taxDue;
+  }
+
+  return { byAssetId, totalTaxDue };
 }

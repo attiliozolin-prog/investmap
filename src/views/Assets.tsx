@@ -3,7 +3,8 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { calculatePortfolio, formatCurrency, idealSingleContribution } from '@/lib/calculations';
+import { calculatePortfolio, formatCurrency, idealContributionPlan, deviationBand, autoDetectMonthlyContribution } from '@/lib/calculations';
+import { estimateRebalanceSellTaxes } from '@/lib/taxCalculator';
 import { detectPriceSource } from '@/lib/brapi';
 import AssetModal from '@/components/AssetModal';
 import AssetDetailDrawer from '@/components/AssetDetailDrawer';
@@ -33,7 +34,7 @@ export default function Assets() {
   const router = useRouter();
   const {
     strategies, activeStrategy, activeAssets, activeStrategyId, setActiveStrategy,
-    addAsset, updateAsset,
+    addAsset, updateAsset, transactions,
     syncPrices, isSyncingPrices, lastPriceSyncAt,
   } = useApp();
   const { toast } = useToast();
@@ -152,14 +153,46 @@ export default function Assets() {
     [subGroups]
   );
 
-  const outOfTolerance = activeStrategy ? subGroups.filter(g => Math.abs(g.dev) > activeStrategy.deviationTolerance) : [];
+  // Banda 5/25: fora da tolerância = além do menor entre a tolerância absoluta
+  // e 25% relativos ao alvo (ver deviationBand em calculations.ts)
+  const outOfTolerance = activeStrategy
+    ? subGroups.filter(g => Math.abs(g.dev) > deviationBand(activeStrategy.deviationTolerance, g.target))
+    : [];
 
-  // Aporte único que recoloca a subclasse mais defasada na meta sem vender
+  // Plano de aporte multi-categoria (waterfall): menor aporte total que
+  // recoloca TODAS as subclasses na meta sem vender nada
   // (mesmo motor usado no Dashboard — src/lib/calculations.ts)
-  const idealContribution = useMemo(
-    () => summary ? idealSingleContribution(summary.categorySummaries, summary.totalValue) : null,
+  const contributionPlan = useMemo(
+    () => summary ? idealContributionPlan(summary.categorySummaries, summary.totalValue) : null,
     [summary],
   );
+
+  // Ritmo de aporte do usuário (média dos últimos 6 meses) — para estimar em
+  // quantos meses o plano se completa no ritmo atual
+  const monthlyContribution = useMemo(() => {
+    const assetIds = new Set(activeAssets.map(a => a.id));
+    return autoDetectMonthlyContribution(
+      transactions.filter(t => assetIds.has(t.assetId)),
+      Array.from(assetIds),
+    );
+  }, [transactions, activeAssets]);
+
+  // IR estimado das vendas sugeridas (em lote, isenções mensais consideradas)
+  const sellTaxes = useMemo(
+    () => summary ? estimateRebalanceSellTaxes(summary.assetsWithCalcs) : null,
+    [summary],
+  );
+
+  // Viabilidade: se voltar 100% à meta só com aportes exigir mais que 50% do
+  // patrimônio, o número deixa de ser acionável — nesse caso, mostramos como
+  // distribuir o PRÓXIMO aporte do usuário (water-filling com budget), que é
+  // o passo concreto possível hoje.
+  const planIsFeasible = !!(summary && contributionPlan && contributionPlan.total <= summary.totalValue * 0.5);
+  const budgetPlan = useMemo(() => {
+    if (!summary || !contributionPlan || planIsFeasible) return null;
+    const budget = monthlyContribution > 0 ? monthlyContribution : summary.totalValue * 0.02;
+    return idealContributionPlan(summary.categorySummaries, summary.totalValue, budget);
+  }, [summary, contributionPlan, planIsFeasible, monthlyContribution]);
 
   const buys = summary ? summary.assetsWithCalcs.filter(a => !a.isArchived && a.action === 'buy') : [];
   const sells = summary ? summary.assetsWithCalcs.filter(a => !a.isArchived && a.action === 'sell') : [];
@@ -366,11 +399,35 @@ export default function Assets() {
 
             <div className={styles.tile}>
               <span className={styles.tileLabel}>Próxima ação sugerida</span>
-              {idealContribution ? (
+              {contributionPlan && outOfTolerance.length > 0 && planIsFeasible ? (
                 <>
-                  <span className={styles.tileValue} style={{ color: 'var(--color-primary-light)' }}>{formatCurrency(idealContribution.amount)}</span>
+                  <span className={styles.tileValue} style={{ color: 'var(--color-primary-light)' }}>{formatCurrency(contributionPlan.total)}</span>
                   <span className={styles.tileSub}>
-                    Um aporte único em <strong>{idealContribution.subclassName}</strong> recoloca a carteira dentro da meta — sem vender nada.
+                    {contributionPlan.items.length === 1 ? (
+                      <>Um aporte único em <strong>{contributionPlan.items[0].subclassName}</strong> recoloca a carteira dentro da meta — sem vender nada.</>
+                    ) : (
+                      <>
+                        Aportando {contributionPlan.items.slice(0, 2).map((it, i) => (
+                          <span key={it.categoryId}>{i > 0 && ', '}<strong>{formatCurrency(it.amount)}</strong> em {it.subclassName}</span>
+                        ))}
+                        {contributionPlan.items.length > 2 && <> e mais {contributionPlan.items.length - 2} subclasse{contributionPlan.items.length - 2 > 1 ? 's' : ''}</>}
+                        , a carteira volta à meta — sem vender nada.
+                      </>
+                    )}
+                    {monthlyContribution > 0 && contributionPlan.total > monthlyContribution && (
+                      <> No seu ritmo de {formatCurrency(monthlyContribution)}/mês, ≈ {Math.ceil(contributionPlan.total / monthlyContribution)} meses.</>
+                    )}
+                  </span>
+                </>
+              ) : budgetPlan && budgetPlan.items.length > 0 && outOfTolerance.length > 0 ? (
+                <>
+                  <span className={styles.tileValue} style={{ color: 'var(--color-primary-light)' }}>{formatCurrency(budgetPlan.total)}</span>
+                  <span className={styles.tileSub}>
+                    Direcione seu próximo aporte assim: {budgetPlan.items.slice(0, 3).map((it, i) => (
+                      <span key={it.categoryId}>{i > 0 && ', '}<strong>{formatCurrency(it.amount)}</strong> em {it.subclassName}</span>
+                    ))}
+                    {budgetPlan.items.length > 3 && <> e mais {budgetPlan.items.length - 3}</>}
+                    . É o passo que mais reduz o desvio hoje — voltar 100% à meta só com aportes exigiria {formatCurrency(contributionPlan?.total ?? 0)}.
                   </span>
                 </>
               ) : (
@@ -437,8 +494,8 @@ export default function Assets() {
                           <span className={styles.bulletNums}>
                             {pct(g.pct)} <span className={styles.legendMeta}>/ {g.target}%</span>
                           </span>
-                          <span className={`${styles.devBadge} ${Math.abs(g.dev) <= activeStrategy.deviationTolerance ? styles.devOk : g.dev > 0 ? styles.devUp : styles.devDown}`}>
-                            {Math.abs(g.dev) <= activeStrategy.deviationTolerance ? '✓' : `${g.dev > 0 ? '▲' : '▼'} ${Math.abs(g.dev).toFixed(1).replace('.', ',')}%`}
+                          <span className={`${styles.devBadge} ${Math.abs(g.dev) <= deviationBand(activeStrategy.deviationTolerance, g.target) ? styles.devOk : g.dev > 0 ? styles.devUp : styles.devDown}`}>
+                            {Math.abs(g.dev) <= deviationBand(activeStrategy.deviationTolerance, g.target) ? '✓' : `${g.dev > 0 ? '▲' : '▼'} ${Math.abs(g.dev).toFixed(1).replace('.', ',')}%`}
                           </span>
                         </button>
                       ))}
@@ -455,8 +512,20 @@ export default function Assets() {
               <Sparkles size={18} color="var(--color-primary)" style={{ flexShrink: 0 }} />
               <div className={styles.rebalHead}>
                 <span className={styles.rebalTitle}>Para voltar à estratégia</span>
-                {idealContribution && (
-                  <span className={styles.rebalSub}>ou aporte {formatCurrency(idealContribution.amount)} direto em {idealContribution.subclassName}</span>
+                {planIsFeasible && contributionPlan && (
+                  <span className={styles.rebalSub}>
+                    ou aporte {formatCurrency(contributionPlan.total)} distribuído{contributionPlan.items.length === 1 ? ` em ${contributionPlan.items[0].subclassName}` : ` em ${contributionPlan.items.length} subclasses`} — sem vender e sem IR
+                  </span>
+                )}
+                {!planIsFeasible && budgetPlan && budgetPlan.items.length > 0 && (
+                  <span className={styles.rebalSub}>
+                    ou direcione os próximos aportes para {budgetPlan.items.slice(0, 2).map(i => i.subclassName).join(' e ')} — corrige aos poucos, sem vender e sem IR
+                  </span>
+                )}
+                {sellTaxes && sellTaxes.totalTaxDue > 0.5 && (
+                  <span className={styles.rebalSub} style={{ color: '#FBBF24' }}>
+                    vender como sugerido gera ~{formatCurrency(sellTaxes.totalTaxDue)} de IR (estimativa)
+                  </span>
                 )}
               </div>
               <div className={styles.rebalChips}>
@@ -466,12 +535,21 @@ export default function Assets() {
                     <span className={styles.rebalVal}>+{formatCurrency(a.rebalanceAmount)}</span>
                   </button>
                 ))}
-                {sells.map(a => (
-                  <button key={a.id} className={styles.rebalChip} onClick={() => setDetailAsset(a)} title={`Ver ${a.ticker}`}>
-                    <span className={styles.rebalSell}>▼ Reduzir</span> {a.ticker}
-                    <span className={styles.rebalVal}>−{formatCurrency(Math.abs(a.rebalanceAmount))}</span>
-                  </button>
-                ))}
+                {sells.map(a => {
+                  const tax = sellTaxes?.byAssetId[a.id];
+                  return (
+                    <button key={a.id} className={styles.rebalChip} onClick={() => setDetailAsset(a)}
+                      title={`Ver ${a.ticker}${tax ? tax.taxDue > 0.5 ? ` · IR estimado ${formatCurrency(tax.taxDue)}` : ` · venda ${tax.reason ?? 'sem IR'}` : ''}`}>
+                      <span className={styles.rebalSell}>▼ Reduzir</span> {a.ticker}
+                      <span className={styles.rebalVal}>−{formatCurrency(Math.abs(a.rebalanceAmount))}</span>
+                      {tax && (
+                        tax.taxDue > 0.5
+                          ? <span className={styles.rebalVal} style={{ color: '#FBBF24' }}>IR ~{formatCurrency(tax.taxDue)}</span>
+                          : <span className={styles.rebalVal} style={{ color: '#34D399' }}>{tax.reason ?? 'sem IR'}</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </section>
           )}

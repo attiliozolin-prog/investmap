@@ -34,6 +34,7 @@ export interface Asset {
   avgPrice?: number;           // Preço Médio de Aquisição — PME (custo histórico por ação)
   customPrice?: number;        // Preço de mercado atual (para botão "Auto" e cálculo de currentValue)
   priceMode?: 'auto' | 'manual'; // 'auto' = Brapi sincroniza; 'manual' = usuário insere
+  targetWeight?: number;       // Peso relativo do ativo dentro da subclasse (default 1 = divisão igualitária)
   isArchived?: boolean;        // Ativo encerrado — excluído da carteira ativa, preservado no histórico
   createdAt?: string;          // ISO Date
   updatedAt: string;
@@ -260,6 +261,8 @@ export interface GoalProjectionResult {
   monthsFraction: number;          // meses restantes após os anos inteiros
   progressPercent: number;         // % do valor atual em relação à meta
   projectionData: Array<{ month: number; value: number }>; // Para mini-gráfico
+  // Banda de incerteza Monte Carlo (p25/p75) — presente quando há volatilidade estimada
+  uncertainty?: { optimisticMonths: number; pessimisticMonths: number };
   scenarios: {
     baseCase: { months: number; years: number; monthsFraction: number };
     increasedContribution: { months: number; years: number; monthsFraction: number; extraAmount: number };

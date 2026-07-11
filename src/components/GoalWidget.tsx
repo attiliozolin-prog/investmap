@@ -8,6 +8,7 @@ import {
   calculateGoalProjection,
   autoDetectMonthlyReturn,
   autoDetectMonthlyContribution,
+  estimateMonthlyVolatility,
 } from '@/lib/calculations';
 import { FinancialGoal } from '@/types';
 import dynamic from 'next/dynamic';
@@ -57,22 +58,35 @@ export default function GoalWidget({ currentValue, strategyId }: Props) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // ── Auto-detecta métricas da carteira ─────────────────────────────────────
+  // Rendimento via XIRR (fluxos de compra/venda datados + valor atual) — o
+  // número correto quando há aportes ao longo do período; cai para a
+  // aproximação por snapshots quando não há transações suficientes.
+  const stratTxs = useMemo(() => {
+    const assetIds = new Set(activeAssets.map(a => a.id));
+    return transactions.filter(t => assetIds.has(t.assetId));
+  }, [transactions, activeAssets]);
+
   const autoMonthlyReturn = useMemo(
-    () => autoDetectMonthlyReturn(snapshots, strategyId),
-    [snapshots, strategyId]
+    () => autoDetectMonthlyReturn(snapshots, strategyId, stratTxs, currentValue),
+    [snapshots, strategyId, stratTxs, currentValue]
   );
 
-  const autoMonthlyContribution = useMemo(() => {
-    const assetIds = new Set(activeAssets.map(a => a.id));
-    const stratTxs = transactions.filter(t => assetIds.has(t.assetId));
-    return autoDetectMonthlyContribution(stratTxs, Array.from(assetIds));
-  }, [transactions, activeAssets]);
+  const autoMonthlyContribution = useMemo(
+    () => autoDetectMonthlyContribution(stratTxs, activeAssets.map(a => a.id)),
+    [stratTxs, activeAssets]
+  );
+
+  // Volatilidade histórica → banda de incerteza da projeção (Monte Carlo)
+  const monthlyVolatility = useMemo(
+    () => estimateMonthlyVolatility(snapshots, strategyId),
+    [snapshots, strategyId]
+  );
 
   // ── Projeção ───────────────────────────────────────────────────────────────
   const projection = useMemo(() => {
     if (!activeGoal) return null;
-    return calculateGoalProjection(activeGoal, currentValue, autoMonthlyContribution, autoMonthlyReturn);
-  }, [activeGoal, currentValue, autoMonthlyContribution, autoMonthlyReturn]);
+    return calculateGoalProjection(activeGoal, currentValue, autoMonthlyContribution, autoMonthlyReturn, monthlyVolatility);
+  }, [activeGoal, currentValue, autoMonthlyContribution, autoMonthlyReturn, monthlyVolatility]);
 
   // ── Detecta conquista ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -312,6 +326,15 @@ export default function GoalWidget({ currentValue, strategyId }: Props) {
                 </div>
               </div>
             </div>
+
+            {/* Banda de incerteza (Monte Carlo com a volatilidade histórica) */}
+            {prog.uncertainty && prog.uncertainty.pessimisticMonths > prog.uncertainty.optimisticMonths && (
+              <div style={{ fontSize: '0.78rem', color: 'var(--color-text-3, #9CA3AF)', marginTop: 6, lineHeight: 1.5 }}>
+                Considerando as oscilações históricas da sua carteira, o mais provável é chegar entre{' '}
+                <strong>{formatTimeFull(Math.floor(prog.uncertainty.optimisticMonths / 12), prog.uncertainty.optimisticMonths % 12)}</strong> e{' '}
+                <strong>{prog.uncertainty.pessimisticMonths >= 600 ? 'bem mais tempo' : formatTimeFull(Math.floor(prog.uncertainty.pessimisticMonths / 12), prog.uncertainty.pessimisticMonths % 12)}</strong>.
+              </div>
+            )}
 
             {/* Cenários de aceleração */}
             <div className={styles.scenariosSection}>

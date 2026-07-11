@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { PortfolioSummary } from '@/types';
+import { idealContributionPlan } from '@/lib/calculations';
+import { estimateRebalanceSellTaxes } from '@/lib/taxCalculator';
 import styles from './AiAnalysisCard.module.css';
 import { Sparkles, Loader2, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -22,6 +24,17 @@ export default function AiAnalysisCard({ summary, strategyName }: Props) {
     setError('');
     setExpanded(true);
 
+    // Plano de aporte e custo fiscal — deixam a análise concreta em vez de genérica.
+    // Mesma regra de viabilidade das views: plano completo só quando ≤ 50% do
+    // patrimônio; senão, plano de direcionamento do próximo aporte (~2%).
+    const fullPlan = idealContributionPlan(summary.categorySummaries, summary.totalValue);
+    const plan = fullPlan && fullPlan.total <= summary.totalValue * 0.5
+      ? fullPlan
+      : idealContributionPlan(summary.categorySummaries, summary.totalValue, summary.totalValue * 0.02);
+    const sellTaxes = estimateRebalanceSellTaxes(summary.assetsWithCalcs);
+    const activeAssetsCalc = summary.assetsWithCalcs.filter(a => !a.isArchived);
+    const topAsset = [...activeAssetsCalc].sort((a, b) => b.currentPortfolioPercent - a.currentPortfolioPercent)[0];
+
     // Monta o payload com apenas dados anônimos da carteira (sem info pessoal)
     const payload = {
       strategyName,
@@ -38,6 +51,19 @@ export default function AiAnalysisCard({ summary, strategyName }: Props) {
         action: cs.action,
         rebalanceAmount: cs.rebalanceAmount,
       })),
+      contributionPlan: plan
+        ? {
+            total: Math.round(plan.total),
+            items: plan.items.slice(0, 5).map(i => ({
+              subclass: i.subclassName,
+              amount: Math.round(i.amount),
+            })),
+          }
+        : null,
+      estimatedSellTax: Math.round(sellTaxes.totalTaxDue),
+      topConcentration: topAsset
+        ? { ticker: topAsset.ticker, percent: parseFloat(topAsset.currentPortfolioPercent.toFixed(1)) }
+        : null,
       assets: summary.assetsWithCalcs.map((a) => ({
         ticker: a.ticker,
         subclass: a.category.subclassName,

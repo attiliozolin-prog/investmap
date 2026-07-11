@@ -4,7 +4,7 @@ import { useMemo, useEffect, useRef, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import { useFinance } from '@/context/FinanceContext';
-import { calculatePortfolio, formatCurrency, CHART_COLORS, idealSingleContribution } from '@/lib/calculations';
+import { calculatePortfolio, formatCurrency, CHART_COLORS, idealContributionPlan, deviationBand } from '@/lib/calculations';
 import GoalWidget from '@/components/GoalWidget';
 import AiAnalysisCard from '@/components/AiAnalysisCard';
 import FirstUseTip from '@/components/FirstUseTip';
@@ -271,14 +271,22 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
     return Object.entries(map).map(([name, d]) => ({ name, ...d })).filter(d => d.value > 0).sort((a, b) => b.value - a.value);
   }, [categorySummaries, catColorMap]);
 
+  // Banda 5/25 (menor entre tolerância absoluta e 25% relativos ao alvo)
   const outOfTolerance = activeStrategy
-    ? categorySummaries.filter(cs => Math.abs(cs.currentPercent - cs.targetPercent) > activeStrategy.deviationTolerance)
+    ? categorySummaries.filter(cs =>
+        Math.abs(cs.currentPercent - cs.targetPercent) > deviationBand(activeStrategy.deviationTolerance, cs.targetPercent))
     : [];
 
-  // Aporte único que resolve o rebalanceamento sem vender nada — mesmo motor
-  // usado na página de Ativos (src/lib/calculations.ts), para os dois nunca
-  // divergirem.
-  const idealContribution = summary ? idealSingleContribution(categorySummaries, summary.totalValue) : null;
+  // Plano de aporte multi-categoria que resolve o rebalanceamento sem vender
+  // nada — mesmo motor usado na página de Ativos (src/lib/calculations.ts),
+  // para os dois nunca divergirem. Quando o plano completo é desproporcional
+  // (> 50% do patrimônio), a sugestão vira "direcione os próximos aportes"
+  // (water-filling) — mesma regra de viabilidade da página de Ativos.
+  const contributionPlan = summary ? idealContributionPlan(categorySummaries, summary.totalValue) : null;
+  const planIsFeasible = !!(summary && contributionPlan && contributionPlan.total <= summary.totalValue * 0.5);
+  const budgetPlan = summary && contributionPlan && !planIsFeasible
+    ? idealContributionPlan(categorySummaries, summary.totalValue, summary.totalValue * 0.02)
+    : null;
 
   const goalProgressPct = activeGoal && activeGoal.targetValue > 0 && summary
     ? Math.min(100, (summary.totalValue / activeGoal.targetValue) * 100)
@@ -374,11 +382,17 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
   if (needsRebalancing) {
     actions.push({
       key: 'rebalance', icon: <Zap size={16} />, cls: styles.aiInfo,
-      title: idealContribution
-        ? <>Aporte de <strong>{formatCurrency(idealContribution.amount)}</strong> em {idealContribution.subclassName} recoloca a carteira na meta</>
+      title: planIsFeasible && contributionPlan
+        ? <>Aporte de <strong>{formatCurrency(contributionPlan.total)}</strong>{contributionPlan.items.length === 1 ? ` em ${contributionPlan.items[0].subclassName}` : `, distribuído em ${contributionPlan.items.length} subclasses,`} recoloca a carteira na meta</>
+        : budgetPlan && budgetPlan.items.length > 0
+        ? <>Direcione os próximos aportes para {budgetPlan.items.slice(0, 2).map((it, i) => (
+            <span key={it.categoryId}>{i > 0 && ' e '}<strong>{it.subclassName}</strong></span>
+          ))}</>
         : <><strong>{buyAssets.length}</strong> ativo{buyAssets.length !== 1 ? 's' : ''} para comprar · <strong>{sellAssets.length}</strong> para reduzir</>,
-      sub: idealContribution
-        ? `${outOfTolerance.length} de ${categorySummaries.length} subclasses fora da tolerância — este aporte único resolve sem vender nada`
+      sub: planIsFeasible && contributionPlan
+        ? `${outOfTolerance.length} de ${categorySummaries.length} subclasses fora da tolerância — este plano de aporte resolve sem vender nada (e sem IR)`
+        : budgetPlan
+        ? `${outOfTolerance.length} de ${categorySummaries.length} subclasses fora da tolerância — corrigir via aporte evita vendas (e IR); veja o plano em Ativos`
         : `${outOfTolerance.length} de ${categorySummaries.length} subclasses fora da tolerância de ${activeStrategy.deviationTolerance}%`,
       go: 'Rebalancear', dest: 'assets',
     });
@@ -649,7 +663,9 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
         <div className={styles.goalModalOverlay} onClick={() => setShowGoalModal(false)}>
           <div className={styles.goalModalWrap} onClick={e => e.stopPropagation()}>
             <button className={styles.goalModalClose} onClick={() => setShowGoalModal(false)} aria-label="Fechar"><X size={16}/></button>
-            <GoalWidget currentValue={summary.totalValue} strategyId={activeStrategy.id} />
+            <div className={styles.goalModalScroll}>
+              <GoalWidget currentValue={summary.totalValue} strategyId={activeStrategy.id} />
+            </div>
           </div>
         </div>
       )}

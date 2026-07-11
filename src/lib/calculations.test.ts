@@ -6,6 +6,10 @@ import {
   autoDetectMonthlyContribution,
   formatCurrency,
   formatPercent,
+  deviationBand,
+  idealContributionPlan,
+  calculateXIRR,
+  estimateMonthlyVolatility,
 } from './calculations';
 import { Strategy, Asset, FinancialGoal, PortfolioSnapshot } from '@/types';
 
@@ -118,6 +122,190 @@ describe('calculatePortfolio — rebalanceamento', () => {
     ]);
     // desvio médio = (30 + 30) / 2 = 30 → score = 100 - 60 = 40
     expect(p.healthScore).toBe(40);
+  });
+});
+
+// ── Banda 5/25 ──────────────────────────────────────────────────────────────
+
+describe('deviationBand (regra 5/25)', () => {
+  it('alvos grandes usam a tolerância absoluta', () => {
+    expect(deviationBand(3, 40)).toBe(3);   // 25% de 40 = 10 > 3
+    expect(deviationBand(5, 50)).toBe(5);
+  });
+
+  it('alvos pequenos usam 25% relativos (com piso de 1 p.p.)', () => {
+    expect(deviationBand(3, 4)).toBe(1);    // 25% de 4 = 1
+    expect(deviationBand(3, 8)).toBe(2);    // 25% de 8 = 2
+    expect(deviationBand(3, 2)).toBe(1);    // 25% de 2 = 0.5 → piso 1
+  });
+
+  it('subclasse pequena fora da banda relativa dispara mesmo dentro da tolerância absoluta', () => {
+    const strat: Strategy = {
+      ...strategy,
+      deviationTolerance: 5,
+      categories: [
+        { id: 'c1', strategyId: 's1', className: 'RF', subclassName: 'Tesouro', targetPercent: 92 },
+        { id: 'c2', strategyId: 's1', className: 'RV', subclassName: 'Cripto', targetPercent: 8 },
+      ],
+    };
+    // Cripto com 12% (alvo 8): desvio 4 < tolerância 5, mas > 25% do alvo (2)
+    const p = calculatePortfolio(strat, [
+      asset({ id: 'a1', categoryId: 'c1', currentValue: 8800 }),
+      asset({ id: 'a2', categoryId: 'c2', currentValue: 1200 }),
+    ]);
+    const cripto = p.categorySummaries.find(cs => cs.category.id === 'c2')!;
+    expect(cripto.action).toBe('sell');
+  });
+});
+
+// ── Gate de sinais por subclasse ────────────────────────────────────────────
+
+describe('sinais por ativo respeitam a subclasse', () => {
+  it('subclasse na meta → ativos internos desiguais não geram falso buy/sell', () => {
+    // c1 na meta (50%), mas dividida 70/30 entre dois ativos
+    const p = calculatePortfolio(strategy, [
+      asset({ id: 'a1', categoryId: 'c1', currentValue: 3500 }),
+      asset({ id: 'a2', categoryId: 'c1', currentValue: 1500 }),
+      asset({ id: 'a3', categoryId: 'c2', currentValue: 5000 }),
+    ]);
+    expect(p.assetsWithCalcs.every(a => a.action === 'ok')).toBe(true);
+    expect(p.needsRebalancing).toBe(false);
+  });
+
+  it('targetWeight rateia o alvo da subclasse por peso', () => {
+    const p = calculatePortfolio(strategy, [
+      asset({ id: 'a1', categoryId: 'c1', currentValue: 3500, targetWeight: 7 }),
+      asset({ id: 'a2', categoryId: 'c1', currentValue: 1500, targetWeight: 3 }),
+      asset({ id: 'a3', categoryId: 'c2', currentValue: 5000 }),
+    ]);
+    const a1 = p.assetsWithCalcs.find(a => a.id === 'a1')!;
+    expect(a1.assetTargetPercent).toBeCloseTo(35, 5); // 50% × 0.7
+  });
+});
+
+// ── Plano de aporte (waterfall) ─────────────────────────────────────────────
+
+describe('idealContributionPlan', () => {
+  it('sem budget: menor aporte que zera todos os desvios sem vender', () => {
+    // c1 80% / c2 20%, alvos 50/50 → T' = 8000/0.5 = 16000 → aportar 6000 em c2
+    const p = calculatePortfolio(strategy, [
+      asset({ id: 'a1', categoryId: 'c1', currentValue: 8000 }),
+      asset({ id: 'a2', categoryId: 'c2', currentValue: 2000 }),
+    ]);
+    const plan = idealContributionPlan(p.categorySummaries, p.totalValue)!;
+    expect(plan.fullyBalances).toBe(true);
+    expect(plan.total).toBeCloseTo(6000, 0);
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0].categoryId).toBe('c2');
+    expect(plan.items[0].resultingPercent).toBeCloseTo(50, 1);
+  });
+
+  it('carteira na meta → null', () => {
+    const p = calculatePortfolio(strategy, [
+      asset({ id: 'a1', categoryId: 'c1', currentValue: 5000 }),
+      asset({ id: 'a2', categoryId: 'c2', currentValue: 5000 }),
+    ]);
+    expect(idealContributionPlan(p.categorySummaries, p.totalValue)).toBeNull();
+  });
+
+  it('com budget insuficiente: prioriza a subclasse mais defasada (water-filling)', () => {
+    const p = calculatePortfolio(strategy, [
+      asset({ id: 'a1', categoryId: 'c1', currentValue: 8000 }),
+      asset({ id: 'a2', categoryId: 'c2', currentValue: 2000 }),
+    ]);
+    const plan = idealContributionPlan(p.categorySummaries, p.totalValue, 3000)!;
+    expect(plan.fullyBalances).toBe(false);
+    expect(plan.total).toBeCloseTo(3000, 0);
+    // tudo vai para c2 (única defasada)
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0].categoryId).toBe('c2');
+    expect(plan.items[0].amount).toBeCloseTo(3000, 0);
+  });
+
+  it('com budget maior que os déficits: zera déficits e rateia a sobra pelos alvos', () => {
+    const p = calculatePortfolio(strategy, [
+      asset({ id: 'a1', categoryId: 'c1', currentValue: 5200 }),
+      asset({ id: 'a2', categoryId: 'c2', currentValue: 4800 }),
+    ]);
+    const plan = idealContributionPlan(p.categorySummaries, p.totalValue, 2000)!;
+    expect(plan.fullyBalances).toBe(true);
+    expect(plan.total).toBeCloseTo(2000, 0);
+    const soma = plan.items.reduce((s, i) => s + i.amount, 0);
+    expect(soma).toBeCloseTo(2000, 0);
+    // resultado final: ambas em 50%
+    plan.items.forEach(i => expect(i.resultingPercent).toBeCloseTo(50, 0));
+  });
+});
+
+// ── XIRR ────────────────────────────────────────────────────────────────────
+
+describe('calculateXIRR', () => {
+  it('retorno anual de um único aporte que dobra em 1 ano ≈ 100%', () => {
+    const r = calculateXIRR([
+      { date: '2025-01-01', value: -1000 },
+      { date: '2026-01-01', value: 2000 },
+    ])!;
+    expect(r).toBeCloseTo(1.0, 1);
+  });
+
+  it('fluxos de um sinal só → null', () => {
+    expect(calculateXIRR([
+      { date: '2025-01-01', value: -1000 },
+      { date: '2026-01-01', value: -500 },
+    ])).toBeNull();
+  });
+
+  it('período curto demais (< 60 dias) → null', () => {
+    expect(calculateXIRR([
+      { date: '2026-01-01', value: -1000 },
+      { date: '2026-01-15', value: 1100 },
+    ])).toBeNull();
+  });
+
+  it('aportes mensais sem rendimento → taxa ~0', () => {
+    const flows = [];
+    for (let m = 0; m < 12; m++) {
+      flows.push({ date: `2025-${String(m + 1).padStart(2, '0')}-01`, value: -100 });
+    }
+    flows.push({ date: '2026-01-01', value: 1200 });
+    const r = calculateXIRR(flows)!;
+    expect(Math.abs(r)).toBeLessThan(0.01);
+  });
+});
+
+describe('estimateMonthlyVolatility', () => {
+  it('poucos dados → default 2,5%', () => {
+    expect(estimateMonthlyVolatility([], 's1')).toBe(0.025);
+  });
+
+  it('série estável tem volatilidade baixa', () => {
+    const snaps: PortfolioSnapshot[] = ['01', '02', '03', '04', '05', '06'].map((m, i) => ({
+      id: m, strategyId: 's1', date: `2026-${m}-28`,
+      totalValue: 1000 * Math.pow(1.01, i), totalInvested: 1000, profitLoss: 0,
+    }));
+    expect(estimateMonthlyVolatility(snaps, 's1')).toBeLessThanOrEqual(0.01);
+  });
+});
+
+// ── Incerteza Monte Carlo ───────────────────────────────────────────────────
+
+describe('calculateGoalProjection — banda de incerteza', () => {
+  it('com volatilidade, expõe banda p25/p75 em torno do cenário base', () => {
+    const r = calculateGoalProjection(
+      goal({ targetValue: 50000, monthlyContribution: 1000, monthlyReturnRate: 0.008 }),
+      10000, 0, 0, 0.03,
+    );
+    expect(r.uncertainty).toBeDefined();
+    expect(r.uncertainty!.optimisticMonths).toBeLessThanOrEqual(r.uncertainty!.pessimisticMonths);
+    expect(r.uncertainty!.optimisticMonths).toBeGreaterThan(0);
+  });
+
+  it('sem volatilidade, não há banda', () => {
+    const r = calculateGoalProjection(
+      goal({ targetValue: 50000, monthlyContribution: 1000, monthlyReturnRate: 0.008 }),
+      10000, 0, 0,
+    );
+    expect(r.uncertainty).toBeUndefined();
   });
 });
 

@@ -242,12 +242,15 @@
   display: flex; align-items: center; justify-content: center; padding: 1rem;
 }
 .goalModalWrap {
-  position: relative; width: 100%; max-width: 620px; max-height: 90vh; overflow-y: auto;
+  position: relative; width: 100%; max-width: 620px; margin-top: 2.75rem;
   animation: goalPopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
+/* Área rolável separada do wrap para o X (fora do card) não ser clipado */
+.goalModalScroll { max-height: 85vh; overflow-y: auto; border-radius: 16px; }
 @keyframes goalPopIn { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: none; } }
 .goalModalClose {
-  position: absolute; top: 0.4rem; right: 0.4rem; z-index: 5;
+  /* Acima do card, fora dele — não cobre os botões editar/excluir do widget */
+  position: absolute; top: -2.6rem; right: 0; z-index: 5;
   display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px;
   border: 1px solid var(--color-border); background: var(--color-surface);
   color: var(--color-text-2); cursor: pointer;
