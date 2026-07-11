@@ -8,6 +8,7 @@ import {
   AiImportResult, FinanceSection, FinanceTransaction, FinanceTransactionType,
 } from '@/types';
 import { isCardCategory } from '@/lib/financeCategories';
+import { buildCategoryHints, resolveCategory } from '@/lib/importCategoryRules';
 import shared from '@/views/Finances.module.css';
 import styles from './FinanceImportModal.module.css';
 
@@ -121,12 +122,13 @@ function ProcessingIndicator() {
 }
 
 export default function FinanceImportModal({
-  monthId, monthStr, categories, monthTxs, onClose, onConfirm,
+  monthId, monthStr, categories, monthTxs, allTransactions, onClose, onConfirm,
 }: {
   monthId: string;
   monthStr: string; // YYYY-MM do mês ativo
   categories: string[];
   monthTxs: FinanceTransaction[];
+  allTransactions: FinanceTransaction[]; // histórico completo → aprendizado de categorias
   onClose: () => void;
   onConfirm: (list: Omit<FinanceTransaction, 'id' | 'createdAt'>[]) => void;
 }) {
@@ -148,6 +150,8 @@ export default function FinanceImportModal({
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const sortedCategories = useMemo(() => [...categories].sort((a, b) => a.localeCompare(b)), [categories]);
+  // Aprendizado: estabelecimento → categoria a partir do histórico do usuário
+  const categoryHints = useMemo(() => buildCategoryHints(allTransactions), [allTransactions]);
 
   const handleFile = async (file: File) => {
     setError(null);
@@ -199,6 +203,11 @@ export default function FinanceImportModal({
       const existing = new Set(monthTxs.map(t => `${normalize(t.description)}|${t.value.toFixed(2)}`));
       setRows(r.items.map((it, i) => {
         const duplicate = existing.has(`${normalize(it.description)}|${it.value.toFixed(2)}`);
+        // Categoria: IA + regras genéricas (servidor) refinadas pelo histórico
+        // pessoal — preenche "Outro" e respeita correções repetidas do usuário.
+        const category = it.type === 'income'
+          ? ''
+          : resolveCategory(it.category, it.description, categoryHints, categories) ?? '';
         return {
           id: i,
           selected: !duplicate,
@@ -206,7 +215,7 @@ export default function FinanceImportModal({
           description: it.description,
           valueStr: String(it.value),
           date: it.date ?? '',
-          category: it.category ?? '',
+          category,
           type: it.type,
         };
       }));

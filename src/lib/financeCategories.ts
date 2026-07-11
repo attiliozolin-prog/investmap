@@ -1,7 +1,7 @@
 import {
   Home, CreditCard, HeartPulse, Wrench, Receipt, BarChart3, Trophy, Zap,
   Gift, UtensilsCrossed, ShoppingCart, Car, GraduationCap, Tag, Shirt,
-  Package, type LucideIcon,
+  Package, Dog, Scissors, Sofa, type LucideIcon,
 } from 'lucide-react';
 
 /**
@@ -27,6 +27,9 @@ const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
   'Transporte': Car,
   'Vestuário': Shirt,
   'Compras Online': Package,
+  'Pets': Dog,
+  'Beleza': Scissors,
+  'Casa': Sofa,
   'Educação': GraduationCap,
   'Presentes': Gift,
   'Outro': Tag,

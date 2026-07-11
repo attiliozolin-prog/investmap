@@ -186,7 +186,7 @@ Cada compra/cobrança/receita vira um item com os campos:
 - v: valor em reais, sempre positivo, com centavos.
 - dt: data do item no formato YYYY-MM-DD; null se o documento não mostrar.
 - c: índice numérico da categoria que melhor descreve o item, escolhido desta lista, ou null se nenhuma servir: ${categories.map((c, i) => `${i}=${c}`).join(' ') || '(nenhuma categoria — use null)'}.
-  Use o ramo do estabelecimento para categorizar: apps de transporte (Uber, 99), postos e estacionamentos → transporte; delivery, restaurantes e mercados → alimentação; farmácias → saúde; lojas de roupas e calçados → vestuário/roupas; streaming e jogos → lazer; marketplaces genéricos (Mercado Livre, Amazon, AliExpress, Temu, Shopee, Magazine Luiza, Americanas, Casas Bahia) → compras online. Prefira sempre uma categoria específica a "Outro".
+  Use o ramo do estabelecimento para categorizar: apps de transporte (Uber, 99), postos e estacionamentos → transporte; delivery, restaurantes e mercados → alimentação; pet shops (Cobasi, Petz, Petlove, ração) → pets; farmácias e clínicas → saúde; salão, barbearia, perfumaria, O Boticário, Natura → beleza; lojas de casa e utilidades do lar (Leroy Merlin, Havan, IKEA, Tok&Stok) → casa; lojas de roupas e calçados (Renner, Riachuelo, Zara, Nike, Adidas) → vestuário; streaming e jogos → lazer; marketplaces genéricos que vendem de tudo (Mercado Livre, Amazon, AliExpress, Temu, Shopee, Magazine Luiza, Americanas) → compras online. Prefira sempre uma categoria específica a "Outro".
 - t: "e" para gastos e cobranças; "i" somente para valores recebidos pelo usuário (salário, reembolso, transferência recebida).
 
 Regras:

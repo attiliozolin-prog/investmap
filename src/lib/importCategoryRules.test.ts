@@ -1,9 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { fallbackCategory, isUselessCategory } from './importCategoryRules';
+import {
+  fallbackCategory, isUselessCategory, merchantKey, buildCategoryHints, resolveCategory,
+} from './importCategoryRules';
 
 const CATS = [
   'Sobrevivência', 'Cartão Crédito', 'Telefonia', 'Esporte', 'Energia',
-  'Saúde', 'Impostos', 'Lazer', 'Alimentação', 'Transporte', 'Vestuário', 'Outro',
+  'Saúde', 'Impostos', 'Lazer', 'Alimentação', 'Transporte', 'Vestuário',
+  'Pets', 'Beleza', 'Casa', 'Outro',
 ];
 
 describe('fallbackCategory', () => {
@@ -47,8 +50,72 @@ describe('fallbackCategory', () => {
     expect(fallbackCategory('Supermercado Pão de Açúcar', CATS)).toBe('Alimentação');
   });
 
+  it('reconhece pet shops como Pets (não Alimentação)', () => {
+    expect(fallbackCategory('Cobasi Brasilia Asa No', CATS)).toBe('Pets');
+    expect(fallbackCategory('Petz *Petz', CATS)).toBe('Pets');
+    expect(fallbackCategory('Petlove', CATS)).toBe('Pets');
+  });
+
+  it('reconhece salão/perfumaria como Beleza', () => {
+    expect(fallbackCategory('O Boticario', CATS)).toBe('Beleza');
+    expect(fallbackCategory('Salao da Maria', CATS)).toBe('Beleza');
+    expect(fallbackCategory('Sephora Br', CATS)).toBe('Beleza');
+  });
+
+  it('reconhece lojas do lar como Casa', () => {
+    expect(fallbackCategory('Leroy Merlin', CATS)).toBe('Casa');
+    expect(fallbackCategory('Havan Filial', CATS)).toBe('Casa');
+  });
+
   it('retorna null para estabelecimento desconhecido', () => {
     expect(fallbackCategory('Xyz Comercio Ltda', CATS)).toBeNull();
+  });
+});
+
+describe('merchantKey', () => {
+  it('usa a primeira palavra significativa, tolerante a acento/caixa', () => {
+    expect(merchantKey('Cobasi Brasilia Asa No')).toBe('cobasi');
+    expect(merchantKey('COBASI ASA SUL')).toBe('cobasi');
+    expect(merchantKey('Uber *Trip')).toBe('uber');
+  });
+  it('junta a segunda palavra quando a primeira é muito curta', () => {
+    expect(merchantKey('DM Farma Center')).toBe('dm farma');
+  });
+});
+
+describe('buildCategoryHints + resolveCategory (aprendizado)', () => {
+  const hist = [
+    { description: 'Padaria do Ze', category: 'Alimentação' },
+    { description: 'Padaria do Ze Matriz', category: 'Alimentação' }, // 2ª vez → count 2
+    { description: 'Cobasi Asa Sul', category: 'Pets' },
+    { description: 'Barraca Sem Categoria', category: 'Outro' }, // ignorado (inútil)
+  ];
+
+  it('preenche "Outro"/null com a categoria aprendida', () => {
+    const hints = buildCategoryHints(hist);
+    // servidor não categorizou; histórico conhece "padaria"
+    expect(resolveCategory(null, 'Padaria do Ze Filial 3', hints, CATS)).toBe('Alimentação');
+    expect(resolveCategory('Outro', 'Cobasi Barra', hints, CATS)).toBe('Pets');
+  });
+
+  it('categoria útil da IA só é sobreposta por histórico repetido (≥2×)', () => {
+    const hints = buildCategoryHints(hist);
+    // "padaria" tem count 2 → sobrepõe o palpite da IA
+    expect(resolveCategory('Lazer', 'Padaria do Ze', hints, CATS)).toBe('Alimentação');
+    // "cobasi" tem count 1 → respeita a IA (não sobrepõe)
+    expect(resolveCategory('Saúde', 'Cobasi Norte', hints, CATS)).toBe('Saúde');
+  });
+
+  it('ignora hint cuja categoria foi apagada pelo usuário', () => {
+    const hints = buildCategoryHints([
+      { description: 'Loja X', category: 'CategoriaQueNaoExisteMais' },
+    ]);
+    expect(resolveCategory(null, 'Loja X', hints, CATS)).toBeNull();
+  });
+
+  it('não inventa hint para estabelecimento nunca visto', () => {
+    const hints = buildCategoryHints(hist);
+    expect(resolveCategory(null, 'Comercio Novo', hints, CATS)).toBeNull();
   });
 });
 

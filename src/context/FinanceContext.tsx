@@ -78,7 +78,8 @@ const mapSubscriptionFromDB = (s: any): FinanceSubscription => ({
 export const DEFAULT_CATEGORIES = [
   'Sobrevivência','Cartão Crédito','Telefonia','Esporte','Energia',
   'Limpeza e Manutenção','Saúde','Contabilidade','Impostos','Lazer',
-  'Alimentação','Transporte','Vestuário','Compras Online','Educação','Outro'
+  'Alimentação','Transporte','Vestuário','Compras Online','Pets','Beleza',
+  'Casa','Educação','Outro'
 ];
 
 export function FinanceProvider({ children }: { children: React.ReactNode }) {

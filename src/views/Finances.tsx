@@ -649,6 +649,7 @@ export default function Finances() {
           monthStr={activeMonth.month}
           categories={categories.map(c => c.name)}
           monthTxs={monthTxs}
+          allTransactions={transactions}
           onClose={() => setIsImportOpen(false)}
           onConfirm={(list) => {
             list.forEach(addTransaction);
