@@ -61,11 +61,11 @@ interface AppContextType {
   deleteStrategy: (id: string) => void;
   setActiveStrategy: (id: string) => void;
 
-  addCategory: (data: Omit<StrategyCategory, 'id' | 'strategyId'>) => void;
+  addCategory: (data: Omit<StrategyCategory, 'id' | 'strategyId'>) => StrategyCategory;
   updateCategory: (id: string, data: Partial<StrategyCategory>) => void;
   deleteCategory: (id: string) => void;
 
-  addAsset: (data: Omit<Asset, 'id' | 'updatedAt' | 'createdAt'>) => void;
+  addAsset: (data: Omit<Asset, 'id' | 'updatedAt' | 'createdAt'>, opts?: { skipInitialTransaction?: boolean }) => Asset;
   updateAsset: (id: string, data: Partial<Asset>) => void;
   deleteAsset: (id: string) => void;
 
@@ -626,6 +626,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         sort_order: 99,
       }).then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
     }
+
+    return newCat;
   }, [activeStrategyId, user]);
 
   const updateCategory = useCallback((id: string, data: Partial<StrategyCategory>) => {
@@ -662,14 +664,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ============================================
   // Asset CRUD
   // ============================================
-  const addAsset = useCallback((data: Omit<Asset, 'id' | 'updatedAt'>) => {
+  const addAsset = useCallback((data: Omit<Asset, 'id' | 'updatedAt'>, opts?: { skipInitialTransaction?: boolean }) => {
     const now = new Date().toISOString();
     const newAsset: Asset = { ...data, id: generateId(), createdAt: now, updatedAt: now };
     setAssets((prev) => [...prev, newAsset]);
-
-    // Primeira transação automática
-    const firstTx: Transaction = { id: generateId(), assetId: newAsset.id, type: 'buy', value: newAsset.investedValue, date: now };
-    setTransactions((prev) => [...prev, firstTx]);
 
     if (user) {
       supabase.from('assets').insert({
@@ -689,16 +687,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         created_at: now,
         updated_at: now,
       }).then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
-
-      supabase.from('transactions').insert({
-        id: firstTx.id,
-        asset_id: firstTx.assetId,
-        user_id: user.id,
-        type: 'buy',
-        value: firstTx.value,
-        date: now,
-      }).then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
     }
+
+    // Primeira transação automática (pulada na importação B3, que insere as transações reais)
+    if (!opts?.skipInitialTransaction) {
+      const firstTx: Transaction = { id: generateId(), assetId: newAsset.id, type: 'buy', value: newAsset.investedValue, date: now };
+      setTransactions((prev) => [...prev, firstTx]);
+
+      if (user) {
+        supabase.from('transactions').insert({
+          id: firstTx.id,
+          asset_id: firstTx.assetId,
+          user_id: user.id,
+          type: 'buy',
+          value: firstTx.value,
+          date: now,
+        }).then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
+      }
+    }
+
+    return newAsset;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 

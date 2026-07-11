@@ -13,7 +13,8 @@ import styles from '@/views/Profile.module.css';
 
 interface ParsedRow {
   ticker: string;
-  assetId: string;
+  assetId: string | null; // null = ativo será criado automaticamente na importação
+  isNewAsset: boolean;
   type: 'buy' | 'sell';
   value: number;
   quantity: number;
@@ -105,7 +106,7 @@ async function isDuplicate(
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export default function B3ImportSection() {
-  const { assets, addTransaction, addSellTaxRecord, transactions } = useApp();
+  const { assets, addAsset, updateAsset, addCategory, activeStrategy, activeStrategyId, addTransaction, addSellTaxRecord } = useApp();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -157,7 +158,6 @@ export default function B3ImportSection() {
       const parsed: ParsedRow[] = [];
       const headerIdx = rows.indexOf(headerRow);
       const unmatchedTickers = new Set<string>();
-      let recognizedCount = 0;
 
       for (let i = headerIdx + 1; i < rows.length; i++) {
         const row = rows[i];
@@ -179,60 +179,57 @@ export default function B3ImportSection() {
         }
 
         if (!txType) continue; // ignora dividendos, atualizações, etc.
-        recognizedCount++;
 
-        // Casar com ativo cadastrado (aceita PETR4 e PETR4F → PETR4)
+        // Casar com ativo cadastrado (aceita PETR4 e PETR4F → PETR4);
+        // ativos não cadastrados serão criados automaticamente na importação
         const asset = assets.find(a => {
           const t = a.ticker.toUpperCase().trim();
           return t === ticker || t === rawCode;
         });
-        if (!asset) {
-          unmatchedTickers.add(ticker);
-          continue;
-        }
+        if (!asset) unmatchedTickers.add(ticker);
 
-        const { isoDate, dateDay } = parseB3Date(String(row[idx.data]));
+        const { isoDate, dateDay } = parseB3Date(row[idx.data]);
         const quantity = parseNum(row[idx.qtd]);
         const price = parseNum(row[idx.preco]);
         const value = parseNum(row[idx.total]);
 
         if (!value || value <= 0) continue;
 
-        // Verificar duplicata no Supabase antes do preview
-        const dup = await isDuplicate(user.id, asset.id, dateDay, value, txType);
+        // Verificar duplicata no Supabase antes do preview (só possível para ativos existentes)
+        const dup = asset ? await isDuplicate(user.id, asset.id, dateDay, value, txType) : false;
 
-        parsed.push({ ticker: asset.ticker, assetId: asset.id, type: txType, value, quantity, price, isoDate, dateDay, duplicate: dup });
+        parsed.push({
+          ticker: asset?.ticker ?? ticker,
+          assetId: asset?.id ?? null,
+          isNewAsset: !asset,
+          type: txType,
+          value,
+          quantity,
+          price,
+          isoDate,
+          dateDay,
+          duplicate: dup,
+        });
       }
 
       if (parsed.length === 0) {
-        if (unmatchedTickers.size > 0) {
-          const list = Array.from(unmatchedTickers).sort().join(', ');
-          setStatus({
-            type: 'warning',
-            message: `${recognizedCount} transação(ões) de compra/venda encontrada(s) no arquivo, mas nenhum destes ativos está cadastrado na sua carteira: ${list}. Cadastre esses ativos primeiro (aba Carteira) e importe o arquivo novamente.`,
-          });
-        } else {
-          setStatus({
-            type: 'warning',
-            message: 'Nenhuma transação de compra/venda foi reconhecida no arquivo. Verifique se você exportou o extrato de Negociação (ou Movimentação) da Área do Investidor da B3 — extratos de proventos/dividendos não contêm compras e vendas.',
-          });
-        }
+        setStatus({
+          type: 'warning',
+          message: 'Nenhuma transação de compra/venda foi reconhecida no arquivo. Verifique se você exportou o extrato de Negociação (ou Movimentação) da Área do Investidor da B3 — extratos de proventos/dividendos não contêm compras e vendas.',
+        });
         setLoading(false);
         return;
       }
 
-      if (unmatchedTickers.size > 0) {
-        console.warn('[B3 Import] Tickers não cadastrados ignorados:', Array.from(unmatchedTickers));
-      }
-
       const dups = parsed.filter(r => r.duplicate).length;
-      const unmatchedNote = unmatchedTickers.size > 0
-        ? ` ⚠️ Ativos não cadastrados foram ignorados: ${Array.from(unmatchedTickers).sort().join(', ')}.`
+      const newCount = unmatchedTickers.size;
+      const newNote = newCount > 0
+        ? ` 🆕 ${newCount} ativo(s) novo(s) serão criados automaticamente: ${Array.from(unmatchedTickers).sort().join(', ')}.`
         : '';
       setPreview(parsed);
       setStatus({
-        type: dups > 0 || unmatchedTickers.size > 0 ? 'warning' : 'info',
-        message: `${parsed.length} transação(ões) encontrada(s). ${dups > 0 ? `⚠️ ${dups} já existem e serão ignoradas.` : 'Nenhuma duplicata detectada.'}${unmatchedNote} Revise e confirme.`,
+        type: dups > 0 ? 'warning' : 'info',
+        message: `${parsed.length} transação(ões) encontrada(s). ${dups > 0 ? `⚠️ ${dups} já existem e serão ignoradas.` : 'Nenhuma duplicata detectada.'}${newNote} Revise e confirme.`,
       });
     } catch (err: any) {
       console.error(err);
@@ -249,64 +246,122 @@ export default function B3ImportSection() {
 
     let importedCount = 0;
     let skippedCount = 0;
+    let createdCount = 0;
 
+    // Agrupar por ticker para reproduzir o histórico de cada ativo em ordem cronológica
+    const byTicker = new Map<string, ParsedRow[]>();
     for (const row of preview) {
       if (row.duplicate) { skippedCount++; continue; }
+      const list = byTicker.get(row.ticker) ?? [];
+      list.push(row);
+      byTicker.set(row.ticker, list);
+    }
 
-      const asset = assets.find(a => a.id === row.assetId);
-      if (!asset) continue;
+    // Categoria padrão para ativos criados automaticamente (criada uma única vez)
+    let importCategoryId: string | null = null;
+    const ensureImportCategory = (): string => {
+      if (importCategoryId) return importCategoryId;
+      const existing = activeStrategy?.categories.find(c => c.subclassName === 'Importado da B3');
+      importCategoryId = existing?.id
+        ?? addCategory({ className: 'Renda Variável', subclassName: 'Importado da B3', targetPercent: 0 }).id;
+      return importCategoryId;
+    };
 
-      // Calcular PME para vendas — usa os dados do ativo no momento da importação
-      let costBasis = 0;
-      let profitLoss = 0;
-      let isLoss = false;
+    for (const [ticker, rows] of Array.from(byTicker.entries())) {
+      // Ordem cronológica; no mesmo dia, compras antes de vendas (garante custo antes da baixa)
+      rows.sort((a: ParsedRow, b: ParsedRow) =>
+        a.dateDay === b.dateDay
+          ? (a.type === b.type ? 0 : a.type === 'buy' ? -1 : 1)
+          : a.dateDay.localeCompare(b.dateDay)
+      );
 
-      if (row.type === 'sell') {
-        const totalQty = asset.quantity ?? 0;
-        costBasis = calcPME(asset.investedValue, totalQty, row.quantity);
-        profitLoss = parseFloat((row.value - costBasis).toFixed(2));
-        isLoss = profitLoss < 0;
+      // Ativo existente na carteira, ou criado automaticamente agora
+      let asset = rows[0].assetId ? assets.find(a => a.id === rows[0].assetId) : undefined;
+      if (!asset) {
+        asset = addAsset(
+          {
+            strategyId: activeStrategyId,
+            categoryId: ensureImportCategory(),
+            ticker,
+            info: 'Importado da B3',
+            investedValue: 0,
+            currentValue: 0,
+            quantity: 0,
+            priceMode: 'auto',
+          },
+          { skipInitialTransaction: true },
+        );
+        createdCount++;
       }
 
-      // Inserir transação — o índice único no banco rejeita duplicatas silenciosamente via upsert
-      addTransaction({
-        assetId: row.assetId,
-        type: row.type,
-        value: row.value,
-        date: row.isoDate,
-        notes: `Importado da B3 — Qtd: ${row.quantity} | Preço Unit: R$ ${row.price.toFixed(2)}`,
-      });
+      // Replay cronológico com PME sobre a posição corrente do ativo
+      let qty = asset.quantity ?? 0;
+      let invested = asset.investedValue;
+      let current = asset.currentValue;
 
-      // Registrar IR para vendas
-      if (row.type === 'sell') {
-        const assetType: AssetType = asset.ticker.endsWith('11') || asset.ticker.endsWith('12') ? 'fii' : 'acao';
-        addSellTaxRecord({
-          assetId: row.assetId,
-          assetTicker: row.ticker,
-          sellValue: row.value,
-          costBasis,
-          profitLoss,
-          assetType,
-          taxRate: assetType === 'fii' ? 0.2 : 0.15,
-          taxDue: 0,
-          isExempt: !isLoss && row.value <= 20000,
-          exemptReason: !isLoss && row.value <= 20000 ? 'Venda de ações (comum) abaixo de 20 mil reais no mês' : undefined,
-          isLoss,
-          lossUsedForCompensation: 0,
-          taxPaid: false,
-          notes: `Importado da B3 — Custo via PME (R$ ${(costBasis / (row.quantity || 1)).toFixed(2)}/cota × ${row.quantity} cotas)`,
-          sellDate: row.dateDay,
+      for (const row of rows) {
+        addTransaction({
+          assetId: asset.id,
+          type: row.type,
+          value: row.value,
+          date: row.isoDate,
+          notes: `Importado da B3 — Qtd: ${row.quantity} | Preço Unit: R$ ${row.price.toFixed(2)}`,
         });
+
+        if (row.type === 'buy') {
+          qty += row.quantity;
+          invested += row.value;
+          current += row.value;
+        } else {
+          // Venda: custo pela posição acumulada até aqui (PME)
+          const hasCost = qty > 0 && invested > 0;
+          const costBasis = hasCost ? calcPME(invested, qty, Math.min(row.quantity, qty)) : 0;
+          const profitLoss = parseFloat((row.value - costBasis).toFixed(2));
+          const isLoss = profitLoss < 0;
+          const assetType: AssetType = ticker.endsWith('11') || ticker.endsWith('12') ? 'fii' : 'acao';
+
+          addSellTaxRecord({
+            assetId: asset.id,
+            assetTicker: ticker,
+            sellValue: row.value,
+            costBasis,
+            profitLoss,
+            assetType,
+            taxRate: assetType === 'fii' ? 0.2 : 0.15,
+            taxDue: 0,
+            isExempt: !isLoss && row.value <= 20000,
+            exemptReason: !isLoss && row.value <= 20000 ? 'Venda de ações (comum) abaixo de 20 mil reais no mês' : undefined,
+            isLoss,
+            lossUsedForCompensation: 0,
+            taxPaid: false,
+            notes: hasCost
+              ? `Importado da B3 — Custo via PME (R$ ${(costBasis / (row.quantity || 1)).toFixed(2)}/cota × ${row.quantity} cotas)`
+              : `Importado da B3 — ⚠️ Custo de aquisição não identificado no extrato (compra anterior ao período exportado). Edite o registro para informar o custo correto.`,
+            sellDate: row.dateDay,
+          });
+
+          qty = Math.max(0, qty - row.quantity);
+          invested = Math.max(0, parseFloat((invested - costBasis).toFixed(2)));
+          current = Math.max(0, parseFloat((current - row.value).toFixed(2)));
+        }
+
+        importedCount++;
       }
 
-      importedCount++;
+      // Consolidar posição final do ativo (cotação de mercado atualiza na próxima sincronização)
+      updateAsset(asset.id, {
+        quantity: qty,
+        investedValue: parseFloat(invested.toFixed(2)),
+        currentValue: parseFloat(current.toFixed(2)),
+        avgPrice: qty > 0 ? parseFloat((invested / qty).toFixed(2)) : 0,
+      });
     }
 
     setPreview(null);
     setConfirming(false);
     setStatus({
       type: 'success',
-      message: `✅ ${importedCount} transações importadas com sucesso!${skippedCount > 0 ? ` ${skippedCount} duplicatas ignoradas.` : ''}`,
+      message: `✅ ${importedCount} transações importadas com sucesso!${createdCount > 0 ? ` ${createdCount} ativo(s) criado(s) automaticamente na categoria "Importado da B3" — você pode recategorizá-los depois na aba Carteira.` : ''}${skippedCount > 0 ? ` ${skippedCount} duplicatas ignoradas.` : ''}`,
     });
   };
 
@@ -386,6 +441,8 @@ export default function B3ImportSection() {
                     <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                       {row.duplicate
                         ? <span style={{ color: '#F59E0B', fontSize: '0.75rem' }}>⚠ Duplicata</span>
+                        : row.isNewAsset
+                        ? <span style={{ color: '#60A5FA', fontSize: '0.75rem' }}>🆕 Novo ativo</span>
                         : <span style={{ color: '#34D399', fontSize: '0.75rem' }}>✓ Novo</span>}
                     </td>
                   </tr>
