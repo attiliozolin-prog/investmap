@@ -68,9 +68,13 @@ export async function GET(req: NextRequest) {
       const res = await fetch(
         `https://brapi.dev/api/quote/${chunk.join(',')}${tokenParam}`,
         // Cache compartilhado do Next alinhado ao ciclo de sync do client
-        // (5 min): cada ticker consome no máx. 1 requisição da cota da
-        // Brapi a cada 5 min, para todos os usuários somados.
-        { next: { revalidate: 300 } }
+        // (30 min): cada ticker consome no máx. 1 requisição da cota da
+        // Brapi a cada 30 min, para todos os usuários somados. Com a cota
+        // gratuita de 15k req/mês, isso sustenta ~10 tickers únicos com
+        // alguém de app aberto o dia inteiro (48 refreshes/dia × 30d × 10
+        // tickers ≈ 14.400). Reavaliar se a base de tickers únicos crescer
+        // além disso — ver conversa sobre limites da Brapi no PR.
+        { next: { revalidate: 1800 } }
       );
       if (!res.ok) {
         failures.push(`${chunk.join(',')} (HTTP ${res.status})`);

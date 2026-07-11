@@ -268,7 +268,7 @@ export default function Assets() {
           <h1 className={styles.pageTitle}>Minha Carteira</h1>
           <div className={styles.pageMeta}>
             {activeAssets.length} ativo{activeAssets.length !== 1 ? 's' : ''} · tolerância de {activeStrategy.deviationTolerance}%
-            <button className={styles.syncChip} onClick={() => syncPrices()} disabled={isSyncingPrices} title="Sincronizar cotações agora (Brapi)">
+            <button className={styles.syncChip} onClick={() => syncPrices(true)} disabled={isSyncingPrices} title="Sincronizar cotações agora (Brapi)">
               <RefreshCw size={11} className={isSyncingPrices ? styles.syncSpin : undefined} />
               {lastSyncLabel()}
             </button>

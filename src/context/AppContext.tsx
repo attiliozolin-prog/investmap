@@ -84,7 +84,7 @@ interface AppContextType {
   updateGoal: (id: string, data: Partial<FinancialGoal>) => void;
   deleteGoal: (id: string) => void;
 
-  syncPrices: () => Promise<void>;
+  syncPrices: (force?: boolean) => Promise<void>;
   isSyncingPrices: boolean;
   lastPriceSyncAt: Date | null;
 
@@ -985,8 +985,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Usa refs para sempre ler o estado mais recente,
   // evitando stale closure quando chamado via setInterval
   // ============================================
-  const syncPrices = useCallback(async () => {
+  // Intervalo mínimo entre syncs automáticos (não força pelo usuário) —
+  // evita bater o rate-limit/cota da Brapi quando o usuário alterna abas
+  // repetidamente (cada troca dispara o listener de visibilitychange).
+  const MIN_AUTO_SYNC_GAP_MS = 2 * 60 * 1000;
+  const lastSyncAttemptRef = useRef(0);
+
+  const syncPrices = useCallback(async (force = false) => {
     if (isSyncingRef.current) return;
+    if (!force && Date.now() - lastSyncAttemptRef.current < MIN_AUTO_SYNC_GAP_MS) return;
+    lastSyncAttemptRef.current = Date.now();
 
     const currentAssets = assetsRef.current;
     const currentUser = userRef.current;
@@ -1069,13 +1077,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-sync de preços a cada 5 minutos enquanto o app está aberto
+  // Auto-sync de preços a cada 30 minutos enquanto o app está aberto.
+  // 30min (não 5min) porque a cota da Brapi free (15k req/mês) é
+  // compartilhada entre TODOS os usuários por ticker único — com sync a
+  // cada 5min, pouco mais de 1 ticker distinto na base já estouraria a
+  // cota mensal. Ver `handleVisibility` abaixo para a atualização ao
+  // voltar o foco, que cobre o caso do usuário ativo.
   useEffect(() => {
     if (!dbSynced) return;
     // Roda imediatamente ao abrir o app (após dbSynced)
     syncPrices();
-    // Depois a cada 5 minutos
-    const interval = setInterval(syncPrices, 5 * 60 * 1000);
+    const interval = setInterval(syncPrices, 30 * 60 * 1000);
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dbSynced]);

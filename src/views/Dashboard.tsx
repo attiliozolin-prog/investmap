@@ -405,7 +405,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
           </span>
         </div>
         <div className={styles.greetActions}>
-          <button className={styles.syncChip} onClick={syncPrices} disabled={isSyncingPrices} title="Sincronizar cotações">
+          <button className={styles.syncChip} onClick={() => syncPrices(true)} disabled={isSyncingPrices} title="Sincronizar cotações">
             <RefreshCw size={11} className={isSyncingPrices ? styles.syncSpin : ''}/>
             {isSyncingPrices
               ? 'Sincronizando…'
