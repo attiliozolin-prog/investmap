@@ -15,7 +15,10 @@ import { checkRateLimit } from '@/lib/rateLimit';
 const BRAPI_TOKEN = process.env.BRAPI_TOKEN ?? process.env.NEXT_PUBLIC_BRAPI_TOKEN ?? '';
 
 const MAX_TICKERS = 50;
-const CHUNK_SIZE = 10; // conservador para o plano gratuito da Brapi
+// O plano GRATUITO da Brapi aceita apenas 1 ticker por requisição
+// (Startup: 10, Pro: 20). Com chunks >1 a Brapi rejeita a chamada inteira
+// e o sync em lote falha silenciosamente — por isso 1 ticker por request.
+const CHUNK_SIZE = 1;
 
 // Generoso para uso legítimo (sync a cada 5min), apertado contra abuso
 const RATE_LIMIT_MAX = 60;
@@ -58,14 +61,21 @@ export async function GET(req: NextRequest) {
     chunks.push(tickers.slice(i, i + CHUNK_SIZE));
   }
 
+  const failures: string[] = [];
+
   await Promise.all(chunks.map(async chunk => {
     try {
       const res = await fetch(
         `https://brapi.dev/api/quote/${chunk.join(',')}${tokenParam}`,
-        // Cache compartilhado do Next: mesma cotação servida a todos por 60s
-        { next: { revalidate: 60 } }
+        // Cache compartilhado do Next alinhado ao ciclo de sync do client
+        // (5 min): cada ticker consome no máx. 1 requisição da cota da
+        // Brapi a cada 5 min, para todos os usuários somados.
+        { next: { revalidate: 300 } }
       );
-      if (!res.ok) return;
+      if (!res.ok) {
+        failures.push(`${chunk.join(',')} (HTTP ${res.status})`);
+        return;
+      }
       const data = await res.json() as { results?: { symbol: string; regularMarketPrice: number }[] };
       for (const item of data.results ?? []) {
         const price = item.regularMarketPrice;
@@ -74,10 +84,15 @@ export async function GET(req: NextRequest) {
           prices[symbol] = price;
         }
       }
-    } catch {
+    } catch (e) {
       // chunk com falha não derruba os demais
+      failures.push(`${chunk.join(',')} (${e instanceof Error ? e.message : 'erro de rede'})`);
     }
   }));
+
+  if (failures.length > 0) {
+    console.error(`[quotes] Brapi falhou para: ${failures.join('; ')}`);
+  }
 
   return NextResponse.json({ prices });
 }

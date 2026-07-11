@@ -1007,6 +1007,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // forceRefresh=true: invalida cache e busca preços frescos da API
       const prices = await fetchAssetPrices(tickers, true);
 
+      // Nenhum preço retornou para nenhum ticker elegível: a Brapi/proxy
+      // falhou. Não marca como sincronizado — antes isso fazia a UI dizer
+      // "atualizado agora" com todos os valores ainda velhos.
+      if (prices.size === 0) {
+        reportSyncError('sincronização de cotações (Brapi não retornou preços)', { tickers });
+        return;
+      }
+
+      let updatedCount = 0;
       for (const asset of eligible) {
         const cleanTicker = asset.ticker.toUpperCase().replace(/\.SA$/i, '').replace(/F$/, '');
         const price = prices.get(cleanTicker);
@@ -1014,6 +1023,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           console.warn(`[syncPrices] sem preço para ${cleanTicker}`);
           continue;
         }
+        updatedCount++;
 
         // Calcula novo currentValue:
         // - Com quantity: qty × price (mais preciso)
@@ -1047,7 +1057,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      setLastPriceSyncAt(new Date());
+      // Só marca como sincronizado se pelo menos um ativo foi atualizado
+      if (updatedCount > 0) setLastPriceSyncAt(new Date());
     } catch (err) {
       console.error('syncPrices error:', err);
     } finally {
