@@ -375,30 +375,33 @@ export default function AssetModal({ categories, strategyId, asset, onSave, onCl
                   <label className="label" htmlFor="asset-price">
                     Preço de Mercado
                     <HelpTip text="Cotação atual do ativo na bolsa. No modo Auto, é atualizado pela Brapi. No modo Manual, você insere o valor." />
+                    {priceMode === 'auto' && <span className={styles.labelHint}>via Brapi</span>}
+                  </label>
+                  <div className={styles.priceInputRow}>
+                    <input
+                      id="asset-price"
+                      className={`input ${styles.priceInput}`}
+                      placeholder={priceMode === 'auto' ? 'Automático' : '0,00'}
+                      value={currentPrice}
+                      onChange={e => { if (priceMode === 'manual') setCurrentPrice(e.target.value); }}
+                      readOnly={priceMode === 'auto'}
+                      style={priceMode === 'auto' ? { cursor: 'default', opacity: 0.75 } : {}}
+                      autoComplete="off"
+                      inputMode="decimal"
+                    />
                     {priceMode === 'auto' && (
                       <button
                         type="button"
                         onClick={handleFetchPrice}
                         disabled={isFetchingPrice || !ticker}
-                        className={styles.refreshBtn}
+                        className={styles.fetchBtn}
                         title="Buscar cotação agora"
                       >
-                        <RefreshCw size={11} className={isFetchingPrice ? styles.spin : ''} />
+                        <RefreshCw size={13} className={isFetchingPrice ? styles.spin : ''} />
                         {isFetchingPrice ? 'Buscando…' : 'Atualizar'}
                       </button>
                     )}
-                  </label>
-                  <input
-                    id="asset-price"
-                    className="input"
-                    placeholder={priceMode === 'auto' ? 'Atualizado automaticamente' : '0,00'}
-                    value={currentPrice}
-                    onChange={e => { if (priceMode === 'manual') setCurrentPrice(e.target.value); }}
-                    readOnly={priceMode === 'auto'}
-                    style={priceMode === 'auto' ? { cursor: 'default', opacity: 0.6 } : {}}
-                    autoComplete="off"
-                    inputMode="decimal"
-                  />
+                  </div>
                 </div>
 
                 {/* Valor atual — resultado derivado ou manual */}

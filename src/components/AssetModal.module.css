@@ -85,7 +85,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin: var(--space-3) 0 var(--space-2);
+  margin: var(--space-4) 0 var(--space-3);
 }
 
 .sectionDivider span {
@@ -110,7 +110,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin: var(--space-3) 0 var(--space-2);
+  margin: var(--space-4) 0 var(--space-3);
 }
 
 .sectionDividerText {
@@ -176,25 +176,40 @@
   margin-left: 5px;
 }
 
-/* Botão refresh na label de Preço de Mercado */
-.refreshBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  margin-left: auto;
-  background: none;
-  border: none;
-  color: var(--color-primary);
-  cursor: pointer;
-  font-size: 0.68rem;
-  font-weight: 600;
-  padding: 0;
-  opacity: 0.8;
-  transition: opacity 0.15s;
+/* Linha do input de Preço de Mercado + botão Atualizar */
+.priceInputRow {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
 }
 
-.refreshBtn:hover:not(:disabled) { opacity: 1; }
-.refreshBtn:disabled { opacity: 0.3; cursor: not-allowed; }
+.priceInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.fetchBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  color: var(--color-primary);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.fetchBtn:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.18);
+  border-color: rgba(139, 92, 246, 0.4);
+}
+.fetchBtn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 /* ──────────────────────────────────────────
    Cards de resultado derivado
@@ -215,13 +230,13 @@
 .resultCardCol {
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  gap: 2px;
+  justify-content: center;
+  gap: 4px;
   background: rgba(139, 92, 246, 0.06);
   border: 1px solid rgba(139, 92, 246, 0.15);
   border-radius: var(--radius-md);
-  padding: 8px 12px;
-  margin-bottom: var(--space-2);
+  padding: 10px 14px;
+  margin-bottom: 12px;
 }
 
 .resultLabel {
@@ -237,10 +252,11 @@
 }
 
 .resultValue {
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--color-primary);
   letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ──────────────────────────────────────────
@@ -276,9 +292,9 @@
   padding: 22px 24px 20px !important;
 }
 
-/* Compacta os form-group dentro do AssetModal */
+/* Espaçamento dos form-group dentro do AssetModal */
 .modalWrap :global(.form-group) {
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 /* ──────────────────────────────────────────
