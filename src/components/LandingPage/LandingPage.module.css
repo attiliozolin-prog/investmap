@@ -223,24 +223,45 @@
 }
 
 .heroNote {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.45rem;
-  max-width: 560px;
+  gap: 0.85rem;
+  max-width: 460px;
   margin-bottom: 2.5rem;
-  padding: 0.55rem 1.1rem;
-  border-radius: 9999px;
-  font-size: 0.85rem;
-  line-height: 1.5;
-  color: #C4B5FD;
-  background: rgba(139, 92, 246, 0.08);
-  border: 1px solid rgba(139, 92, 246, 0.18);
+  padding: 0.85rem 1.25rem;
+  border-radius: 16px;
+  text-align: left;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(139, 92, 246, 0.04));
+  border: 1px solid rgba(139, 92, 246, 0.22);
   position: relative;
 }
 
-.heroNote svg {
-  flex-shrink: 0;
+.heroNoteIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(139, 92, 246, 0.15);
   color: #A78BFA;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.heroNote p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.heroNote strong {
+  display: block;
+  color: #E9E4FF;
+  font-weight: 600;
+}
+
+.heroNote span {
+  color: #9CA3AF;
 }
 
 .pillRow {

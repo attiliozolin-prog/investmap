@@ -276,9 +276,15 @@ export default function LandingPage({ onLogin, onSignup }: LandingPageProps) {
           </button>
         </div>
 
-        <p className={styles.heroNote}>
-          <Sparkles size={14} /> Gratuito durante o acesso antecipado — quem entra agora garante condições especiais quando os planos chegarem.
-        </p>
+        <div className={styles.heroNote}>
+          <div className={styles.heroNoteIcon}>
+            <Sparkles size={16} />
+          </div>
+          <p>
+            <strong>Gratuito durante o acesso antecipado.</strong>
+            <span>Quem entra agora garante condições especiais quando os planos chegarem.</span>
+          </p>
+        </div>
 
         <div className={styles.pillRow}>
           <span className={styles.pill}><LineChart size={13} /> Carteira</span>
