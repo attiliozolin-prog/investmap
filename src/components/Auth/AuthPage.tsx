@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { TrendingUp, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Compass, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import styles from './AuthPage.module.css';
 
 type Mode = 'login' | 'signup' | 'forgot-password';
@@ -105,7 +105,7 @@ export default function AuthPage({ initialMode = 'login', onBack }: AuthPageProp
         {/* Logo */}
         <div className={styles.header}>
           <div className={styles.logoIcon}>
-            <TrendingUp size={20} />
+            <Compass size={20} />
           </div>
           <h1 className={styles.logoText}>InvestMap</h1>
           <p className={styles.tagline}>

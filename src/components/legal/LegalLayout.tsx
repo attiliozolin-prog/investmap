@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Compass } from 'lucide-react';
 import styles from './LegalLayout.module.css';
 
 export default function LegalLayout({
@@ -18,7 +18,7 @@ export default function LegalLayout({
       <div className={styles.container}>
         <header className={styles.header}>
           <div className={styles.brand}>
-            <div className={styles.logoIcon}><TrendingUp size={18} /></div>
+            <div className={styles.logoIcon}><Compass size={18} /></div>
             <span>InvestMap</span>
           </div>
           <Link href="/" className={styles.back}>

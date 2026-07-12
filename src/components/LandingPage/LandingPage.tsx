@@ -2,7 +2,7 @@
 
 import React from 'react';
 import {
-  TrendingUp, Wallet, Receipt, Sparkles, ArrowRight, Check,
+  Compass, Wallet, Receipt, Sparkles, ArrowRight, Check,
   Target, PieChart, LineChart, ScanLine, ShieldCheck, Lock, Gift,
   UserPlus, SlidersHorizontal, Rocket,
 } from 'lucide-react';
@@ -244,9 +244,9 @@ export default function LandingPage({ onLogin, onSignup }: LandingPageProps) {
       <header className={styles.header}>
         <div className={styles.logo}>
           <div className={styles.logoIconBox}>
-            <TrendingUp size={18} />
+            <Compass size={18} />
           </div>
-          Invest<span>Map</span>
+          <span className={styles.logoText}>Invest<span>Map</span></span>
         </div>
         <div className={styles.headerActions}>
           <button className={styles.loginButton} onClick={onLogin}>

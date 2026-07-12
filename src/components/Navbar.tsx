@@ -5,7 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import styles from './Navbar.module.css';
 import {
-  TrendingUp, Download, Upload, LogOut, Sun, Moon,
+  Compass, Download, Upload, LogOut, Sun, Moon,
   ChevronDown, User, LayoutDashboard,
   Briefcase, Target, Wallet, Settings, X,
 } from 'lucide-react';
@@ -125,7 +125,7 @@ export default function Navbar({ activeTab, onTabChange }: {
           <div className={styles.logoGroup}>
             <div className={styles.logo}>
               <div className={styles.logoIcon}>
-                <TrendingUp size={18} />
+                <Compass size={18} />
               </div>
               <span className={styles.logoText}>InvestMap</span>
             </div>
