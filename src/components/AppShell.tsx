@@ -30,7 +30,8 @@ function Gate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const [showLanding, setShowLanding] = useState<boolean>(!hasCompletedOnboarding);
+  // Tela exibida para visitantes não autenticados: landing → login/cadastro
+  const [authView, setAuthView] = useState<'landing' | 'login' | 'signup'>('landing');
   const [isTestOnboarding, setIsTestOnboarding] = useState(false);
 
   useEffect(() => {
@@ -51,16 +52,20 @@ function Gate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Usuário não autenticado — exibe tela de login/cadastro
+  // Visitante não autenticado — landing page de apresentação, depois login/cadastro
   if (!user) {
-    return <AuthPage />;
+    if (authView === 'landing') {
+      return (
+        <LandingPage
+          onLogin={() => setAuthView('login')}
+          onSignup={() => setAuthView('signup')}
+        />
+      );
+    }
+    return <AuthPage initialMode={authView} onBack={() => setAuthView('landing')} />;
   }
 
-  if (!hasCompletedOnboarding && showLanding && !isTestOnboarding) {
-    return <LandingPage onStart={() => setShowLanding(false)} />;
-  }
-
-  if ((!hasCompletedOnboarding && !showLanding) || isTestOnboarding) {
+  if (!hasCompletedOnboarding || isTestOnboarding) {
     return (
       <OnboardingFlow
         onFinish={(action) => {

@@ -2,14 +2,21 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { TrendingUp, Eye, EyeOff } from 'lucide-react';
+import { TrendingUp, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import styles from './AuthPage.module.css';
 
 type Mode = 'login' | 'signup' | 'forgot-password';
 
-export default function AuthPage() {
+interface AuthPageProps {
+  /** Modo exibido ao abrir a tela (padrão: login) */
+  initialMode?: 'login' | 'signup';
+  /** Se informado, exibe botão de voltar para a landing page */
+  onBack?: () => void;
+}
+
+export default function AuthPage({ initialMode = 'login', onBack }: AuthPageProps) {
   const { signIn, signUp, requestPasswordReset, resendConfirmationEmail } = useAuth();
-  const [mode, setMode] = useState<Mode>('login');
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -74,6 +81,27 @@ export default function AuthPage() {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'none',
+              border: 'none',
+              color: '#A0A0B8',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              padding: 0,
+              marginBottom: 8,
+            }}
+          >
+            <ArrowLeft size={15} /> Voltar
+          </button>
+        )}
         {/* Logo */}
         <div className={styles.header}>
           <div className={styles.logoIcon}>
