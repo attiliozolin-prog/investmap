@@ -29,6 +29,16 @@ export default function TransactionModal({ assetId, onClose, initialType = 'buy'
   // pode informar o custo de aquisição manualmente ao registrar uma venda.
   const [manualCost, setManualCost] = useState('');
 
+  // Preço unitário pago no aporte — só para ativos com quantidade.
+  // Sem atualizar a quantidade junto com o aporte, o sync automático de
+  // cotações (quantidade × preço) reverte o valor atual minutos depois.
+  // Pré-preenchido com a cotação de mercado atual.
+  const [unitPrice, setUnitPrice] = useState(() =>
+    asset?.customPrice
+      ? asset.customPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : ''
+  );
+
   // Estado do TaxModal
   const [pendingTaxCalc, setPendingTaxCalc] = useState<TaxCalculation | null>(null);
   const [pendingNumValue, setPendingNumValue] = useState(0);
@@ -138,6 +148,16 @@ export default function TransactionModal({ assetId, onClose, initialType = 'buy'
       return;
     }
 
+    // Aporte em ativo com quantidade: precisa do preço unitário para
+    // calcular quantas unidades foram compradas
+    if (hasQuantity) {
+      const unitNum = unitPrice ? parseValue(unitPrice) : NaN;
+      if (isNaN(unitNum) || unitNum <= 0) {
+        setError('Informe o preço unitário pago na compra');
+        return;
+      }
+    }
+
     executeSave(numValue);
   };
 
@@ -153,15 +173,35 @@ export default function TransactionModal({ assetId, onClose, initialType = 'buy'
 
     let newInvested = asset.investedValue;
     let newCurrent = asset.currentValue;
+    let newQuantity = asset.quantity;
+    let newAvgPrice = asset.avgPrice;
 
     if (type === 'buy') {
       newInvested += numValue;
-      newCurrent += numValue;
+
+      if (hasQuantity) {
+        // Ativos com quantidade (ações, cripto em modo auto): o aporte
+        // precisa aumentar a quantidade e recalcular o PME, senão o sync
+        // automático de cotações (quantidade × preço) desfaz o aporte no
+        // valor atual na próxima sincronização.
+        const unitNum = parseValue(unitPrice);
+        const qtyBought = numValue / unitNum;
+        newQuantity = (asset.quantity ?? 0) + qtyBought;
+        newAvgPrice = newQuantity > 0 ? newInvested / newQuantity : undefined;
+        // Valor atual alinhado ao que o sync calcula: quantidade × cotação
+        const marketPrice = asset.customPrice ?? unitNum;
+        newCurrent = newQuantity * marketPrice;
+      } else {
+        newCurrent += numValue;
+      }
     } else {
       newCurrent -= numValue;
       if (hasQuantity && asset.currentValue > 0) {
-        const proportionSold = numValue / asset.currentValue;
+        const proportionSold = Math.min(numValue / asset.currentValue, 1);
         newInvested -= asset.investedValue * proportionSold;
+        // Reduz a quantidade na mesma proporção da venda, para o sync
+        // de cotações não "ressuscitar" o valor vendido
+        newQuantity = (asset.quantity ?? 0) * (1 - proportionSold);
       } else {
         // Para ativos sem qty, zera o custo proporcionalmente ao que foi vendido
         if (newCurrent <= 0.01) {
@@ -171,10 +211,18 @@ export default function TransactionModal({ assetId, onClose, initialType = 'buy'
           newInvested = asset.investedValue * proportionRemaining;
         }
       }
-      if (newInvested < 0 || newCurrent <= 0.01) { newInvested = 0; newCurrent = 0; }
+      if (newInvested < 0 || newCurrent <= 0.01) {
+        newInvested = 0;
+        newCurrent = 0;
+        if (hasQuantity) newQuantity = 0;
+      }
     }
 
-    updateAsset(asset.id, { investedValue: newInvested, currentValue: newCurrent });
+    updateAsset(asset.id, {
+      investedValue: newInvested,
+      currentValue: newCurrent,
+      ...(hasQuantity ? { quantity: newQuantity, avgPrice: newAvgPrice } : {}),
+    });
     onClose();
   };
 
@@ -275,6 +323,38 @@ export default function TransactionModal({ assetId, onClose, initialType = 'buy'
             <label className="label" htmlFor="transactionValue">Valor da {type === 'buy' ? 'Compra' : 'Venda'} (R$) *</label>
             <input type="text" id="transactionValue" className="input" value={value} onChange={handleNumberInput(setValue)} required placeholder="0,00" autoComplete="off" />
           </div>
+
+          {/* Preço unitário — apenas para aporte em ativos com quantidade */}
+          {type === 'buy' && hasQuantity && (
+            <div className="form-group">
+              <label className="label" htmlFor="unitPrice">
+                Preço unitário pago (R$) *
+                <span style={{ fontWeight: 400, fontSize: '0.72rem', color: 'var(--color-text-3)', marginLeft: '6px' }}>
+                  pré-preenchido com a cotação atual
+                </span>
+              </label>
+              <input
+                type="text"
+                id="unitPrice"
+                className="input"
+                value={unitPrice}
+                onChange={handleNumberInput(setUnitPrice)}
+                placeholder="0,00"
+                autoComplete="off"
+              />
+              {(() => {
+                const v = value ? parseValue(value) : NaN;
+                const u = unitPrice ? parseValue(unitPrice) : NaN;
+                if (isNaN(v) || isNaN(u) || v <= 0 || u <= 0) return null;
+                const qty = v / u;
+                return (
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-3)', margin: '6px 2px 0' }}>
+                    ≈ {qty.toLocaleString('pt-BR', { maximumFractionDigits: 8 })} {asset.ticker} nesta compra
+                  </p>
+                );
+              })()}
+            </div>
+          )}
 
           {/* Campo de custo de aquisição — apenas para ativos sem qty na venda */}
           {needsManualCost && (
