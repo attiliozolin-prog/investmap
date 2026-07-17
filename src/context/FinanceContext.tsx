@@ -28,6 +28,7 @@ interface FinanceContextType {
   deleteCategory: (id: string) => void;
 
   addSubscription: (data: Omit<FinanceSubscription, 'id' | 'createdAt'>) => void;
+  updateSubscription: (id: string, data: Partial<FinanceSubscription>) => void;
   deleteSubscription: (id: string) => void;
 }
 
@@ -423,6 +424,21 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     });
   }, [user]);
 
+  const updateSubscription = useCallback((id: string, data: Partial<FinanceSubscription>) => {
+    setSubscriptions(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
+
+    const updatePayload: any = {};
+    if (data.description !== undefined) updatePayload.description = data.description;
+    if (data.category !== undefined) updatePayload.category = data.category;
+    if (data.value !== undefined) updatePayload.value = data.value;
+
+    if (Object.keys(updatePayload).length > 0) {
+      supabase.from('finance_subscriptions').update(updatePayload).eq('id', id).then(({ error }) => {
+        if (error) reportSyncError('Erro atualizando assinatura', error);
+      });
+    }
+  }, []);
+
   const deleteSubscription = useCallback((id: string) => {
     setSubscriptions(prev => prev.filter(s => s.id !== id));
     supabase.from('finance_subscriptions').delete().eq('id', id).then(({ error }) => {
@@ -448,13 +464,14 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     updateCategory,
     deleteCategory,
     addSubscription,
+    updateSubscription,
     deleteSubscription,
   }), [
     months, transactions, categories, subscriptions, activeMonthId,
     setActiveMonthId, createMonth, closeMonth, reopenMonth, deleteMonth,
     addTransaction, updateTransaction, deleteTransaction,
     addCategory, updateCategory, deleteCategory,
-    addSubscription, deleteSubscription,
+    addSubscription, updateSubscription, deleteSubscription,
   ]);
 
   return (

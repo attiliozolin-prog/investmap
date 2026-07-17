@@ -87,7 +87,7 @@ export default function Finances() {
     months, transactions, categories, subscriptions, activeMonthId, setActiveMonthId,
     createMonth, closeMonth, reopenMonth, deleteMonth,
     addTransaction, updateTransaction, deleteTransaction,
-    addSubscription, deleteSubscription,
+    addSubscription, updateSubscription, deleteSubscription,
   } = useFinance();
   const { toast } = useToast();
 
@@ -649,6 +649,7 @@ export default function Finances() {
           categories={categories.map(c => c.name)}
           onClose={() => setIsSubsModalOpen(false)}
           onAdd={addSubscription}
+          onUpdate={updateSubscription}
           onRemove={(id) => { deleteSubscription(id); toast('Assinatura removida'); }}
         />
       )}
@@ -751,16 +752,20 @@ function Row({ tx, highlighted, changed, subsCount, menuOpen, onToggleMenu, onPi
 }
 
 // ─── Modal: Monitor de assinaturas ────────────────────────────────────────────
-function SubscriptionsModal({ subscriptions, categories, onClose, onAdd, onRemove }: {
+function SubscriptionsModal({ subscriptions, categories, onClose, onAdd, onUpdate, onRemove }: {
   subscriptions: FinanceSubscription[];
   categories: string[];
   onClose: () => void;
   onAdd: (data: Omit<FinanceSubscription, 'id' | 'createdAt'>) => void;
+  onUpdate: (id: string, data: Partial<FinanceSubscription>) => void;
   onRemove: (id: string) => void;
 }) {
   const [newDesc, setNewDesc] = useState('');
   const [newValue, setNewValue] = useState('');
   const [newCat, setNewCat] = useState(categories[0] || '');
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [editCat, setEditCat] = useState('');
   const total = subscriptions.reduce((a, s) => a + s.value, 0);
 
   const handleAdd = () => {
@@ -769,6 +774,20 @@ function SubscriptionsModal({ subscriptions, categories, onClose, onAdd, onRemov
     onAdd({ description: newDesc.trim(), category: newCat || undefined, value: num });
     setNewDesc('');
     setNewValue('');
+  };
+
+  const startEdit = (sub: FinanceSubscription) => {
+    setEditId(sub.id);
+    setEditValue(String(sub.value).replace('.', ','));
+    setEditCat(sub.category || categories[0] || '');
+  };
+
+  const handleSaveEdit = () => {
+    if (!editId) return;
+    const num = parseFloat(editValue.replace(/\./g, '').replace(',', '.'));
+    if (isNaN(num) || num <= 0) return;
+    onUpdate(editId, { value: num, category: editCat || undefined });
+    setEditId(null);
   };
 
   return (
@@ -787,13 +806,34 @@ function SubscriptionsModal({ subscriptions, categories, onClose, onAdd, onRemov
 
           <div className={styles.subsList}>
             {subscriptions.map(sub => (
-              <div key={sub.id} className={styles.subsModalRow}>
-                <span className={styles.subsModalDesc}>{sub.description}{sub.category ? ` · ${sub.category}` : ''}</span>
-                <strong className={styles.subsModalVal}>{fmt(sub.value)}</strong>
-                <button className={styles.delBtn2} onClick={() => onRemove(sub.id)} title="Cancelar assinatura" aria-label={`Remover ${sub.description}`}>
-                  <Trash2 size={13}/>
-                </button>
-              </div>
+              editId === sub.id ? (
+                <div key={sub.id} className={styles.subsModalRow} style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.4rem' }}>
+                  <span className={styles.subsModalDesc} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub.description}</span>
+                  <div style={{ display: 'flex', gap: '0.45rem' }}>
+                    {categories.length > 0 && (
+                      <select className={styles.input} value={editCat} onChange={e => setEditCat(e.target.value)} style={{ flex: 1.4, minWidth: 0, padding: '0.3rem 0.5rem' }} autoFocus>
+                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    )}
+                    <input className={styles.input} inputMode="decimal" value={editValue} onChange={e => setEditValue(e.target.value)}
+                      style={{ flex: 1, minWidth: 0, padding: '0.3rem 0.5rem' }}
+                      onKeyDown={e => { if (e.key === 'Enter') handleSaveEdit(); if (e.key === 'Escape') setEditId(null); }}/>
+                    <button className={styles.editBtn2} onClick={handleSaveEdit} title="Salvar" aria-label={`Salvar ${sub.description}`}><CheckCircle2 size={14}/></button>
+                    <button className={styles.delBtn2} onClick={() => setEditId(null)} title="Cancelar" aria-label="Cancelar edição"><X size={14}/></button>
+                  </div>
+                </div>
+              ) : (
+                <div key={sub.id} className={styles.subsModalRow}>
+                  <span className={styles.subsModalDesc}>{sub.description}{sub.category ? ` · ${sub.category}` : ''}</span>
+                  <strong className={styles.subsModalVal}>{fmt(sub.value)}</strong>
+                  <button className={styles.editBtn2} onClick={() => startEdit(sub)} title="Editar" aria-label={`Editar ${sub.description}`}>
+                    <Edit2 size={13}/>
+                  </button>
+                  <button className={styles.delBtn2} onClick={() => onRemove(sub.id)} title="Cancelar assinatura" aria-label={`Remover ${sub.description}`}>
+                    <Trash2 size={13}/>
+                  </button>
+                </div>
+              )
             ))}
             {subscriptions.length === 0 && <p style={{ color: 'var(--color-text-2)', fontSize: '0.85rem', margin: '0.5rem 0' }}>Nenhuma assinatura cadastrada.</p>}
           </div>
