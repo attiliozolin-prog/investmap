@@ -40,6 +40,12 @@ function shiftDateToMonth(dateIso: string, monthStr: string): string {
   return `${y}-${m}-${String(day).padStart(2, '0')}`;
 }
 
+/** Data de hoje no formato ISO (YYYY-MM-DD), no fuso local. */
+function todayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 const STATUS_LABELS: Record<FinancePaymentStatus, string> = {
   paid: '● Pago', pending: '○ Pendente', previsto: '≈ Previsto',
   auto_debit: '⟳ Débito Auto', scheduled: '◷ Agendado', overdue: '! Atrasado',
@@ -215,6 +221,9 @@ export default function Finances() {
     updateTransaction(tx.id, {
       paymentStatus: novo,
       notes: tx.paymentStatus === 'previsto' ? undefined : tx.notes,
+      // Ao confirmar o pagamento, registra a data em que foi efetuado de fato
+      // (a data anterior era só herdada do mês passado, não o pagamento real).
+      ...(novo === 'paid' && tx.paymentStatus !== 'paid' ? { date: todayIso() } : {}),
     });
   };
 
@@ -1130,14 +1139,17 @@ function TxModal({ section, monthId, existing, onClose, onSave }: {
   const [dueDay, setDueDay] = useState(existing?.dueDay ? String(existing.dueDay) : '');
   const [cpfCnpj, setCpf] = useState<FinanceCpfCnpj>(existing?.cpfCnpj || 'CPF');
   const [payStatus, setPay] = useState<FinancePaymentStatus>(existing?.paymentStatus || 'pending');
-  const defaultDate = existing?.date || (() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  })();
-  const [date, setDate] = useState(defaultDate);
+  const [date, setDate] = useState(existing?.date || todayIso());
 
   const isExpense = effSection !== 'income';
   const isEdit = !!existing;
+
+  // Ao marcar como "Pago", assume que a data é a do pagamento efetuado agora
+  // (a data do lançamento normalmente é herdada do mês anterior, não reflete quando foi pago de fato).
+  const handleStatusChange = (novo: FinancePaymentStatus) => {
+    setPay(novo);
+    if (novo === 'paid' && payStatus !== 'paid') setDate(todayIso());
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1191,7 +1203,7 @@ function TxModal({ section, monthId, existing, onClose, onSave }: {
           {(effSection === 'boleto' || effSection === 'extra') && (
             <div className={styles.formGroup}>
               <label>Status de Pagamento</label>
-              <select className={styles.input} value={payStatus} onChange={e => setPay(e.target.value as FinancePaymentStatus)}>
+              <select className={styles.input} value={payStatus} onChange={e => handleStatusChange(e.target.value as FinancePaymentStatus)}>
                 <option value="pending">Pendente</option>
                 <option value="previsto">≈ Previsto (valor a confirmar)</option>
                 <option value="paid">Pago</option>
