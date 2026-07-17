@@ -172,6 +172,8 @@ function dbTransactionToApp(row: any): Transaction {
     assetId: row.asset_id,
     type: row.type,
     value: Number(row.value),
+    quantity: row.quantity != null ? Number(row.quantity) : undefined,
+    unitPrice: row.unit_price != null ? Number(row.unit_price) : undefined,
     notes: row.notes ?? '',
     date: row.date,
   };
@@ -691,7 +693,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // Primeira transação automática (pulada na importação B3, que insere as transações reais)
     if (!opts?.skipInitialTransaction) {
-      const firstTx: Transaction = { id: generateId(), assetId: newAsset.id, type: 'buy', value: newAsset.investedValue, date: now };
+      const firstTx: Transaction = {
+        id: generateId(),
+        assetId: newAsset.id,
+        type: 'buy',
+        value: newAsset.investedValue,
+        quantity: newAsset.quantity,
+        unitPrice: newAsset.avgPrice,
+        date: now,
+      };
       setTransactions((prev) => [...prev, firstTx]);
 
       if (user) {
@@ -701,6 +711,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           user_id: user.id,
           type: 'buy',
           value: firstTx.value,
+          quantity: firstTx.quantity ?? null,
+          unit_price: firstTx.unitPrice ?? null,
           date: now,
         }).then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
       }
@@ -758,6 +770,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         user_id: user.id,
         type: newTx.type,
         value: newTx.value,
+        quantity: newTx.quantity ?? null,
+        unit_price: newTx.unitPrice ?? null,
         notes: newTx.notes ?? '',
         date: txDate,
       }).then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
@@ -792,19 +806,54 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       newInvested = Math.max(0, newInvested);
 
+      // Replay da quantidade: só é possível quando TODAS as transações
+      // restantes do ativo gravaram quantity (transações antigas não têm —
+      // nesse caso mantém o comportamento anterior, só investedValue)
+      const canReplayQuantity = assetTransactions.every(tx => tx.quantity != null);
+      let newQuantity: number | undefined;
+      let newAvgPrice: number | undefined;
+      if (canReplayQuantity) {
+        let qty = 0;
+        for (const tx of assetTransactions) {
+          qty = tx.type === 'buy' ? qty + (tx.quantity ?? 0) : Math.max(0, qty - (tx.quantity ?? 0));
+        }
+        newQuantity = qty;
+        newAvgPrice = qty > 0 ? newInvested / qty : undefined;
+      }
+
       setAssets(prevAssets =>
-        prevAssets.map(a =>
-          a.id === toDelete.assetId
-            ? { ...a, investedValue: newInvested, updatedAt: new Date().toISOString() }
-            : a
-        )
+        prevAssets.map(a => {
+          if (a.id !== toDelete.assetId) return a;
+          // Só reescreve quantity em ativos que a controlam
+          const applyQty = canReplayQuantity && a.quantity != null;
+          return {
+            ...a,
+            investedValue: newInvested,
+            ...(applyQty ? {
+              quantity: newQuantity,
+              avgPrice: newAvgPrice,
+              // Alinha o valor atual ao que o sync calcula (qty × cotação)
+              ...(a.customPrice != null ? { currentValue: (newQuantity ?? 0) * a.customPrice } : {}),
+            } : {}),
+            updatedAt: new Date().toISOString(),
+          };
+        })
       );
 
       if (user) {
+        const trackedAsset = assetsRef.current.find(a => a.id === toDelete.assetId);
+        const applyQty = canReplayQuantity && trackedAsset?.quantity != null;
         supabase.from('transactions').delete().eq('id', id).eq('user_id', user.id)
           .then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });
         supabase.from('assets').update({
           invested_value: newInvested,
+          ...(applyQty ? {
+            quantity: newQuantity ?? null,
+            avg_price: newAvgPrice ?? null,
+            ...(trackedAsset?.customPrice != null
+              ? { current_value: (newQuantity ?? 0) * trackedAsset.customPrice }
+              : {}),
+          } : {}),
           updated_at: new Date().toISOString(),
         }).eq('id', toDelete.assetId).eq('user_id', user.id)
           .then(({ error }) => { if (error) reportSyncError('escrita no banco', error); });

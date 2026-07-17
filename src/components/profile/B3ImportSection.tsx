@@ -304,6 +304,8 @@ export default function B3ImportSection() {
           assetId: asset.id,
           type: row.type,
           value: row.value,
+          quantity: row.quantity,
+          unitPrice: row.price,
           date: row.isoDate,
           notes: `Importado da B3 — Qtd: ${row.quantity} | Preço Unit: R$ ${row.price.toFixed(2)}`,
         });

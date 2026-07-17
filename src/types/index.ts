@@ -48,6 +48,8 @@ export interface Transaction {
   type: TransactionType;
   date: string;                // ISO Date
   value: number;               // Valor financeiro da transação
+  quantity?: number;           // Quantidade de cotas/ações movimentadas (transações antigas não têm)
+  unitPrice?: number;          // Preço unitário da operação (transações antigas não têm)
   notes?: string;              // Observações (opcional)
 }
 

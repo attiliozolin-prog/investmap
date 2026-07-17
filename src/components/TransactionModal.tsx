@@ -163,10 +163,28 @@ export default function TransactionModal({ assetId, onClose, initialType = 'buy'
 
   const executeSave = (numValue: number) => {
     const dateIso = date ? new Date(date + 'T12:00:00').toISOString() : new Date().toISOString();
+
+    // Persiste quantidade e preço unitário na transação, para que a exclusão
+    // no histórico consiga refazer o replay de quantity/avgPrice do ativo
+    let txQuantity: number | undefined;
+    let txUnitPrice: number | undefined;
+    if (hasQuantity) {
+      if (type === 'buy') {
+        txUnitPrice = parseValue(unitPrice);
+        txQuantity = numValue / txUnitPrice;
+      } else if (asset.currentValue > 0) {
+        const proportionSold = Math.min(numValue / asset.currentValue, 1);
+        txQuantity = (asset.quantity ?? 0) * proportionSold;
+        txUnitPrice = txQuantity > 0 ? numValue / txQuantity : undefined;
+      }
+    }
+
     addTransaction({
       assetId: asset.id,
       type,
       value: numValue,
+      quantity: txQuantity,
+      unitPrice: txUnitPrice,
       date: dateIso,
       notes: notes.trim() || undefined,
     });
