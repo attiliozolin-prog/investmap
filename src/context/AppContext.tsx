@@ -12,7 +12,7 @@ import React, {
 import { Strategy, Asset, StrategyCategory, Transaction, PortfolioSnapshot, SellTaxRecord, FinancialGoal } from '@/types';
 import { generateId } from '@/lib/calculations';
 import { supabase } from '@/lib/supabase';
-import { reportSyncError } from '@/lib/syncStatus';
+import { reportSyncError, reportStaleQuotes } from '@/lib/syncStatus';
 import { useAuth } from '@/context/AuthContext';
 
 // ============================================
@@ -1015,20 +1015,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // forceRefresh=true: invalida cache e busca preços frescos da API
       const prices = await fetchAssetPrices(tickers, true);
 
-      // Nenhum preço retornou para nenhum ticker elegível: a Brapi/proxy
-      // falhou. Não marca como sincronizado — antes isso fazia a UI dizer
-      // "atualizado agora" com todos os valores ainda velhos.
-      if (prices.size === 0) {
-        reportSyncError('sincronização de cotações (Brapi não retornou preços)', { tickers });
-        return;
-      }
-
       let updatedCount = 0;
+      // Tickers elegíveis que voltaram sem cotação. Antes isso era só um
+      // console.warn e o aviso ao usuário dependia de a busca falhar para
+      // TODOS os tickers — o que praticamente nunca acontece, porque as
+      // criptos vêm de outra fonte (CoinGecko) e quase sempre respondem.
+      // Resultado: uma falha em 17 de 19 ativos passava calada, e a UI
+      // ainda dizia "atualizado agora" com valores de horas antes.
+      const stale: string[] = [];
+
       for (const asset of eligible) {
         const cleanTicker = asset.ticker.toUpperCase().replace(/\.SA$/i, '').replace(/F$/, '');
         const price = prices.get(cleanTicker);
         if (price == null) {
-          console.warn(`[syncPrices] sem preço para ${cleanTicker}`);
+          stale.push(asset.ticker);
           continue;
         }
         updatedCount++;
@@ -1065,10 +1065,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Só marca como sincronizado se pelo menos um ativo foi atualizado
-      if (updatedCount > 0) setLastPriceSyncAt(new Date());
+      // Publica o que ficou defasado. Lista vazia limpa o aviso anterior,
+      // então a mensagem some sozinha quando a fonte de preços volta.
+      reportStaleQuotes(stale);
+
+      // Só marca como sincronizado quando TODOS os elegíveis atualizaram.
+      // Numa sync parcial o horário anterior continua valendo — é a
+      // informação honesta: nem tudo na tela é daquele momento. O banner
+      // diz quais ativos ficaram para trás.
+      if (updatedCount > 0 && stale.length === 0) setLastPriceSyncAt(new Date());
     } catch (err) {
+      // Falha geral (rede, import dinâmico, proxy fora): nada atualizou.
       console.error('syncPrices error:', err);
+      reportStaleQuotes(eligible.map(a => a.ticker));
     } finally {
       isSyncingRef.current = false;
       setIsSyncingPrices(false);

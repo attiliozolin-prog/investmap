@@ -12,7 +12,9 @@ import { checkRateLimit } from '@/lib/rateLimit';
 
 // Token server-side; aceita o nome antigo NEXT_PUBLIC_* para não quebrar
 // ambientes existentes até a variável ser renomeada.
-const BRAPI_TOKEN = process.env.BRAPI_TOKEN ?? process.env.NEXT_PUBLIC_BRAPI_TOKEN ?? '';
+// `||` e não `??`: um `BRAPI_TOKEN=` vazio no .env é string vazia, que não
+// é nullish — com `??` ele encobria o nome antigo e a API ia sem token.
+const BRAPI_TOKEN = process.env.BRAPI_TOKEN || process.env.NEXT_PUBLIC_BRAPI_TOKEN || '';
 
 const MAX_TICKERS = 50;
 // O plano GRATUITO da Brapi aceita apenas 1 ticker por requisição
