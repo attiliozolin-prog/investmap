@@ -6,7 +6,7 @@ import { FinanceTransaction, FinanceSection, FinancePaymentStatus, FinanceCpfCnp
 import {
   Plus, Trash2, X, Wallet, Edit2, Tags, Receipt, CreditCard, ShoppingBag,
   ArrowDownCircle, ArrowUpCircle, Sparkles, ChevronLeft, ChevronRight,
-  CalendarClock, CheckCircle2, Lock, ScanLine,
+  CalendarClock, CheckCircle2, Lock, ScanLine, Eye,
 } from 'lucide-react';
 import styles from './Finances.module.css';
 import { useToast } from '@/components/Toast';
@@ -85,7 +85,7 @@ function sobraDe(txs: FinanceTransaction[]) {
 export default function Finances() {
   const {
     months, transactions, categories, subscriptions, activeMonthId, setActiveMonthId,
-    createMonth, closeMonth, reopenMonth, deleteMonth,
+    createMonth, closeMonth, reopenMonth, deleteMonth, isMonthClosed,
     addTransaction, updateTransaction, deleteTransaction,
     addSubscription, updateSubscription, deleteSubscription,
   } = useFinance();
@@ -113,6 +113,8 @@ export default function Finances() {
   const realSortedMonths = useMemo(() => [...months].sort((a, b) => a.month.localeCompare(b.month)), [months]);
   const monthsDesc = useMemo(() => [...months].sort((a, b) => b.month.localeCompare(a.month)), [months]);
   const activeMonth = useMemo(() => months.find(m => m.id === activeMonthId), [months, activeMonthId]);
+  // Mês fechado é imutável: nada de adicionar, editar, excluir ou trocar status.
+  const monthLocked = activeMonth?.status === 'closed';
   const currentIndex = useMemo(() => realSortedMonths.findIndex(m => m.id === activeMonthId), [realSortedMonths, activeMonthId]);
   const latestRealMonth = realSortedMonths[realSortedMonths.length - 1];
 
@@ -206,6 +208,7 @@ export default function Finances() {
   const setStatusTo = (tx: FinanceTransaction, novo: FinancePaymentStatus) => {
     setStatusMenuFor(null);
     if (tx.paymentStatus === novo) return;
+    if (monthLocked) { toast('Mês fechado — reabra o mês para alterar o status'); return; }
 
     const grupoAtual: 'acao' | 'resolvido' = pinnedGroup[tx.id] ?? (needsAction(tx.paymentStatus) ? 'acao' : 'resolvido');
     setPinnedGroup(p => ({ ...p, [tx.id]: grupoAtual }));
@@ -383,11 +386,16 @@ export default function Finances() {
               {activeMonth.status === 'open' ? <><CheckCircle2 size={15}/> Fechar mês</> : <><Lock size={15}/> Reabrir</>}
             </button>
             <button className={styles.btnGhost} onClick={() => setIsCategoriesModalOpen(true)}><Tags size={15}/> Categorias</button>
-            <button className={styles.btnGhost} onClick={() => setMonthToDelete(activeMonth.id)}><Trash2 size={15}/> Excluir Mês</button>
-            <button className={styles.btnGhost} disabled={activeMonth.status === 'closed'} onClick={() => setIsImportOpen(true)} title="Lance uma fatura ou nota a partir de uma foto ou PDF">
+            <button className={styles.btnGhost} disabled={monthLocked}
+              title={monthLocked ? 'Mês fechado — reabra o mês para excluí-lo' : undefined}
+              onClick={() => setMonthToDelete(activeMonth.id)}><Trash2 size={15}/> Excluir Mês</button>
+            <button className={styles.btnGhost} disabled={monthLocked} onClick={() => setIsImportOpen(true)}
+              title={monthLocked ? 'Mês fechado — reabra o mês para importar' : 'Lance uma fatura ou nota a partir de uma foto ou PDF'}>
               <ScanLine size={15}/> Importar com IA
             </button>
-            <button className={styles.btnPrimary} disabled={activeMonth.status === 'closed'} onClick={() => setAddSection(filter)}>
+            <button className={styles.btnPrimary} disabled={monthLocked}
+              title={monthLocked ? 'Mês fechado — reabra o mês para lançar' : undefined}
+              onClick={() => setAddSection(filter)}>
               <Plus size={16}/> Novo lançamento
             </button>
           </div>
@@ -536,7 +544,7 @@ export default function Finances() {
                       Aqui ficam as compras que compõem a fatura do cartão — elas não somam nas
                       saídas (quem soma é a fatura, nos Recorrentes), mas mostram para onde foi o dinheiro.
                     </p>
-                    <button className={styles.btnPrimary} disabled={activeMonth?.status === 'closed'} onClick={() => setIsImportOpen(true)}>
+                    <button className={styles.btnPrimary} disabled={monthLocked} onClick={() => setIsImportOpen(true)}>
                       <ScanLine size={16}/> Importar fatura com IA
                     </button>
                   </div>
@@ -552,11 +560,14 @@ export default function Finances() {
               {aPagar.length > 0 && <div className={styles.groupLabel}>A pagar ({aPagar.length})</div>}
               {aPagar.map(t => (
                 <Row key={t.id} tx={t} highlighted={highlightTxId === t.id} changed={!!pinnedGroup[t.id]}
-                  subsCount={subscriptions.length} menuOpen={statusMenuFor === t.id}
+                  subsCount={subscriptions.length} menuOpen={statusMenuFor === t.id} locked={monthLocked}
                   onToggleMenu={() => setStatusMenuFor(prev => prev === t.id ? null : t.id)}
                   onPickStatus={(status) => setStatusTo(t, status)}
                   onEdit={() => setEditTx(t)}
-                  onDelete={() => { deleteTransaction(t.id); toast('Lançamento removido'); }}
+                  onDelete={() => {
+                    if (!deleteTransaction(t.id)) { toast('Mês fechado — reabra o mês para excluir'); return; }
+                    toast('Lançamento removido');
+                  }}
                   onShowSubs={() => setIsSubsModalOpen(true)}
                 />
               ))}
@@ -564,11 +575,14 @@ export default function Finances() {
               {demais.length > 0 && aPagar.length > 0 && <div className={styles.groupLabel}>Resolvidos e demais ({demais.length})</div>}
               {demais.map(t => (
                 <Row key={t.id} tx={t} highlighted={highlightTxId === t.id} changed={!!pinnedGroup[t.id]}
-                  subsCount={subscriptions.length} menuOpen={statusMenuFor === t.id}
+                  subsCount={subscriptions.length} menuOpen={statusMenuFor === t.id} locked={monthLocked}
                   onToggleMenu={() => setStatusMenuFor(prev => prev === t.id ? null : t.id)}
                   onPickStatus={(status) => setStatusTo(t, status)}
                   onEdit={() => setEditTx(t)}
-                  onDelete={() => { deleteTransaction(t.id); toast('Lançamento removido'); }}
+                  onDelete={() => {
+                    if (!deleteTransaction(t.id)) { toast('Mês fechado — reabra o mês para excluir'); return; }
+                    toast('Lançamento removido');
+                  }}
                   onShowSubs={() => setIsSubsModalOpen(true)}
                 />
               ))}
@@ -674,20 +688,31 @@ export default function Finances() {
       )}
       {editTx && (
         <TxModal section={editTx.section} monthId={editTx.monthId} existing={editTx}
+          readOnly={isMonthClosed(editTx.monthId)}
           onClose={() => setEditTx(null)}
-          onSave={(data) => { updateTransaction(editTx.id, data as Partial<FinanceTransaction>); toast('Lançamento atualizado com sucesso'); setEditTx(null); }}/>
+          onSave={(data) => {
+            if (!updateTransaction(editTx.id, data as Partial<FinanceTransaction>)) {
+              toast('Mês fechado — reabra o mês para editar');
+              setEditTx(null);
+              return;
+            }
+            toast('Lançamento atualizado com sucesso');
+            setEditTx(null);
+          }}/>
       )}
     </div>
   );
 }
 
 // ─── Linha da lista ──────────────────────────────────────────────────────────
-function Row({ tx, highlighted, changed, subsCount, menuOpen, onToggleMenu, onPickStatus, onEdit, onDelete, onShowSubs }: {
+function Row({ tx, highlighted, changed, subsCount, menuOpen, locked, onToggleMenu, onPickStatus, onEdit, onDelete, onShowSubs }: {
   tx: FinanceTransaction;
   highlighted: boolean;
   changed: boolean;
   subsCount: number;
   menuOpen: boolean;
+  /** Mês fechado: linha só de leitura. */
+  locked: boolean;
   onToggleMenu: () => void;
   onPickStatus: (status: FinancePaymentStatus) => void;
   onEdit: () => void;
@@ -717,16 +742,24 @@ function Row({ tx, highlighted, changed, subsCount, menuOpen, onToggleMenu, onPi
       </div>
       <div className={styles.rowRight}>
         <div className={styles.rowActions}>
-          <button className={styles.editBtn2} onClick={onEdit} title="Editar" aria-label={`Editar ${tx.description}`}><Edit2 size={14}/></button>
-          <button className={styles.delBtn2} onClick={onDelete} title="Excluir" aria-label={`Excluir ${tx.description}`}><Trash2 size={14}/></button>
+          <button className={styles.editBtn2} onClick={onEdit}
+            title={locked ? 'Ver lançamento (mês fechado)' : 'Editar'}
+            aria-label={`${locked ? 'Ver' : 'Editar'} ${tx.description}`}>
+            {locked ? <Eye size={14}/> : <Edit2 size={14}/>}
+          </button>
+          <button className={styles.delBtn2} onClick={onDelete} disabled={locked}
+            title={locked ? 'Mês fechado — reabra o mês para excluir' : 'Excluir'}
+            aria-label={`Excluir ${tx.description}`}><Trash2 size={14}/></button>
         </div>
         <span className={`${styles.rowValue} ${isIncome ? styles.incomeValue : ''}`}>{isIncome ? '+' : ''}{fmt(tx.value)}</span>
         {tx.paymentStatus ? (
           <div className={styles.statusWrap}>
-            <button className={`${styles.statusPill} ${STATUS_CSS[tx.paymentStatus]}`} onClick={onToggleMenu} aria-haspopup="menu" aria-expanded={menuOpen}>
+            <button className={`${styles.statusPill} ${STATUS_CSS[tx.paymentStatus]}`} onClick={onToggleMenu}
+              disabled={locked} title={locked ? 'Mês fechado — reabra o mês para alterar o status' : undefined}
+              aria-haspopup="menu" aria-expanded={menuOpen}>
               {STATUS_LABELS[tx.paymentStatus]}
             </button>
-            {menuOpen && (
+            {menuOpen && !locked && (
               <>
                 <div className={styles.statusBackdrop} onClick={onToggleMenu} aria-hidden />
                 <div className={styles.statusMenu} role="menu" aria-label={`Status de ${tx.description}`}>
@@ -1158,10 +1191,12 @@ const SECTION_ICONS: Record<'boleto' | 'extra' | 'income' | 'cartao', React.Reac
   cartao: <CreditCard size={18} style={{ color: '#F59E0B' }}/>,
 };
 
-function TxModal({ section, monthId, existing, onClose, onSave }: {
+function TxModal({ section, monthId, existing, readOnly = false, onClose, onSave }: {
   section: FinanceSection;
   monthId: string;
   existing?: FinanceTransaction;
+  /** Mês fechado: exibe o lançamento apenas para consulta. */
+  readOnly?: boolean;
   onClose: () => void;
   onSave: (data: Omit<FinanceTransaction, 'id' | 'createdAt'>) => void;
 }) {
@@ -1193,6 +1228,7 @@ function TxModal({ section, monthId, existing, onClose, onSave }: {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) return;
     const data = {
       monthId, type: (isExpense ? 'expense' : 'income') as 'income' | 'expense',
       section: effSection, description: desc, value: parseFloat(value) || 0, date,
@@ -1208,10 +1244,17 @@ function TxModal({ section, monthId, existing, onClose, onSave }: {
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className={styles.modalHead}>
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>{SECTION_ICONS[effSection]}{isEdit ? `Editar ${SECTION_LABELS[effSection]}` : `Novo ${SECTION_LABELS[effSection]}`}</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {SECTION_ICONS[effSection]}
+            {readOnly ? SECTION_LABELS[effSection] : (isEdit ? `Editar ${SECTION_LABELS[effSection]}` : `Novo ${SECTION_LABELS[effSection]}`)}
+          </h3>
           <button className={styles.closeBtn} onClick={onClose} aria-label="Fechar"><X size={20}/></button>
         </div>
         <form className={styles.modalBody} onSubmit={handleSubmit}>
+          {readOnly && (
+            <p className={styles.lockedNote}><Lock size={13}/> Mês fechado — reabra o mês para editar este lançamento.</p>
+          )}
+          <fieldset className={styles.formFieldset} disabled={readOnly}>
           <div className={styles.formGroup}>
             <label>Descrição</label>
             <input required type="text" className={styles.input} value={desc} placeholder={effSection === 'income' ? 'Ex: Salário, Dividendos...' : 'Ex: Aluguel, Mercado...'} onChange={e => setDesc(e.target.value)}/>
@@ -1253,7 +1296,10 @@ function TxModal({ section, monthId, existing, onClose, onSave }: {
               </select>
             </div>
           )}
-          <button type="submit" className={styles.submitBtn}>{isEdit ? 'Salvar Alterações' : 'Registrar'}</button>
+          </fieldset>
+          {readOnly
+            ? <button type="button" className={styles.submitBtn} onClick={onClose}>Fechar</button>
+            : <button type="submit" className={styles.submitBtn}>{isEdit ? 'Salvar Alterações' : 'Registrar'}</button>}
         </form>
       </div>
     </div>

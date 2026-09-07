@@ -304,6 +304,9 @@
 }
 .editBtn2:hover { border-color: var(--color-primary); color: var(--color-primary-light); }
 .delBtn2:hover { border-color: #EF4444; color: #F87171; }
+/* Mês fechado: ações bloqueadas na linha */
+.editBtn2:disabled, .delBtn2:disabled { opacity: 0.4; cursor: not-allowed; }
+.editBtn2:disabled:hover, .delBtn2:disabled:hover { border-color: var(--color-border); color: var(--color-text-2); }
 
 /* Linha recém-alterada: destaque por 2,5s antes de mudar de grupo */
 .rowChanged {
@@ -330,6 +333,8 @@
   padding: 0.28rem 0.65rem; cursor: pointer; min-width: 92px; transition: filter 0.12s;
 }
 .statusPill:hover { filter: brightness(1.15); }
+.statusPill:disabled { cursor: not-allowed; opacity: 0.72; }
+.statusPill:disabled:hover { filter: none; }
 .statusNone { visibility: hidden; }
 
 .statusPaid      { background: rgba(16,185,129,0.14); color: #10B981; }
@@ -542,6 +547,16 @@
 }
 .submitBtn:hover { filter: brightness(1.1); }
 .submitBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Modal de lançamento em modo somente leitura (mês fechado) */
+.formFieldset { display: contents; border: none; margin: 0; padding: 0; min-width: 0; }
+.formFieldset:disabled .input { opacity: 0.65; cursor: not-allowed; }
+.lockedNote {
+  display: flex; align-items: center; gap: 0.4rem; margin: 0;
+  padding: 0.55rem 0.7rem; border-radius: 0.5rem;
+  background: rgba(16, 185, 129, 0.10); border: 1px solid rgba(16, 185, 129, 0.30);
+  color: #10B981; font-size: 0.82rem; font-weight: 600;
+}
 
 .monthYearPicker { display: grid; grid-template-columns: 2fr 1fr; gap: 0.5rem; }
 

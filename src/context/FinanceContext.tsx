@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { FinanceMonth, FinanceTransaction, FinanceCpfCnpj, FinancePaymentStatus, FinanceSection, FinanceCategory, FinanceSubscription } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -17,11 +17,15 @@ interface FinanceContextType {
   createMonth: (monthStr: string) => FinanceMonth;
   closeMonth: (id: string) => void;
   reopenMonth: (id: string) => void;
-  deleteMonth: (id: string) => void;
+  deleteMonth: (id: string) => boolean;
 
-  addTransaction: (data: Omit<FinanceTransaction, 'id' | 'createdAt'>) => void;
-  updateTransaction: (id: string, data: Partial<FinanceTransaction>) => void;
-  deleteTransaction: (id: string) => void;
+  /** Um mês fechado é imutável: lançamentos dele não podem ser criados,
+   *  editados ou excluídos até que ele seja reaberto. */
+  isMonthClosed: (monthId?: string | null) => boolean;
+
+  addTransaction: (data: Omit<FinanceTransaction, 'id' | 'createdAt'>) => boolean;
+  updateTransaction: (id: string, data: Partial<FinanceTransaction>) => boolean;
+  deleteTransaction: (id: string) => boolean;
 
   addCategory: (name: string) => void;
   updateCategory: (id: string, name: string) => void;
@@ -260,6 +264,30 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
   }, [activeMonthId, user, mounted]);
 
+  // ── Trava de mês fechado ─────────────────────────────────────────────────
+  // Refs espelhando o estado para que os guards enxerguem sempre o valor atual
+  // sem recriar os callbacks (e sem reagir a closures obsoletas).
+  const closedMonthIds = useMemo(
+    () => new Set(months.filter(m => m.status === 'closed').map(m => m.id)),
+    [months]
+  );
+  const closedMonthIdsRef = useRef(closedMonthIds);
+  closedMonthIdsRef.current = closedMonthIds;
+
+  const transactionsRef = useRef(transactions);
+  transactionsRef.current = transactions;
+
+  const isMonthClosed = useCallback(
+    (monthId?: string | null) => !!monthId && closedMonthIdsRef.current.has(monthId),
+    []
+  );
+
+  /** Mês do lançamento está fechado? (usado pelos guards de update/delete) */
+  const isTxLocked = useCallback((txId: string) => {
+    const tx = transactionsRef.current.find(t => t.id === txId);
+    return !!tx && closedMonthIdsRef.current.has(tx.monthId);
+  }, []);
+
   const createMonth = useCallback((monthStr: string) => {
     if (!user) throw new Error("Usuário não autenticado");
     
@@ -313,6 +341,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const deleteMonth = useCallback((id: string) => {
+    // Excluir o mês apagaria todos os lançamentos dele — bloqueado enquanto fechado.
+    if (closedMonthIdsRef.current.has(id)) return false;
     setMonths(prev => prev.filter(m => m.id !== id));
     setTransactions(prev => prev.filter(t => t.monthId !== id));
     if (activeMonthId === id) setActiveMonthId(null);
@@ -321,10 +351,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     supabase.from('finance_months').delete().eq('id', id).then(({error}) => {
       if (error) reportSyncError("Erro deletando mês", error);
     });
+    return true;
   }, [activeMonthId]);
 
   const addTransaction = useCallback((data: Omit<FinanceTransaction, 'id' | 'createdAt'>) => {
-    if (!user) return;
+    if (!user) return false;
+    // Mês fechado é imutável — reabra o mês para lançar nele.
+    if (closedMonthIdsRef.current.has(data.monthId)) return false;
     const now = new Date().toISOString();
     const newTx: FinanceTransaction = {
       ...data,
@@ -352,9 +385,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }).then(({error}) => {
       if (error) reportSyncError("Erro inserindo transação", error);
     });
+    return true;
   }, [user]);
 
   const updateTransaction = useCallback((id: string, data: Partial<FinanceTransaction>) => {
+    if (isTxLocked(id)) return false;
+    // Também impede mover um lançamento para dentro de um mês fechado.
+    if (data.monthId !== undefined && closedMonthIdsRef.current.has(data.monthId)) return false;
     setTransactions(prev => prev.map(t => t.id === id ? { ...t, ...data } : t));
 
     // Persiste no Supabase
@@ -375,16 +412,19 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         if (error) reportSyncError("Erro atualizando transação", error);
       });
     }
-  }, []);
+    return true;
+  }, [isTxLocked]);
 
   const deleteTransaction = useCallback((id: string) => {
+    if (isTxLocked(id)) return false;
     setTransactions(prev => prev.filter(t => t.id !== id));
 
     // Persiste no Supabase
     supabase.from('finance_transactions').delete().eq('id', id).then(({error}) => {
       if (error) reportSyncError("Erro deletando transação", error);
     });
-  }, []);
+    return true;
+  }, [isTxLocked]);
 
   const addCategory = useCallback((name: string) => {
     if (!user) return;
@@ -457,6 +497,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     closeMonth,
     reopenMonth,
     deleteMonth,
+    isMonthClosed,
     addTransaction,
     updateTransaction,
     deleteTransaction,
@@ -468,7 +509,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     deleteSubscription,
   }), [
     months, transactions, categories, subscriptions, activeMonthId,
-    setActiveMonthId, createMonth, closeMonth, reopenMonth, deleteMonth,
+    setActiveMonthId, createMonth, closeMonth, reopenMonth, deleteMonth, isMonthClosed,
     addTransaction, updateTransaction, deleteTransaction,
     addCategory, updateCategory, deleteCategory,
     addSubscription, updateSubscription, deleteSubscription,
