@@ -56,6 +56,16 @@ const STATUS_CSS: Record<FinancePaymentStatus, string> = {
 };
 // Opções oferecidas no picker (seleção direta — sem ciclar às cegas)
 const STATUS_OPTIONS: FinancePaymentStatus[] = ['pending', 'previsto', 'paid', 'scheduled', 'auto_debit'];
+// Rótulo do botão de adicionar, colado nas abas: diz em qual seção o
+// lançamento vai cair, para não haver dúvida sobre o que o clique faz.
+const SECTION_TAB_LABELS: Record<FinanceSection, string> = {
+  boleto: 'Recorrentes', extra: 'Extras', cartao: 'Cartão',
+  income: 'Receitas', assinatura: 'Assinaturas',
+};
+const ADD_LABELS: Record<FinanceSection, string> = {
+  boleto: 'Novo recorrente', extra: 'Novo extra', cartao: 'Nova compra',
+  income: 'Nova receita', assinatura: 'Novo lançamento',
+};
 const needsAction = (st?: FinancePaymentStatus) => st === 'pending' || st === 'scheduled' || st === 'previsto';
 
 /** Média dos totais da categoria nos últimos meses (até `maxMonths`), a partir do mês de origem, inclusive. */
@@ -393,11 +403,6 @@ export default function Finances() {
               title={monthLocked ? 'Mês fechado — reabra o mês para importar' : 'Lance uma fatura ou nota a partir de uma foto ou PDF'}>
               <ScanLine size={15}/> Importar com IA
             </button>
-            <button className={styles.btnPrimary} disabled={monthLocked}
-              title={monthLocked ? 'Mês fechado — reabra o mês para lançar' : undefined}
-              onClick={() => setAddSection(filter)}>
-              <Plus size={16}/> Novo lançamento
-            </button>
           </div>
         )}
       </header>
@@ -534,7 +539,14 @@ export default function Finances() {
                     </div>
                   </div>
                 </div>
-                <input className={styles.search} placeholder="Buscar lançamento…" value={query} onChange={e => setQuery(e.target.value)} aria-label="Buscar lançamento"/>
+                <div className={styles.toolbarActions}>
+                  <input className={styles.search} placeholder="Buscar lançamento…" value={query} onChange={e => setQuery(e.target.value)} aria-label="Buscar lançamento"/>
+                  <button className={`${styles.btnPrimary} ${styles.toolbarAdd}`} disabled={monthLocked}
+                    title={monthLocked ? 'Mês fechado — reabra o mês para lançar' : `Adicionar em ${SECTION_TAB_LABELS[filter]}`}
+                    onClick={() => setAddSection(filter)}>
+                    <Plus size={16}/> {ADD_LABELS[filter]}
+                  </button>
+                </div>
               </div>
 
               {visiveis.length === 0 && (

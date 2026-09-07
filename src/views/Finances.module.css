@@ -9,7 +9,10 @@
   padding-bottom: 3rem;
   animation: fadeIn 0.3s ease;
   min-width: 0;
-  overflow-x: hidden;
+  /* clip, não hidden: 'hidden' força overflow-y a virar 'auto', o container
+     vira scroll container e o position:sticky da .toolbar deixa de funcionar
+     (mesmo motivo documentado em globals.css e page.module.css). */
+  overflow-x: clip;
 }
 
 @keyframes fadeIn {
@@ -213,7 +216,20 @@
   padding: 0.75rem 1.1rem;
   border-bottom: 1px solid var(--color-border);
   flex-wrap: wrap;
+  /* Acompanha a rolagem: em listas longas (fatura de cartão, por ex.) as abas
+     e o botão de adicionar continuam ao alcance, sem voltar ao topo.
+     top = altura da navbar (64px), que também é sticky.
+     z-index abaixo do menu de status (50) para não cobri-lo. */
+  position: sticky;
+  top: 64px;
+  z-index: 20;
+  background: var(--color-surface);
+  border-radius: 16px 16px 0 0;
 }
+
+/* Busca + adicionar andam juntos, à direita das abas */
+.toolbarActions { display: flex; align-items: center; gap: 0.6rem; }
+.toolbarAdd { flex-shrink: 0; white-space: nowrap; }
 .filterGroups { display: flex; align-items: flex-end; gap: 0.9rem; flex-wrap: wrap; }
 .filterGroup { display: flex; flex-direction: column; gap: 0.3rem; }
 .filterGroupLabel {
@@ -602,7 +618,10 @@
   /* Ver comentário no breakpoint de tablet — evita overflow horizontal */
   .mainGrid { grid-template-columns: minmax(0, 1fr); }
 
-  .toolbar { flex-direction: column; align-items: stretch; }
+  /* Empilhada a barra fica alta demais para grudar no topo — some com o sticky */
+  .toolbar { flex-direction: column; align-items: stretch; position: static; }
+  .toolbarActions { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+  .toolbarAdd { justify-content: center; }
 
   /* Filtros empilhados: SAÍDAS e ENTRADAS cada um em largura total,
      com os botões dividindo o espaço igualmente */
