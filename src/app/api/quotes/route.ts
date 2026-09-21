@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
 import { checkRateLimit } from '@/lib/rateLimit';
+import {
+  fetchQuotesInBatches,
+  createQuarantine,
+  type ChunkResponse,
+} from '@/lib/brapiQuotes';
 
 /**
  * Proxy autenticado para a Brapi.
  * Mantém o token fora do bundle do client e permite cache compartilhado.
  *
  * GET /api/quotes?tickers=PETR4,IVVB11,HGLG11
- * → { prices: { "PETR4": 38.42, ... } }
+ * → { prices: { "PETR4": 38.42, ... }, failed: ["..."] }
+ *
+ * A estratégia de lote, serialização e retry vive em `@/lib/brapiQuotes`,
+ * que é testável sem subir o Next. Aqui fica só o que é específico de
+ * HTTP: autenticação, validação de entrada e política de cache.
  */
 
 // Token server-side; aceita o nome antigo NEXT_PUBLIC_* para não quebrar
@@ -17,16 +26,31 @@ import { checkRateLimit } from '@/lib/rateLimit';
 const BRAPI_TOKEN = process.env.BRAPI_TOKEN || process.env.NEXT_PUBLIC_BRAPI_TOKEN || '';
 
 const MAX_TICKERS = 50;
-// O plano GRATUITO da Brapi aceita apenas 1 ticker por requisição
-// (Startup: 10, Pro: 20). Com chunks >1 a Brapi rejeita a chamada inteira
-// e o sync em lote falha silenciosamente — por isso 1 ticker por request.
-const CHUNK_SIZE = 1;
 
 // Generoso para uso legítimo (sync a cada 5min), apertado contra abuso
 const RATE_LIMIT_MAX = 60;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 const TICKER_RE = /^[A-Z0-9]{1,10}$/;
+
+// Alinhado ao intervalo de sync durante o pregão (5 min). Era 30 min, o
+// que tinha dois problemas: o preço na tela podia estar meia hora atrasado
+// e — pior — uma resposta de ERRO ficava cacheada todo esse tempo, então
+// um 429 passageiro deixava o ativo sem cotação por 30 minutos. Com 5 min
+// a janela encolhe, e a segunda tentativa com `no-store` (abaixo) fura o
+// cache de vez.
+const CACHE_TTL_SECONDS = 300;
+
+// A quarentena vive no escopo do módulo, como o rateLimit. Em serverless
+// cada instância tem a sua, então o pior caso de uma instância fria é
+// repetir a bissecção uma vez — barato e autocorrigível.
+const quarantine = createQuarantine();
+
+function parseRetryAfterMs(res: Response): number {
+  const header = res.headers.get('retry-after') ?? res.headers.get('ratelimit-reset');
+  const seconds = Number(header);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : 0;
+}
 
 export async function GET(req: NextRequest) {
   const supabase = createServerSupabase();
@@ -55,50 +79,57 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Nenhum ticker válido informado.' }, { status: 400 });
   }
 
-  const prices: Record<string, number> = {};
   const tokenParam = BRAPI_TOKEN ? `?token=${BRAPI_TOKEN}` : '';
 
-  const chunks: string[][] = [];
-  for (let i = 0; i < tickers.length; i += CHUNK_SIZE) {
-    chunks.push(tickers.slice(i, i + CHUNK_SIZE));
-  }
-
-  const failures: string[] = [];
-
-  await Promise.all(chunks.map(async chunk => {
+  const fetchChunk = async (
+    chunk: string[],
+    { fresh }: { fresh: boolean },
+  ): Promise<ChunkResponse> => {
     try {
       const res = await fetch(
         `https://brapi.dev/api/quote/${chunk.join(',')}${tokenParam}`,
-        // Cache compartilhado do Next alinhado ao ciclo de sync do client
-        // (30 min): cada ticker consome no máx. 1 requisição da cota da
-        // Brapi a cada 30 min, para todos os usuários somados. Com a cota
-        // gratuita de 15k req/mês, isso sustenta ~10 tickers únicos com
-        // alguém de app aberto o dia inteiro (48 refreshes/dia × 30d × 10
-        // tickers ≈ 14.400). Reavaliar se a base de tickers únicos crescer
-        // além disso — ver conversa sobre limites da Brapi no PR.
-        { next: { revalidate: 1800 } }
+        fresh
+          // Segunda tentativa: ignora o cache do Next de propósito, para
+          // que uma resposta de erro cacheada não se perpetue.
+          ? { cache: 'no-store' }
+          : { next: { revalidate: CACHE_TTL_SECONDS } },
       );
+
       if (!res.ok) {
-        failures.push(`${chunk.join(',')} (HTTP ${res.status})`);
-        return;
+        return { ok: false, status: res.status, retryAfterMs: parseRetryAfterMs(res) };
       }
-      const data = await res.json() as { results?: { symbol: string; regularMarketPrice: number }[] };
+
+      const data = await res.json() as {
+        results?: { symbol: string; regularMarketPrice: number }[];
+      };
+
+      const prices: Record<string, number> = {};
       for (const item of data.results ?? []) {
         const price = item.regularMarketPrice;
         if (price != null && !isNaN(price)) {
-          const symbol = item.symbol.replace(/\.SA$/i, '').toUpperCase();
-          prices[symbol] = price;
+          prices[item.symbol.replace(/\.SA$/i, '').toUpperCase()] = price;
         }
       }
-    } catch (e) {
-      // chunk com falha não derruba os demais
-      failures.push(`${chunk.join(',')} (${e instanceof Error ? e.message : 'erro de rede'})`);
+      return { ok: true, prices };
+    } catch {
+      // Erro de rede: trata como transitório (status 0 não é 429, então
+      // não dispara bissecção nem quarentena).
+      return { ok: false, status: 0, retryAfterMs: 0 };
     }
-  }));
+  };
 
-  if (failures.length > 0) {
-    console.error(`[quotes] Brapi falhou para: ${failures.join('; ')}`);
+  const { prices, failed, quarantined, requests } = await fetchQuotesInBatches(
+    tickers,
+    fetchChunk,
+    { quarantine },
+  );
+
+  if (failed.length > 0) {
+    console.error(
+      `[quotes] sem cotação para: ${failed.join(', ')} ` +
+      `(${requests} req à Brapi${quarantined.length ? `; em quarentena: ${quarantined.join(', ')}` : ''})`
+    );
   }
 
-  return NextResponse.json({ prices });
+  return NextResponse.json({ prices, failed });
 }

@@ -12,7 +12,9 @@ import React, {
 import { Strategy, Asset, StrategyCategory, Transaction, PortfolioSnapshot, SellTaxRecord, FinancialGoal } from '@/types';
 import { generateId } from '@/lib/calculations';
 import { supabase } from '@/lib/supabase';
-import { reportSyncError, reportStaleQuotes } from '@/lib/syncStatus';
+import { reportSyncError, reportStaleQuotes, mergeStaleTickers } from '@/lib/syncStatus';
+import { isB3Open, lastClosedSessionKey } from '@/lib/marketHours';
+import { isCryptoTicker } from '@/lib/cryptoMap';
 import { useAuth } from '@/context/AuthContext';
 
 // ============================================
@@ -985,15 +987,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Usa refs para sempre ler o estado mais recente,
   // evitando stale closure quando chamado via setInterval
   // ============================================
-  // Intervalo mínimo entre syncs automáticos (não força pelo usuário) —
-  // evita bater o rate-limit/cota da Brapi quando o usuário alterna abas
-  // repetidamente (cada troca dispara o listener de visibilitychange).
-  const MIN_AUTO_SYNC_GAP_MS = 2 * 60 * 1000;
+  // Cadência mínima entre syncs automáticos. Também protege contra o
+  // usuário alternando abas repetidamente, já que cada troca dispara o
+  // listener de visibilitychange.
+  //
+  // Com pregão aberto vale a pena ser frequente: agora que um lote de até
+  // 20 tickers custa UMA requisição, 5 min consomem ~2.100 req/mês dos
+  // 15.000 da cota gratuita. Fora do pregão a ação não muda de preço, e
+  // os 30 min valem só para a cripto, que negocia 24/7 e vem do CoinGecko
+  // (limite por minuto, não mensal) — mantendo a cadência que já existia.
+  const SYNC_GAP_OPEN_MS = 5 * 60 * 1000;
+  const SYNC_GAP_CLOSED_MS = 30 * 60 * 1000;
   const lastSyncAttemptRef = useRef(0);
+  // Última sessão encerrada para a qual já buscamos o preço de fechamento.
+  const closingSyncedRef = useRef<string | null>(null);
 
   const syncPrices = useCallback(async (force = false) => {
     if (isSyncingRef.current) return;
-    if (!force && Date.now() - lastSyncAttemptRef.current < MIN_AUTO_SYNC_GAP_MS) return;
+
+    const marketOpen = isB3Open();
+    const gap = marketOpen ? SYNC_GAP_OPEN_MS : SYNC_GAP_CLOSED_MS;
+    if (!force && Date.now() - lastSyncAttemptRef.current < gap) return;
     lastSyncAttemptRef.current = Date.now();
 
     const currentAssets = assetsRef.current;
@@ -1004,13 +1018,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       a => (a.priceMode ?? 'auto') === 'auto' && !a.isArchived
     );
 
-    if (eligible.length === 0) return;
+    // Fora do pregão a cotação da B3 é sempre a do fechamento: buscar de
+    // novo gasta cota e não muda nada na tela. A cripto NÃO entra nessa
+    // regra — negocia 24/7 e tem fonte e limites próprios.
+    //
+    // A exceção é o sync de recuperação: ao abrir o app com o mercado
+    // fechado precisamos de UMA busca para pegar o fechamento do dia. A
+    // chave da sessão garante que ela aconteça uma vez só, e não a cada
+    // 30 min durante todo o fim de semana.
+    const closedSession = lastClosedSessionKey();
+    const needsClosingSync = closedSession !== null && closingSyncedRef.current !== closedSession;
+    const includeB3 = force || marketOpen || needsClosingSync;
+
+    const toSync = includeB3 ? eligible : eligible.filter(a => isCryptoTicker(a.ticker));
+
+    if (toSync.length === 0) return;
 
     isSyncingRef.current = true;
     setIsSyncingPrices(true);
     try {
       const { fetchAssetPrices } = await import('@/lib/brapi');
-      const tickers = eligible.map(a => a.ticker);
+      const tickers = toSync.map(a => a.ticker);
 
       // forceRefresh=true: invalida cache e busca preços frescos da API
       const prices = await fetchAssetPrices(tickers, true);
@@ -1024,7 +1052,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // ainda dizia "atualizado agora" com valores de horas antes.
       const stale: string[] = [];
 
-      for (const asset of eligible) {
+      for (const asset of toSync) {
         const cleanTicker = asset.ticker.toUpperCase().replace(/\.SA$/i, '').replace(/F$/, '');
         const price = prices.get(cleanTicker);
         if (price == null) {
@@ -1065,11 +1093,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Publica o que ficou defasado. Lista vazia limpa o aviso anterior,
-      // então a mensagem some sozinha quando a fonte de preços volta.
-      reportStaleQuotes(stale);
+      // Marca a sessão encerrada como já buscada assim que a tentativa
+      // com B3 acontece — inclusive se algum ticker falhou. Marcar só no
+      // sucesso total faria o app repetir a busca de 30 em 30 min a noite
+      // toda por causa de um único papel problemático; o banner já avisa
+      // o usuário sobre ele.
+      if (includeB3 && closedSession !== null) closingSyncedRef.current = closedSession;
 
-      // Só marca como sincronizado quando TODOS os elegíveis atualizaram.
+      // Publica o que ficou defasado, preservando avisos de tickers que
+      // NÃO foram tentados nesta rodada. Sem isso, uma sync só de cripto
+      // (mercado fechado) limparia um aviso legítimo da B3 e o usuário
+      // voltaria a ver número velho achando que é atual — justamente o
+      // silêncio que este banner existe para acabar.
+      reportStaleQuotes(mergeStaleTickers(stale, tickers));
+
+      // Só marca como sincronizado quando TODOS os ativos tentados nesta
+      // rodada atualizaram.
       // Numa sync parcial o horário anterior continua valendo — é a
       // informação honesta: nem tudo na tela é daquele momento. O banner
       // diz quais ativos ficaram para trás.
@@ -1077,7 +1116,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       // Falha geral (rede, import dinâmico, proxy fora): nada atualizou.
       console.error('syncPrices error:', err);
-      reportStaleQuotes(eligible.map(a => a.ticker));
+      // Tudo que foi tentado agora está sem cotação; avisos de tickers de
+      // fora desta rodada continuam valendo.
+      const attempted = toSync.map(a => a.ticker);
+      reportStaleQuotes(mergeStaleTickers(attempted, attempted));
     } finally {
       isSyncingRef.current = false;
       setIsSyncingPrices(false);
@@ -1086,24 +1128,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-sync de preços a cada 30 minutos enquanto o app está aberto.
-  // 30min (não 5min) porque a cota da Brapi free (15k req/mês) é
-  // compartilhada entre TODOS os usuários por ticker único — com sync a
-  // cada 5min, pouco mais de 1 ticker distinto na base já estouraria a
-  // cota mensal. Ver `handleVisibility` abaixo para a atualização ao
-  // voltar o foco, que cobre o caso do usuário ativo.
+  // O timer dispara a cada 5 minutos, mas quem decide se há trabalho a
+  // fazer é o `syncPrices`: ele respeita a cadência do momento (5 min com
+  // pregão aberto, 30 min fora) e ignora a B3 quando o mercado está
+  // fechado. Disparar o timer com frequência é de graça — só vira
+  // requisição quando o gate deixa passar.
+  //
+  // O raciocínio antigo (30 min fixos para não estourar a cota) partia de
+  // uma requisição POR TICKER. Com lote de até 20 tickers por chamada,
+  // um sync inteiro custa 1 requisição, e 5 min durante o pregão somam
+  // ~2.100 req/mês — bem dentro dos 15.000 do plano gratuito.
+  // Ver `handleVisibility` abaixo para a atualização ao voltar o foco.
   useEffect(() => {
     if (!dbSynced) return;
     // Roda imediatamente ao abrir o app (após dbSynced)
     syncPrices();
-    const interval = setInterval(syncPrices, 30 * 60 * 1000);
+    const interval = setInterval(syncPrices, 5 * 60 * 1000);
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dbSynced]);
 
   // `setInterval` é pausado/throttled pelo navegador quando a aba fica em
   // segundo plano (e suspenso quase totalmente em PWAs instaladas ao sair
-  // do app) — por isso o timer de 5min sozinho não é confiável: o usuário
+  // do app) — por isso o timer sozinho não é confiável: o usuário
   // volta ao app horas depois e vê preços desatualizados até fazer algo
   // manual. Complementa o timer sincronizando também quando a aba volta a
   // ficar visível, que é o momento em que o usuário de fato está olhando

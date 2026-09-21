@@ -51,6 +51,24 @@ export function reportStaleQuotes(tickers: string[]): void {
   emit();
 }
 
+/**
+ * Combina os tickers sem cotação de uma sincronização com os avisos que
+ * ainda valem de rodadas anteriores.
+ *
+ * Existe porque nem toda sync tenta todos os ativos: fora do pregão só a
+ * cripto é buscada. Sem isso, uma sync parcial bem-sucedida limparia o
+ * aviso de um ativo da B3 que continua com preço velho — o silêncio que
+ * este módulo existe para evitar.
+ *
+ * `attempted` são os tickers efetivamente buscados agora; só eles têm o
+ * direito de sair da lista.
+ */
+export function mergeStaleTickers(stale: string[], attempted: string[]): string[] {
+  const tried = new Set(attempted);
+  const carriedOver = state.staleTickers.filter(t => !tried.has(t));
+  return Array.from(new Set([...carriedOver, ...stale]));
+}
+
 export function dismissSyncWarnings(): void {
   state = { writeFailures: 0, staleTickers: [] };
   emit();

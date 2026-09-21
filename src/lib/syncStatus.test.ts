@@ -5,6 +5,7 @@ import {
   dismissSyncWarnings,
   getSyncState,
   subscribeSyncState,
+  mergeStaleTickers,
   type SyncState,
 } from './syncStatus';
 
@@ -91,5 +92,34 @@ describe('dismissSyncWarnings', () => {
     dismissSyncWarnings();
 
     expect(getSyncState()).toEqual<SyncState>({ writeFailures: 0, staleTickers: [] });
+  });
+});
+
+describe('mergeStaleTickers — syncs parciais', () => {
+  it('preserva o aviso de quem não foi tentado nesta rodada', () => {
+    // Pregão fechado: só a cripto é buscada, e ela volta OK. O aviso de
+    // PETR4, que ninguém tentou, tem de continuar de pé.
+    reportStaleQuotes(['PETR4', 'BBSE3']);
+    expect(mergeStaleTickers([], ['BTC', 'ETH'])).toEqual(['PETR4', 'BBSE3']);
+  });
+
+  it('limpa o aviso de quem foi tentado e voltou com preço', () => {
+    reportStaleQuotes(['PETR4', 'BBSE3']);
+    expect(mergeStaleTickers([], ['PETR4', 'BBSE3'])).toEqual([]);
+  });
+
+  it('limpa só quem voltou, mantendo o que falhou de novo', () => {
+    reportStaleQuotes(['PETR4', 'BBSE3']);
+    expect(mergeStaleTickers(['BBSE3'], ['PETR4', 'BBSE3'])).toEqual(['BBSE3']);
+  });
+
+  it('não duplica um ticker que já estava na lista e falhou de novo', () => {
+    reportStaleQuotes(['PETR4']);
+    expect(mergeStaleTickers(['PETR4'], ['PETR4'])).toEqual(['PETR4']);
+  });
+
+  it('acrescenta falhas novas às antigas que seguem valendo', () => {
+    reportStaleQuotes(['PETR4']);
+    expect(mergeStaleTickers(['TAEE11'], ['TAEE11', 'BTC'])).toEqual(['PETR4', 'TAEE11']);
   });
 });
