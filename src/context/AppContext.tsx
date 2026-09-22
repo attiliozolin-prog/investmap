@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabase';
 import { reportSyncError, reportStaleQuotes, mergeStaleTickers } from '@/lib/syncStatus';
 import { isB3Open, lastClosedSessionKey } from '@/lib/marketHours';
 import { isCryptoTicker } from '@/lib/cryptoMap';
+import { markPriceFresh, selectStaleEnoughToWarn } from '@/lib/priceFreshness';
 import { useAuth } from '@/context/AuthContext';
 
 // ============================================
@@ -1051,6 +1052,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Resultado: uma falha em 17 de 19 ativos passava calada, e a UI
       // ainda dizia "atualizado agora" com valores de horas antes.
       const stale: string[] = [];
+      // Tickers que voltaram com preço agora — alimentam o registro de
+      // frescor, que decide se vale ou não incomodar o usuário depois.
+      const fresh: string[] = [];
 
       for (const asset of toSync) {
         const cleanTicker = asset.ticker.toUpperCase().replace(/\.SA$/i, '').replace(/F$/, '');
@@ -1060,6 +1064,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           continue;
         }
         updatedCount++;
+        fresh.push(asset.ticker);
 
         // Calcula novo currentValue:
         // - Com quantity: qty × price (mais preciso)
@@ -1100,12 +1105,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // o usuário sobre ele.
       if (includeB3 && closedSession !== null) closingSyncedRef.current = closedSession;
 
-      // Publica o que ficou defasado, preservando avisos de tickers que
-      // NÃO foram tentados nesta rodada. Sem isso, uma sync só de cripto
-      // (mercado fechado) limparia um aviso legítimo da B3 e o usuário
-      // voltaria a ver número velho achando que é atual — justamente o
-      // silêncio que este banner existe para acabar.
-      reportStaleQuotes(mergeStaleTickers(stale, tickers));
+      // Uma escrita só no storage, em vez de uma por ativo.
+      markPriceFresh(fresh);
+
+      // Nem toda falha vira aviso na tela. Um ativo que não voltou nesta
+      // rodada mas tem cotação de minutos atrás não representa problema
+      // nenhum para quem só acompanha a carteira — e um banner a cada
+      // oscilação da API ensina o usuário a ignorar o aviso, inclusive
+      // quando ele importa. Só passa daqui o que está velho de verdade.
+      //
+      // O console.warn dentro de reportStaleQuotes continua registrando
+      // TODAS as falhas, então o diagnóstico não se perde.
+      const worthWarning = selectStaleEnoughToWarn(stale);
+
+      // Preserva avisos de tickers que NÃO foram tentados nesta rodada:
+      // sem isso, uma sync só de cripto (mercado fechado) apagaria um
+      // alerta legítimo da B3.
+      reportStaleQuotes(mergeStaleTickers(worthWarning, tickers));
 
       // Só marca como sincronizado quando TODOS os ativos tentados nesta
       // rodada atualizaram.
@@ -1119,7 +1135,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Tudo que foi tentado agora está sem cotação; avisos de tickers de
       // fora desta rodada continuam valendo.
       const attempted = toSync.map(a => a.ticker);
-      reportStaleQuotes(mergeStaleTickers(attempted, attempted));
+      reportStaleQuotes(mergeStaleTickers(selectStaleEnoughToWarn(attempted), attempted));
     } finally {
       isSyncingRef.current = false;
       setIsSyncingPrices(false);

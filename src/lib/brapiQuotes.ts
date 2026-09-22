@@ -51,10 +51,14 @@ export function createQuarantine(): Quarantine {
 
 export const CHUNK_SIZE = 20;
 
-// Um ticker isolado como inválido fica de fora por 6h. Se foi engano
-// (indisponibilidade momentânea da Brapi, papel recém-listado), ele volta
-// sozinho depois — sem exigir que o usuário faça nada.
-export const QUARANTINE_MS = 6 * 60 * 60 * 1000;
+// Um ticker isolado como inválido fica de fora por 1h.
+//
+// Era 6h, o que tinha um efeito ruim: durante a quarentena o ticker nunca
+// é tentado, então uma indisponibilidade de 30 segundos da Brapi deixava
+// o papel sem atualizar por um turno inteiro e parecia defeito permanente.
+// Uma hora ainda evita repetir a bissecção a cada sync de 5 min (o motivo
+// da quarentena existir) e devolve o ticker rápido quando o erro passa.
+export const QUARANTINE_MS = 60 * 60 * 1000;
 
 // Teto defensivo de chamadas por invocação. A bissecção é logarítmica,
 // mas uma carteira com muitos tickers ruins ao mesmo tempo poderia
