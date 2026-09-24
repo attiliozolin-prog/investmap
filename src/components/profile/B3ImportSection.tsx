@@ -7,6 +7,7 @@ import { read, utils } from 'xlsx';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import type { AssetType } from '@/types';
+import { calculateTax, detectAssetType, detectAssetTypeFromTicker } from '@/lib/taxCalculator';
 import styles from '@/views/Profile.module.css';
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
@@ -106,7 +107,7 @@ async function isDuplicate(
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export default function B3ImportSection() {
-  const { assets, addAsset, updateAsset, addCategory, activeStrategy, activeStrategyId, addTransaction, addSellTaxRecord } = useApp();
+  const { assets, strategies, addAsset, updateAsset, addCategory, activeStrategy, activeStrategyId, addTransaction, addSellTaxRecord } = useApp();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -267,6 +268,19 @@ export default function B3ImportSection() {
       return importCategoryId;
     };
 
+    // Tipo tributário: pela categoria do ativo na estratégia (quando ele já
+    // estava cadastrado); ativos criados agora, sem categoria real, caem na
+    // heurística só pelo ticker — o usuário pode corrigir na página Impostos.
+    const taxTypeFor = (categoryId: string, ticker: string): AssetType => {
+      for (const s of strategies) {
+        const cat = s.categories.find(c => c.id === categoryId);
+        if (cat && cat.subclassName !== 'Importado da B3') {
+          return detectAssetType(cat.className, cat.subclassName, ticker);
+        }
+      }
+      return detectAssetTypeFromTicker(ticker);
+    };
+
     for (const [ticker, rows] of Array.from(byTicker.entries())) {
       // Ordem cronológica; no mesmo dia, compras antes de vendas (garante custo antes da baixa)
       rows.sort((a: ParsedRow, b: ParsedRow) =>
@@ -313,35 +327,43 @@ export default function B3ImportSection() {
           invested += row.value;
           current += row.value;
         } else {
-          // Venda: custo pela posição acumulada até aqui (PME)
-          const hasCost = qty > 0 && invested > 0;
-          const costBasis = hasCost ? calcPME(invested, qty, Math.min(row.quantity, qty)) : 0;
-          const profitLoss = parseFloat((row.value - costBasis).toFixed(2));
-          const isLoss = profitLoss < 0;
-          const assetType: AssetType = ticker.endsWith('11') || ticker.endsWith('12') ? 'fii' : 'acao';
+          // Venda: custo pela posição acumulada até aqui (PME). Se o extrato
+          // não traz compras suficientes para cobrir as unidades vendidas
+          // (compra anterior ao período exportado), o custo é DESCONHECIDO —
+          // gravamos 0 ("custo pendente") e a apuração deixa a venda fora do
+          // IR até o usuário informar o custo. Calcular com custo parcial ou
+          // zero geraria IR sobre um lucro que não existe.
+          const hasCost = qty > 0 && invested > 0 && qty + 1e-6 >= row.quantity;
+          const costBasis = hasCost ? calcPME(invested, qty, row.quantity) : 0;
+          const assetType = taxTypeFor(asset.categoryId, ticker);
+          const calc = hasCost ? calculateTax(assetType, row.value, costBasis, row.dateDay) : null;
 
           addSellTaxRecord({
             assetId: asset.id,
             assetTicker: ticker,
             sellValue: row.value,
             costBasis,
-            profitLoss,
+            profitLoss: calc ? calc.profitLoss : 0,
             assetType,
-            taxRate: assetType === 'fii' ? 0.2 : 0.15,
-            taxDue: 0,
-            isExempt: !isLoss && row.value <= 20000,
-            exemptReason: !isLoss && row.value <= 20000 ? 'Venda de ações (comum) abaixo de 20 mil reais no mês' : undefined,
-            isLoss,
+            taxRate: calc?.taxRate ?? 0,
+            taxDue: calc?.taxDue ?? 0,
+            isExempt: calc?.isExempt ?? false,
+            exemptReason: calc?.exemptReason,
+            isLoss: calc?.isLoss ?? false,
             lossUsedForCompensation: 0,
             taxPaid: false,
+            darfPeriod: row.dateDay.slice(0, 7),
             notes: hasCost
               ? `Importado da B3 — Custo via PME (R$ ${(costBasis / (row.quantity || 1)).toFixed(2)}/cota × ${row.quantity} cotas)`
-              : `Importado da B3 — ⚠️ Custo de aquisição não identificado no extrato (compra anterior ao período exportado). Edite o registro para informar o custo correto.`,
+              : `Importado da B3 — ⚠️ Custo de aquisição não identificado no extrato (compra anterior ao período exportado). Informe o custo na página Impostos.`,
             sellDate: row.dateDay,
           });
 
+          // Baixa da posição: sai o custo das unidades que o app conhecia
+          // (todas, se o custo é conhecido; só as disponíveis, se não).
+          const costLeaving = hasCost ? costBasis : calcPME(invested, qty, Math.min(row.quantity, qty));
           qty = Math.max(0, qty - row.quantity);
-          invested = Math.max(0, parseFloat((invested - costBasis).toFixed(2)));
+          invested = Math.max(0, parseFloat((invested - costLeaving).toFixed(2)));
           current = Math.max(0, parseFloat((current - row.value).toFixed(2)));
         }
 

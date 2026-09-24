@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
+import { useTaxApuration } from '@/context/useTaxApuration';
 import styles from './PortfolioHistory.module.css';
 import {
   X, TrendingUp, TrendingDown, ShoppingCart, DollarSign,
@@ -41,20 +42,21 @@ export default function PortfolioHistory({ onClose }: Props) {
     [sellTaxRecords]
   );
 
-  const sellsWithTax   = sells.filter(r => !r.isLoss && !r.isExempt && r.taxDue > 0);
-  const sellsWithLoss  = sells.filter(r => r.isLoss);
+  // IR e compensação vêm da apuração mensal (lib/taxApuration.ts) — somar o
+  // IR de cada venda isolada ignorava isenção do mês e prejuízos anteriores.
+  const apuration = useTaxApuration();
+  const knownCost = sells.filter(r => apuration.saleStatus[r.id] !== 'custo_pendente');
 
-  // ── Resumo ───────────────────────────────────────────────────────────────────
-  const totalTaxDue   = sellsWithTax.reduce((s, r) => s + r.taxDue, 0);
-  const totalTaxPaid  = sellsWithTax.filter(r => r.taxPaid).reduce((s, r) => s + r.taxDue, 0);
-  const totalTaxPending = totalTaxDue - totalTaxPaid;
-  const totalRealizedProfit = sells.filter(r => !r.isLoss).reduce((s, r) => s + r.profitLoss, 0);
-  const totalRealizedLoss   = sells.filter(r => r.isLoss).reduce((s, r) => s + Math.abs(r.profitLoss), 0);
-  // Apenas tipos compensáveis: bolsa comum (ações/ETFs/BDRs) e FII.
-  // Cripto no regime nacional, renda fixa e LCI/LCA não permitem compensação.
-  const availableForComp    = sellsWithLoss
-    .filter(r => r.assetType === 'acao' || r.assetType === 'etf' || r.assetType === 'bdr' || r.assetType === 'fii')
-    .reduce((s, r) => s + (Math.abs(r.profitLoss) - r.lossUsedForCompensation), 0);
+  const totalTaxDue   = apuration.darfs.reduce((s, d) => s + d.tax, 0);
+  const totalTaxPaid  = apuration.darfs.reduce((s, d) => s + d.paid, 0);
+  const totalTaxPending = apuration.darfs
+    .filter(d => d.status === 'pendente' || d.status === 'atrasado')
+    .reduce((s, d) => s + d.open, 0);
+  const totalRealizedProfit = knownCost.filter(r => r.profitLoss > 0).reduce((s, r) => s + r.profitLoss, 0);
+  const totalRealizedLoss   = knownCost.filter(r => r.profitLoss < 0).reduce((s, r) => s + Math.abs(r.profitLoss), 0);
+  // Saldo de prejuízo ainda não usado: bolsa comum + FII (cripto nacional,
+  // renda fixa e LCI/LCA não compensam)
+  const availableForComp = apuration.lossCarry.bolsa + apuration.lossCarry.fii;
 
   // Total Aportado: soma o investedValue de TODOS os ativos (ativos + encerrados)
   // + valor das vendas já realizadas (que saíram do investedValue)

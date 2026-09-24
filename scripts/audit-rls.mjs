@@ -48,10 +48,12 @@ const TABLES = [
   'transactions',
   'portfolio_snapshots',
   'sell_tax_records',
+  'tax_darf_payments',
   'financial_goals',
   'finance_months',
   'finance_categories',
   'finance_transactions',
+  'finance_subscriptions',
 ];
 
 let failures = 0;

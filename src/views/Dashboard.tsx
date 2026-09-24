@@ -4,6 +4,7 @@ import { useMemo, useEffect, useRef, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import { useFinance } from '@/context/FinanceContext';
+import { useTaxApuration } from '@/context/useTaxApuration';
 import { calculatePortfolio, formatCurrency, CHART_COLORS, idealContributionPlan, deviationBand } from '@/lib/calculations';
 import GoalWidget from '@/components/GoalWidget';
 import AiAnalysisCard from '@/components/AiAnalysisCard';
@@ -121,7 +122,7 @@ function AreaChart({ data }: { data: SeriesPoint[] }) {
 export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) => void }) {
   const {
     activeStrategy, activeAssets, saveSnapshot, snapshots, syncPrices,
-    isSyncingPrices, lastPriceSyncAt, sellTaxRecords, activeGoal,
+    isSyncingPrices, lastPriceSyncAt, activeGoal,
   } = useApp();
   const { user } = useAuth();
   const { transactions, months, activeMonthId } = useFinance();
@@ -210,20 +211,24 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
   [transactions, activeMonthId]);
   const previstoTotal = previstoTxs.reduce((s, t) => s + t.value, 0);
 
-  // DARFs — separa atrasado (competência já passou) de pendente dentro do prazo
-  const currentMonthStr = new Date().toISOString().slice(0, 7);
+  // DARFs mensais (apuração em lib/taxApuration.ts) — separa atrasado
+  // (passou do vencimento) de pendente dentro do prazo
+  const apuration = useTaxApuration();
   const pendingDarfs = useMemo(() =>
-    sellTaxRecords.filter(r => !r.isLoss && !r.isExempt && r.taxDue > 0 && !r.taxPaid),
-  [sellTaxRecords]);
-  const overdueDarfs = pendingDarfs.filter(r => r.darfPeriod && r.darfPeriod < currentMonthStr);
-  const dueDarfs = pendingDarfs.filter(r => !overdueDarfs.includes(r));
-  const pendingDarfTotal = pendingDarfs.reduce((s, r) => s + r.taxDue, 0);
+    apuration.darfs.filter(d => d.status === 'pendente' || d.status === 'atrasado'),
+  [apuration]);
+  const overdueDarfs = pendingDarfs.filter(d => d.status === 'atrasado');
+  const dueDarfs = pendingDarfs.filter(d => d.status === 'pendente');
+  const pendingDarfTotal = pendingDarfs.reduce((s, d) => s + d.open, 0);
+  const pendingCostCount = useMemo(() =>
+    Object.values(apuration.saleStatus).filter(st => st === 'custo_pendente').length,
+  [apuration]);
 
   // Impostos pagos no ano corrente (para o pilar de Impostos)
   const currentYear = new Date().getFullYear().toString();
   const paidThisYear = useMemo(() =>
-    sellTaxRecords.filter(r => r.taxPaid && r.sellDate.startsWith(currentYear)).reduce((s, r) => s + r.taxDue, 0),
-  [sellTaxRecords, currentYear]);
+    apuration.darfs.filter(d => d.period.startsWith(currentYear)).reduce((s, d) => s + d.paid, 0),
+  [apuration, currentYear]);
 
   // Finanças do mês ativo — mesma fórmula da página de Finanças: assinaturas
   // não somam à parte, pois seu valor já está embutido nas transações de
@@ -354,7 +359,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
   const actions: ActionItem[] = [];
 
   if (overdueDarfs.length > 0) {
-    const total = overdueDarfs.reduce((s, r) => s + r.taxDue, 0);
+    const total = overdueDarfs.reduce((s, d) => s + d.open, 0);
     actions.push({
       key: 'darf-overdue', icon: <AlertTriangle size={16} />, cls: styles.aiUrgent,
       title: <>DARF{overdueDarfs.length > 1 ? 's' : ''} de <strong>{formatCurrency(total)}</strong> atrasado{overdueDarfs.length > 1 ? 's' : ''}</>,
@@ -363,12 +368,20 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: string) =>
     });
   }
   if (dueDarfs.length > 0) {
-    const total = dueDarfs.reduce((s, r) => s + r.taxDue, 0);
+    const total = dueDarfs.reduce((s, d) => s + d.open, 0);
     actions.push({
       key: 'darf-due', icon: <Landmark size={16} />, cls: styles.aiWarn,
       title: <>{dueDarfs.length} DARF{dueDarfs.length > 1 ? 's' : ''} pendente{dueDarfs.length > 1 ? 's' : ''} · <strong>{formatCurrency(total)}</strong></>,
       sub: 'IR sobre vendas do mês — vence no último dia útil do mês seguinte',
       go: 'Ver', dest: 'taxes',
+    });
+  }
+  if (pendingCostCount > 0) {
+    actions.push({
+      key: 'custo-pendente', icon: <AlertTriangle size={16} />, cls: styles.aiWarn,
+      title: <>{pendingCostCount} venda{pendingCostCount > 1 ? 's' : ''} sem custo de aquisição</>,
+      sub: 'Sem o custo não dá para apurar o IR dessas vendas — informe o valor pago',
+      go: 'Informar', dest: 'taxes',
     });
   }
   if (upcomingBoletos.length > 0) {

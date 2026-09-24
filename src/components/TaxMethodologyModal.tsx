@@ -22,7 +22,7 @@ const ASSET_RULES: { label: string; rate: string; exemption: string; withheld?: 
 ];
 
 const COMPENSATION_RULES = [
-  { label: 'Ações, ETFs e BDRs (operações comuns em bolsa)', detail: 'Prejuízo compensa lucros futuros entre si, dentro desse grupo.' },
+  { label: 'Ações, ETFs e BDRs (operações comuns em bolsa)', detail: 'Prejuízo compensa lucros futuros entre si, dentro desse grupo — inclusive prejuízo com ações em mês de vendas abaixo de R$ 20 mil. Lucro isento de ações não consome o prejuízo acumulado.' },
   { label: 'FII', detail: 'Prejuízo compensa apenas lucros futuros em vendas de outros FIIs — separado das demais ações/ETFs.' },
   { label: 'Criptoativo (exchange nacional), Renda Fixa, LCI/LCA', detail: 'Prejuízo NÃO é compensável — a apuração é mensal e definitiva.' },
 ];
@@ -30,6 +30,7 @@ const COMPENSATION_RULES = [
 const LIMITATIONS = [
   'Day trade (alíquota de 20%, com apuração separada) não é diferenciado — todas as vendas são tratadas como operação comum.',
   'O regime de aplicações no exterior (Lei 14.754/2023, apuração anual) não é coberto — só o regime nacional.',
+  'O IRRF de 0,005% sobre vendas ("dedo-duro") não é abatido do DARF, e o vencimento não considera feriados nacionais.',
   'As isenções de R$ 20 mil (ações) e R$ 35 mil (cripto) consideram apenas as vendas registradas neste app — se você vendeu o mesmo tipo de ativo em outra corretora/carteira não cadastrada aqui, o limite real pode já estar ultrapassado.',
 ];
 
@@ -77,12 +78,30 @@ export default function TaxMethodologyModal({ onClose }: Props) {
         </section>
 
         <section>
+          <h4 className={styles.sectionTitle}>Como o IR é apurado</h4>
+          <p className={styles.sectionText}>
+            O imposto não é calculado venda a venda, e sim <strong>por mês</strong>, como exige a Receita. Para cada mês o app:
+            (1) soma as vendas do mês por grupo — bolsa comum (ações, ETFs, BDRs), FII e cripto; (2) aplica as isenções
+            olhando o <strong>total vendido no mês</strong>; (3) compensa lucros e prejuízos do mesmo mês e abate os
+            prejuízos acumulados de meses anteriores do mesmo grupo; (4) aplica a alíquota e gera
+            <strong> um DARF por mês</strong>: código 6015 (bolsa + FII) e 4600 (cripto). Se o DARF ficar abaixo de
+            R$ 10, ele não é pago naquele mês — o valor passa para o mês seguinte.
+          </p>
+          <p className={styles.sectionText}>
+            Tudo é recalculado sempre que uma venda é registrada, editada ou excluída — a ordem em que você lança
+            as vendas não muda o resultado. Se o IR de um mês já pago aumentar, o app mostra o DARF complementar.
+            Venda sem custo de aquisição conhecido fica fora do cálculo (senão o imposto incidiria sobre o valor
+            inteiro) até você informar o custo.
+          </p>
+        </section>
+
+        <section>
           <h4 className={styles.sectionTitle}>Já foi recolhido, ou preciso pagar?</h4>
           <p className={styles.sectionText}>
-            Ativos <strong>retidos na fonte</strong> (Renda Fixa, LCI/LCA, ETF de Renda Fixa) são marcados como
-            <strong> pagos automaticamente</strong> — o banco/corretora já recolhe o IR antes de te repassar o valor,
-            então não há DARF a gerar. Para os demais tipos, a venda entra como <strong>pendente</strong> até você
-            gerar o DARF na Receita Federal e marcar manualmente como pago aqui no app.
+            <strong>Renda Fixa e ETF de Renda Fixa</strong> têm o IR retido na fonte pelo banco/corretora e
+            <strong> LCI/LCA</strong> são isentas — nenhum deles gera DARF. Para os demais tipos, o DARF do mês fica
+            <strong> pendente</strong> até você pagá-lo e marcar como pago aqui no app. Ele vence no último dia útil
+            do mês seguinte ao da venda.
           </p>
         </section>
 

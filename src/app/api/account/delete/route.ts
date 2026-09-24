@@ -7,12 +7,14 @@ const USER_TABLES = [
   'portfolio_snapshots',
   'transactions',
   'sell_tax_records',
+  'tax_darf_payments',
   'financial_goals',
   'assets',
   'strategy_categories',
   'strategies',
   'finance_transactions',
   'finance_categories',
+  'finance_subscriptions',
   'finance_months',
 ];
 

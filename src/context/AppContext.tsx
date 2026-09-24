@@ -17,6 +17,7 @@ import { isB3Open, lastClosedSessionKey } from '@/lib/marketHours';
 import { isCryptoTicker } from '@/lib/cryptoMap';
 import { markPriceFresh, selectStaleEnoughToWarn } from '@/lib/priceFreshness';
 import { useAuth } from '@/context/AuthContext';
+import type { DarfPayment, DarfCode } from '@/lib/taxApuration';
 
 // ============================================
 // Default Strategy (onboarding)
@@ -79,6 +80,12 @@ interface AppContextType {
 
   addSellTaxRecord: (record: Omit<SellTaxRecord, 'id' | 'createdAt'>) => void;
   updateSellTaxRecord: (id: string, data: Partial<SellTaxRecord>) => void;
+
+  // Pagamentos de DARF (um por competência × código) — ver lib/taxApuration.ts
+  darfPayments: DarfPayment[];
+  addDarfPayment: (data: Omit<DarfPayment, 'id' | 'createdAt'>) => void;
+  /** Desfaz o pagamento de um mês/código (inclui marcações do modelo antigo, por venda) */
+  removeDarfPayments: (period: string, darfCode: DarfCode) => void;
 
   // Financial Goals
   goals: FinancialGoal[];
@@ -209,6 +216,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [sellTaxRecords, setSellTaxRecords] = useState<SellTaxRecord[]>([]);
   const [goals, setGoals] = useState<FinancialGoal[]>([]);
+  const [darfPayments, setDarfPayments] = useState<DarfPayment[]>([]);
   const [mounted, setMounted] = useState(false);
   const [dbSynced, setDbSynced] = useState(false);
   const [isSyncingPrices, setIsSyncingPrices] = useState(false);
@@ -218,6 +226,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // sem stale closure (evita recapturar assets[] antigo na closure do setInterval)
   const assetsRef = useRef<Asset[]>([]);
   const userRef = useRef(user);
+  const sellTaxRecordsRef = useRef<SellTaxRecord[]>([]);
+  sellTaxRecordsRef.current = sellTaxRecords;
   const isSyncingRef = useRef(false);
 
   // ============================================
@@ -242,6 +252,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setAssets(storedAssets);
       setTransactions(storedTransactions);
       setSnapshots(storedSnapshots);
+      // Visitante não tem registros de IR — limpa os da conta anterior
+      setSellTaxRecords([]);
+      setDarfPayments([]);
     } else {
       // Se logou → carrega o cache específico DESTE usuário primeiro
       const userId = user.id;
@@ -343,6 +356,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .eq('user_id', userId)
         .order('sell_date', { ascending: false });
 
+      // Pagamentos de DARF — tabela nova: se a migração ainda não rodou,
+      // degrada para o modelo antigo (pagamento marcado em cada venda).
+      const { data: darfRows, error: darfErr } = await supabase
+        .from('tax_darf_payments')
+        .select('*')
+        .eq('user_id', userId);
+      if (darfErr) console.warn('tax_darf_payments indisponível (rode a migração SQL):', darfErr.message);
+      const appDarfPayments: DarfPayment[] = (darfRows ?? []).map((r: any) => ({
+        id: r.id,
+        period: r.period,
+        darfCode: r.darf_code as DarfCode,
+        amount: Number(r.amount),
+        paidAt: r.paid_at,
+        createdAt: r.created_at,
+      }));
+
       const appCategories = (catRows ?? []).map(dbCategoryToApp);
       const appAssets = (assetRows ?? []).map(dbAssetToApp);
       const appTransactions = (txRows ?? []).map(dbTransactionToApp);
@@ -387,6 +416,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setTransactions(appTransactions);
         setSnapshots(appSnapshots);
         setSellTaxRecords(appTaxRecords);
+        setDarfPayments(appDarfPayments);
         setHasCompletedOnboarding(true);
 
         // Busca metas
@@ -946,10 +976,56 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (data.taxPaidAt !== undefined) payload.tax_paid_at = data.taxPaidAt;
     if (data.notes !== undefined)     payload.notes = data.notes;
     if (data.lossUsedForCompensation !== undefined) payload.loss_used_for_compensation = data.lossUsedForCompensation;
+    // Correções feitas na página de Impostos (custo pendente, tipo tributário)
+    if (data.costBasis !== undefined)    payload.cost_basis = data.costBasis;
+    if (data.profitLoss !== undefined)   payload.profit_loss = data.profitLoss;
+    if (data.isLoss !== undefined)       payload.is_loss = data.isLoss;
+    if (data.assetType !== undefined)    payload.asset_type = data.assetType;
+    if (data.taxRate !== undefined)      payload.tax_rate = data.taxRate;
+    if (data.taxDue !== undefined)       payload.tax_due = data.taxDue;
+    if (data.isExempt !== undefined)     payload.is_exempt = data.isExempt;
+    if ('exemptReason' in data)          payload.exempt_reason = data.exemptReason ?? null;
     if (Object.keys(payload).length > 0 && user) {
       supabase.from('sell_tax_records').update(payload).eq('id', id)
         .then(({ error }) => { if (error) reportSyncError('sell_tax_records update', error); });
     }
+  }, [user]);
+
+  // ============================================
+  // DARF payments
+  // ============================================
+  const addDarfPayment = useCallback((data: Omit<DarfPayment, 'id' | 'createdAt'>) => {
+    if (!user) return;
+    const newPay: DarfPayment = { ...data, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+    setDarfPayments(prev => [...prev, newPay]);
+    supabase.from('tax_darf_payments').insert({
+      id: newPay.id,
+      user_id: user.id,
+      period: newPay.period,
+      darf_code: newPay.darfCode,
+      amount: newPay.amount,
+      paid_at: newPay.paidAt,
+    }).then(({ error }) => { if (error) reportSyncError('tax_darf_payments insert', error); });
+  }, [user]);
+
+  const removeDarfPayments = useCallback((period: string, darfCode: DarfCode) => {
+    if (!user) return;
+    setDarfPayments(prev => prev.filter(p => !(p.period === period && p.darfCode === darfCode)));
+    supabase.from('tax_darf_payments').delete()
+      .eq('user_id', user.id).eq('period', period).eq('darf_code', darfCode)
+      .then(({ error }) => { if (error) reportSyncError('tax_darf_payments delete', error); });
+
+    // Marcações do modelo antigo (taxPaid em cada venda) também contam como
+    // pagamento na apuração — desfazer o mês precisa limpá-las.
+    const codeTypes = darfCode === '4600' ? ['crypto'] : ['acao', 'etf', 'bdr', 'fii'];
+    const legacyIds = sellTaxRecordsRef.current
+      .filter(r => r.sellDate.startsWith(period) && codeTypes.includes(r.assetType) && r.taxPaid)
+      .map(r => r.id);
+    if (legacyIds.length === 0) return;
+    setSellTaxRecords(prev => prev.map(r => legacyIds.includes(r.id) ? { ...r, taxPaid: false, taxPaidAt: undefined } : r));
+    supabase.from('sell_tax_records').update({ tax_paid: false, tax_paid_at: null })
+      .in('id', legacyIds).eq('user_id', user.id)
+      .then(({ error }) => { if (error) reportSyncError('sell_tax_records update', error); });
   }, [user]);
 
   // ============================================
@@ -1213,6 +1289,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     saveSnapshot,
     addSellTaxRecord,
     updateSellTaxRecord,
+    darfPayments,
+    addDarfPayment,
+    removeDarfPayments,
     goals,
     activeGoal,
     addGoal,
@@ -1250,6 +1329,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     saveSnapshot,
     addSellTaxRecord,
     updateSellTaxRecord,
+    darfPayments,
+    addDarfPayment,
+    removeDarfPayments,
     goals,
     activeGoal,
     addGoal,

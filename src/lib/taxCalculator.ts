@@ -114,6 +114,21 @@ export function detectAssetType(className: string, subclassName: string, ticker:
 }
 
 /**
+ * Tipo tributário só pelo ticker, para ativos sem categoria na estratégia
+ * (ex.: criados pela importação da B3). Ticker terminado em 11/12 é
+ * ambíguo — pode ser FII, ETF ou unit de ações; assumimos FII, o caso mais
+ * comum na carteira de pessoa física, e o usuário corrige na página Impostos.
+ */
+export function detectAssetTypeFromTicker(ticker: string): AssetType {
+  const tick = ticker.toUpperCase();
+  if (CRYPTO_TICKERS.some(c => tick === c)) return 'crypto';
+  if (ETF_RF_TICKERS.includes(tick)) return 'etf_rf';
+  if (/^[A-Z]{4}3[1-9]$/.test(tick)) return 'bdr';
+  if (/^[A-Z]{4}1[12]$/.test(tick)) return 'fii';
+  return 'acao';
+}
+
+/**
  * Calcula os dias entre a data de compra (aproximada pelo createdAt) e a data de venda.
  */
 function daysBetween(fromIso: string, toIso: string): number {
@@ -136,7 +151,7 @@ function rendaFixaAliquota(days: number): number {
  * Alíquota progressiva para ganho de capital em crypto (Lei 14.478/2022).
  * Aplica-se sobre o LUCRO total (não sobre o valor de venda).
  */
-function cryptoAliquota(profitLoss: number): number {
+export function cryptoAliquota(profitLoss: number): number {
   if (profitLoss <= 5_000_000)  return 0.15;
   if (profitLoss <= 10_000_000) return 0.175;
   if (profitLoss <= 30_000_000) return 0.20;

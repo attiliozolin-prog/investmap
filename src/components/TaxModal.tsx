@@ -69,7 +69,7 @@ export default function TaxModal({ calc, ticker, onConfirm, onCancel }: Props) {
                 <span className={styles.cardValue}>{fmtPct(calc.taxRate)}</span>
               </div>
               <div className={styles.card} style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)' }}>
-                <span className={styles.cardLabel}>⚠️ IR a pagar</span>
+                <span className={styles.cardLabel}>⚠️ IR estimado</span>
                 <span className={styles.cardValue} style={{ color: '#F59E0B', fontSize: '1.2rem' }}>
                   {fmt(calc.taxDue)}
                 </span>
@@ -102,7 +102,7 @@ export default function TaxModal({ calc, ticker, onConfirm, onCancel }: Props) {
         {/* ── Aviso sobre declaração ──────────────────────────── */}
         <div className={styles.notice}>
           <Info size={13} />
-          <span>Esta é uma estimativa informativa. Consulte sempre um contador ou a Receita Federal para situações específicas.</span>
+          <span>Estimativa desta venda isolada. O IR final é apurado por mês na página Impostos: lá o app soma todas as vendas do mês, aplica as isenções e abate prejuízos anteriores. Consulte um contador em situações específicas.</span>
         </div>
 
         {/* ── Ações ───────────────────────────────────────────── */}

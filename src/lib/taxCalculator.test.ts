@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateTax, detectAssetType } from './taxCalculator';
+import { calculateTax, detectAssetType, detectAssetTypeFromTicker } from './taxCalculator';
 
 describe('detectAssetType', () => {
   it('detecta crypto pela classe', () => {
@@ -221,5 +221,14 @@ describe('calculateTax — crypto', () => {
     // lucro de 40M → 22,5%
     const r3 = calculateTax('crypto', 50_000_000, 10_000_000, '2026-06-15');
     expect(r3.taxRate).toBe(0.225);
+  });
+});
+
+describe('detectAssetTypeFromTicker', () => {
+  it('classifica pelo formato do ticker', () => {
+    expect(detectAssetTypeFromTicker('PETR4')).toBe('acao');
+    expect(detectAssetTypeFromTicker('AAPL34')).toBe('bdr');
+    expect(detectAssetTypeFromTicker('IMAB11')).toBe('etf_rf');
+    expect(detectAssetTypeFromTicker('HGLG11')).toBe('fii');
   });
 });
